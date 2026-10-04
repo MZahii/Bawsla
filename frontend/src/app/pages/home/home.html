@@ -1,0 +1,15 @@
+<h1>Bienvenue{{ auth.currentUser() ? ', ' + auth.currentUser()!.prenom : '' }}</h1>
+<p class="subtitle">Vous êtes connecté en tant que <strong>{{ roleLabel() }}</strong>.</p>
+
+<div class="grid">
+  @for (m of modules(); track m.route) {
+    <a [routerLink]="m.route" class="tile">
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <mat-icon>{{ m.icon }}</mat-icon>
+          <span>{{ m.label }}</span>
+        </mat-card-content>
+      </mat-card>
+    </a>
+  }
+</div>

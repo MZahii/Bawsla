@@ -1,0 +1,40 @@
+h1 {
+  font: var(--mat-sys-headline-medium);
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  text-decoration: none;
+  color: inherit;
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 16px;
+    font: var(--mat-sys-title-medium);
+  }
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+    font-size: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  &:hover mat-card {
+    background: var(--mat-sys-surface-container-high);
+  }
+}

@@ -1,0 +1,61 @@
+:host {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--mat-sys-surface-container-low);
+}
+
+mat-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-headline-small);
+  color: var(--mat-sys-primary);
+  margin-bottom: 4px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+}
+
+.role-toggle {
+  align-self: center;
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+
+  mat-form-field {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.error {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+  margin: 0 0 8px;
+}
+
+button[type='submit'] {
+  margin-top: 8px;
+}
+
+.switch {
+  margin-top: 16px;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
+}
