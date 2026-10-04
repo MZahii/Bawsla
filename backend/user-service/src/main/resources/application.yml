@@ -1,0 +1,44 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  config:
+    # .env à la racine du dépôt (lancement depuis backend/user-service ou depuis la racine)
+    import:
+      - optional:file:../../.env[.properties]
+      - optional:file:.env[.properties]
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/bawsla_user?serverTimezone=UTC
+    username: ${MYSQL_USER:bawsla}
+    password: ${MYSQL_PASSWORD:bawsla}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+bawsla:
+  jwt:
+    # Même secret que l'api-gateway (variable JWT_SECRET du .env)
+    secret: ${JWT_SECRET:change-me-dev-secret-bawsla-au-moins-32-caracteres-svp}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  admin:
+    email: ${ADMIN_EMAIL:admin@bawsla.tn}
+    password: ${ADMIN_PASSWORD:Admin123!}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

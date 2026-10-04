@@ -1,0 +1,63 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    # .env à la racine du dépôt (lancement depuis backend/api-gateway ou depuis la racine)
+    import:
+      - optional:file:../../.env[.properties]
+      - optional:file:.env[.properties]
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth
+              uri: lb://USER-SERVICE
+              predicates:
+                - Path=/api/auth/**
+            - id: users
+              uri: lb://USER-SERVICE
+              predicates:
+                - Path=/api/users/**
+            - id: cours
+              uri: lb://COURS-SERVICE
+              predicates:
+                - Path=/api/cours/**
+            - id: quiz
+              uri: lb://QUIZ-SERVICE
+              predicates:
+                - Path=/api/quiz/**
+            - id: forum
+              uri: lb://FORUM-SERVICE
+              predicates:
+                - Path=/api/forum/**
+            # ai-service (FastAPI) n'est pas enregistré dans Eureka : URL statique.
+            - id: ai
+              uri: ${AI_SERVICE_URL:http://127.0.0.1:8000}
+              predicates:
+                - Path=/api/ai/**
+
+bawsla:
+  jwt:
+    secret: ${JWT_SECRET:change-me-dev-secret-bawsla-au-moins-32-caracteres-svp}
+  # Listes séparées par des virgules (lues via @Value -> List<String>)
+  security:
+    public-paths: /api/auth/**,/api/*/health
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

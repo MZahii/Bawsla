@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  POM agrégateur : sert UNIQUEMENT à builder tous les services d'un coup
+  (mvn -q package -DskipTests depuis backend/). Chaque service reste autonome
+  et a son propre parent Spring Boot : aucun héritage depuis ce fichier.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>tn.esprit.bawsla</groupId>
+    <artifactId>bawsla-backend</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>eureka-server</module>
+        <module>api-gateway</module>
+        <module>user-service</module>
+        <module>cours-service</module>
+        <module>quiz-service</module>
+        <module>forum-service</module>
+    </modules>
+</project>
