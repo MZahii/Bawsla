@@ -22,6 +22,8 @@ Architecture microservices : **Angular → API Gateway → services Spring Boot 
 Seul Docker Desktop est nécessaire (ni JDK, ni Node, ni Python) :
 
 ```bash
+git clone https://github.com/MZahii/Bawsla.git && cd Bawsla
+git checkout feature/<module>     # user, cours, quiz ou forum : sa propre branche de travail
 cp .env.example .env              # facultatif : sans .env, les valeurs par défaut de dev s'appliquent
 docker compose up -d --build      # le premier build prend plusieurs minutes (téléchargement Maven et npm)
 docker compose ps                 # attendre que les services soient "healthy" (1 à 2 min)

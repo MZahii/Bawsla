@@ -142,7 +142,8 @@ Erreur (`ApiError`, produit par `GlobalExceptionHandler`) :
 ## Commandes utiles
 
 ```bash
-docker compose up -d                                   # MySQL
+docker compose up -d --build                           # toute la stack → http://localhost:4200
+docker compose up -d mysql                             # MySQL seul (dev local)
 cd backend && ./mvnw -q package -DskipTests            # build back (JDK 21+)
 cd backend/<svc> && ../mvnw spring-boot:run            # lancer un service
 cd ai-service && .venv/Scripts/python -m uvicorn app.main:app --port 8000 --reload
