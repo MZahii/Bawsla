@@ -17,7 +17,32 @@ Architecture microservices : **Angular → API Gateway → services Spring Boot 
 | Python | 3.11+ |
 | Docker | Docker Desktop (pour MySQL) |
 
-## Installation (une seule fois)
+## Démarrage rapide : tout dans Docker
+
+Seul Docker Desktop est nécessaire (ni JDK, ni Node, ni Python) :
+
+```bash
+cp .env.example .env              # facultatif : sans .env, les valeurs par défaut de dev s'appliquent
+docker compose up -d --build      # le premier build prend plusieurs minutes (téléchargement Maven et npm)
+docker compose ps                 # attendre que les services soient "healthy" (1 à 2 min)
+```
+
+Ouvrir **http://localhost:4200**. Le tableau Eureka est sur http://localhost:8761.
+
+| Commande | Effet |
+|---|---|
+| `docker compose logs -f cours-service` | suivre les logs d'un service |
+| `docker compose up -d --build cours-service` | reconstruire un seul service après modification |
+| `docker compose down` | tout arrêter (les données MySQL sont conservées) |
+| `docker compose down -v` | tout arrêter **et effacer** la base |
+
+Seuls le front (4200), la gateway (8080), Eureka (8761) et MySQL (3306) sont exposés. Les services métier et ai-service ne sont joignables qu'à travers la gateway. C'est volontaire : ils font confiance aux en-têtes `X-User-*` posés par la gateway.
+
+Pour développer un module, le mode local ci-dessous est plus rapide (rechargement à chaud). On peut aussi mélanger les deux : `docker compose up -d mysql eureka-server api-gateway`, puis lancer son propre service en local.
+
+> **Attention :** en mode mixte, la gateway (dans Docker) peut ne pas joindre un service lancé sur l'hôte, selon l'IP qu'il déclare à Eureka (VPN, plusieurs cartes réseau). Si les appels via la gateway échouent en 503, lancer aussi la gateway en local.
+
+## Installation locale (développement)
 
 ```bash
 cp .env.example .env                       # puis changer JWT_SECRET (32 caractères minimum)
@@ -40,7 +65,7 @@ Un terminal par composant, **dans cet ordre** :
 
 | # | Composant | Commande | Prêt quand |
 |---|---|---|---|
-| 1 | MySQL | `docker compose up -d` | `docker compose ps` affiche `healthy` |
+| 1 | MySQL | `docker compose up -d mysql` | `docker compose ps` affiche `healthy` |
 | 2 | Eureka | `cd backend/eureka-server && ../mvnw spring-boot:run` | http://localhost:8761 répond |
 | 3 | Gateway | `cd backend/api-gateway && ../mvnw spring-boot:run` | port 8080 ouvert |
 | 4 | Services | `cd backend/user-service && ../mvnw spring-boot:run`, idem pour `cours-service`, `quiz-service` et `forum-service` | chaque service apparaît sur le tableau Eureka |

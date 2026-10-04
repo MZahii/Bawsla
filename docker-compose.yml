@@ -1,3 +1,35 @@
+name: bawsla
+
+# Stack complète :         docker compose up -d --build      → http://localhost:4200
+# MySQL seul (dev local) :  docker compose up -d mysql
+#
+# Ports exposés sur la machine : front 4200, gateway 8080, Eureka 8761, MySQL 3306.
+# Les services métier et ai-service NE SONT PAS exposés : ils font confiance aux
+# en-têtes X-User-* et ne doivent être joignables qu'à travers la gateway.
+
+x-spring-service: &spring-service
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  depends_on:
+    mysql:
+      condition: service_healthy
+    eureka-server:
+      condition: service_healthy
+
+# Valeurs propres au réseau Docker (prioritaires sur le .env, pensé pour le lancement local)
+x-docker-env: &docker-env
+  MYSQL_HOST: mysql
+  MYSQL_PORT: "3306"
+  EUREKA_URL: http://eureka-server:8761/eureka/
+
+x-spring-healthcheck: &spring-healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 20
+  start_period: 60s
+
 services:
   mysql:
     image: mysql:8.4
@@ -18,6 +50,97 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  eureka-server:
+    build: { context: ./backend, args: { SERVICE: eureka-server } }
+    image: bawsla/eureka-server
+    container_name: bawsla-eureka
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8761/actuator/health | grep -q UP"]
+
+  api-gateway:
+    build: { context: ./backend, args: { SERVICE: api-gateway } }
+    image: bawsla/api-gateway
+    container_name: bawsla-gateway
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      AI_SERVICE_URL: http://ai-service:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q UP"]
+
+  user-service:
+    <<: *spring-service
+    build: { context: ./backend, args: { SERVICE: user-service } }
+    image: bawsla/user-service
+    container_name: bawsla-user
+    environment: *docker-env
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health | grep -q UP"]
+
+  cours-service:
+    <<: *spring-service
+    build: { context: ./backend, args: { SERVICE: cours-service } }
+    image: bawsla/cours-service
+    container_name: bawsla-cours
+    environment: *docker-env
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health | grep -q UP"]
+
+  quiz-service:
+    <<: *spring-service
+    build: { context: ./backend, args: { SERVICE: quiz-service } }
+    image: bawsla/quiz-service
+    container_name: bawsla-quiz
+    environment: *docker-env
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/actuator/health | grep -q UP"]
+
+  forum-service:
+    <<: *spring-service
+    build: { context: ./backend, args: { SERVICE: forum-service } }
+    image: bawsla/forum-service
+    container_name: bawsla-forum
+    environment: *docker-env
+    healthcheck:
+      <<: *spring-healthcheck
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health | grep -q UP"]
+
+  ai-service:
+    build: ./ai-service
+    image: bawsla/ai-service
+    container_name: bawsla-ai
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+
+  frontend:
+    build: ./frontend
+    image: bawsla/frontend
+    container_name: bawsla-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
 
 volumes:
   mysql_data:
