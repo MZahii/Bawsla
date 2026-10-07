@@ -26,6 +26,7 @@ Font partie du **socle** (PR obligatoire) :
 - le package `common` de chaque service (il doit rester identique dans les 4 services)
 - `ai-service/app/core`, `ai-service/app/main.py`, `ai-service/requirements.txt`
 - `frontend/src/app/core`, `frontend/src/app/shared`, `frontend/src/app/pages`, `app.routes.ts`, `app.config.ts`
+- `frontend/src/styles`, `frontend/src/styles.scss`, `frontend/src/assets/brand`, `DESIGN.md`
 - `docker-compose.yml`, `docker/`, `.env.example`
 - `CLAUDE.md`, `CONTRATS_API.md`, `README.md`
 
@@ -132,6 +133,17 @@ Erreur (`ApiError`, produit par `GlobalExceptionHandler`) :
 - PEP 8 : modules et fonctions en snake_case, classes en PascalCase.
 - Schémas Pydantic hérités de `CamelModel` (JSON en camelCase, Python en snake_case).
 - Un `APIRouter` par module, préfixe `/api/ai/<module>`. Dépendances injectées par `Depends(get_llm_client)`, `Depends(get_sanitizer)` et `Depends(get_current_user)`.
+
+## Design
+
+La charte graphique est dans [DESIGN.md](DESIGN.md) : c'est la source de vérité (couleurs, typographie, logos, composants, ton). Elle est visible en direct sur `/styleguide` (ADMIN ou mode dev).
+
+> **Utilise les composants de shared/ et les variables du thème, n'invente aucun style.**
+
+- Couleurs : uniquement `var(--color-…)` (tokens dans `src/styles/_tokens.scss`, alias clair/sombre dans `_semantic.scss`). Aucun HEX dans `src/app`.
+- Composants : `bw-logo`, `bw-ai-box` (tout contenu généré par l'IA), `bw-ai-loading`, `bw-empty-state`, `bw-stat-tile`, `bw-badge` et la directive `[bwButton]` (`principal`, `secondaire`, `fantome`, `ia`, `danger` ; un seul `principal` par écran). Import : `shared/index.ts`.
+- UI plate (dégradés réservés au logo), WCAG AA, cibles de 44 px, icônes Material Symbols Rounded.
+- Textes en français, tutoiement pour les étudiants ; texte arabe avec `dir="auto"` (police Cairo).
 
 ## Git
 
