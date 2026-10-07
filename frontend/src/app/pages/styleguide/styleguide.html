@@ -1,0 +1,161 @@
+<div class="sg">
+  <p class="bw-body-lg bw-muted sg-intro">
+    Référence vivante de <strong>DESIGN.md</strong>. Utilise les composants de <code>shared/</code> et les
+    variables du thème, n'invente aucun style.
+  </p>
+
+  <!-- Palette -->
+  <section class="sg-section" aria-labelledby="sg-palette">
+    <h2 id="sg-palette">Palette</h2>
+    @for (p of palettes; track p.name) {
+      <h3 class="sg-sub">{{ p.name }}</h3>
+      <div class="sg-swatches">
+        @for (s of p.swatches; track s.token) {
+          <figure class="sg-swatch">
+            <span class="sg-chip" [style.background]="'var(' + s.token + ')'"></span>
+            <figcaption>
+              <code>{{ s.token }}</code>
+              <span class="bw-caption bw-muted">{{ s.usage }}</span>
+            </figcaption>
+          </figure>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Typographie -->
+  <section class="sg-section" aria-labelledby="sg-type">
+    <h2 id="sg-type">Typographie</h2>
+    <div class="bw-card sg-type">
+      <p class="bw-display">Display · Poppins 40/48</p>
+      <p class="bw-h1">Titre 1 · Poppins 32/40</p>
+      <p class="bw-h2">Titre 2 · Poppins 24/32</p>
+      <p class="bw-h3">Titre 3 · Poppins 20/28</p>
+      <p class="bw-body-lg">Corps large · Inter 18/30 : pour les textes de lecture longue.</p>
+      <p>Corps · Inter 16/24 : le texte courant de l'interface, avec un <a href="#sg-type">lien</a>.</p>
+      <p class="bw-small">Petit · Inter 14/20 : aides et métadonnées.</p>
+      <p class="bw-caption">Légende · Inter 12/16</p>
+      <p><code>Code · JetBrains Mono : SELECT * FROM cours;</code></p>
+      <p class="bw-arabic" lang="ar" dir="auto">البوصلة · بوصلة المعرفة (Cairo)</p>
+    </div>
+  </section>
+
+  <!-- Logos -->
+  <section class="sg-section" aria-labelledby="sg-logos">
+    <h2 id="sg-logos">Logos</h2>
+    <h3 class="sg-sub">Symbole</h3>
+    <div class="sg-logos">
+      @for (t of iconThemes; track t.theme) {
+        <figure class="sg-logo" [class.sg-logo--dark]="t.dark">
+          <bw-logo variant="icon" [theme]="t.theme" [size]="72" />
+          <figcaption class="bw-caption">{{ t.label }}</figcaption>
+        </figure>
+      }
+      <figure class="sg-logo">
+        <bw-logo variant="icon" theme="light" [size]="32" />
+        <figcaption class="bw-caption">Aplat (&lt; 48 px)</figcaption>
+      </figure>
+    </div>
+    <h3 class="sg-sub">Horizontal</h3>
+    <div class="sg-logos">
+      <figure class="sg-logo">
+        <bw-logo variant="horizontal" theme="light" [size]="64" />
+        <figcaption class="bw-caption">Clair</figcaption>
+      </figure>
+      <figure class="sg-logo sg-logo--dark">
+        <bw-logo variant="horizontal" theme="dark" [size]="64" />
+        <figcaption class="bw-caption">Sombre</figcaption>
+      </figure>
+    </div>
+    <h3 class="sg-sub">Empilé</h3>
+    <div class="sg-logos">
+      <figure class="sg-logo">
+        <bw-logo variant="stacked" theme="light" [size]="160" />
+        <figcaption class="bw-caption">Clair</figcaption>
+      </figure>
+      <figure class="sg-logo sg-logo--dark">
+        <bw-logo variant="stacked" theme="dark" [size]="160" />
+        <figcaption class="bw-caption">Sombre</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Boutons -->
+  <section class="sg-section" aria-labelledby="sg-buttons">
+    <h2 id="sg-buttons">Boutons <code class="bw-caption">[bwButton]</code></h2>
+    <div class="sg-row">
+      <button type="button" bwButton="principal">Principal</button>
+      <button type="button" bwButton="secondaire">Secondaire</button>
+      <button type="button" bwButton="fantome">Fantôme</button>
+      <button type="button" bwButton="ia" [bwLoading]="loading()" (click)="simulate()">Générer le résumé</button>
+      <button type="button" bwButton="danger">Supprimer</button>
+    </div>
+    <div class="sg-row">
+      <button type="button" bwButton="principal" disabled>Désactivé</button>
+      <button type="button" bwButton="secondaire" bwLoading>Chargement</button>
+    </div>
+  </section>
+
+  <!-- Badges -->
+  <section class="sg-section" aria-labelledby="sg-badges">
+    <h2 id="sg-badges">Badges <code class="bw-caption">bw-badge</code></h2>
+    <div class="sg-row">
+      <bw-badge variant="categorie" label="Bases de données" />
+      <bw-badge variant="niveau" [level]="1" />
+      <bw-badge variant="niveau" [level]="2" />
+      <bw-badge variant="niveau" [level]="3" />
+      <bw-badge variant="ia" />
+      <bw-badge variant="meilleure-reponse" />
+    </div>
+  </section>
+
+  <!-- Statistiques -->
+  <section class="sg-section" aria-labelledby="sg-stats">
+    <h2 id="sg-stats">Tuiles de statistique <code class="bw-caption">bw-stat-tile</code></h2>
+    <div class="bw-grid">
+      <bw-stat-tile label="Cours suivis" value="12" [trend]="8" trendLabel="vs mois dernier" />
+      <bw-stat-tile label="Score moyen" value="74 %" [trend]="-3" trendLabel="vs mois dernier" />
+      <bw-stat-tile label="Réponses au forum" value="5" [trend]="0" />
+    </div>
+  </section>
+
+  <!-- IA -->
+  <section class="sg-section" aria-labelledby="sg-ai">
+    <h2 id="sg-ai">Contenu IA <code class="bw-caption">bw-ai-box · bw-ai-loading</code></h2>
+    <bw-ai-box
+      heading="Résumé du chapitre"
+      [editable]="true"
+      [regenerable]="true"
+      [validatable]="true"
+      [busy]="loading()"
+      (edit)="lastEvent.set('Modifier')"
+      (regenerate)="simulate(); lastEvent.set('Régénérer')"
+      (validate)="lastEvent.set('Valider')"
+    >
+      <p>
+        Une clé étrangère relie deux tables : elle référence la clé primaire d'une autre table et garantit
+        l'intégrité référentielle.
+      </p>
+      <span bwAiSource>Source : Bases de données, chapitre 2</span>
+    </bw-ai-box>
+    @if (lastEvent()) {
+      <p class="bw-small bw-muted" role="status">Événement : {{ lastEvent() }}</p>
+    }
+    <div class="bw-card sg-loading">
+      <bw-ai-loading (cancel)="lastEvent.set('Annuler')" />
+    </div>
+  </section>
+
+  <!-- État vide -->
+  <section class="sg-section" aria-labelledby="sg-empty">
+    <h2 id="sg-empty">État vide <code class="bw-caption">bw-empty-state</code></h2>
+    <div class="bw-card">
+      <bw-empty-state
+        title="Aucun quiz pour l'instant."
+        message="Crée le premier pour tester tes étudiants."
+        actionLabel="Créer un quiz"
+        (action)="lastEvent.set('Créer un quiz')"
+      />
+    </div>
+  </section>
+</div>

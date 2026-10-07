@@ -1,24 +1,21 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { Logo } from '../../../shared/components/logo/logo';
+import { BwButton } from '../../../shared/directives/bw-button';
 import { errorMessage } from '../../../shared/models/api-response.model';
 import { RegisterRequest } from '../../../shared/models/user.model';
 
 @Component({
   selector: 'app-register',
   imports: [
-    ReactiveFormsModule, RouterLink,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatButtonToggleModule,
-    MatIconModule, MatProgressBarModule,
+    ReactiveFormsModule, RouterLink, Logo, BwButton,
+    MatFormFieldModule, MatInputModule, MatButtonToggleModule,
   ],
   templateUrl: './register.html',
   styleUrl: '../auth-page.scss',

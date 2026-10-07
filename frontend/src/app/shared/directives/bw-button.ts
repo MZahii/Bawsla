@@ -1,4 +1,4 @@
-import { Directive, ElementRef, Renderer2, effect, inject, input } from '@angular/core';
+import { Directive, ElementRef, Renderer2, booleanAttribute, effect, inject, input } from '@angular/core';
 
 export type ButtonVariant = 'principal' | 'secondaire' | 'fantome' | 'ia' | 'danger';
 
@@ -25,8 +25,8 @@ export type ButtonVariant = 'principal' | 'secondaire' | 'fantome' | 'ia' | 'dan
 })
 export class BwButton {
   readonly variant = input<ButtonVariant | ''>('principal', { alias: 'bwButton' });
-  readonly loading = input(false, { alias: 'bwLoading' });
-  readonly block = input(false, { alias: 'bwBlock' });
+  readonly loading = input(false, { alias: 'bwLoading', transform: booleanAttribute });
+  readonly block = input(false, { alias: 'bwBlock', transform: booleanAttribute });
 
   constructor() {
     const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;

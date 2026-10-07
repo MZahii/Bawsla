@@ -1,21 +1,21 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/auth/auth.service';
+import { Logo } from '../../../shared/components/logo/logo';
+import { BwButton } from '../../../shared/directives/bw-button';
 import { errorMessage } from '../../../shared/models/api-response.model';
 
 @Component({
   selector: 'app-login',
   imports: [
-    ReactiveFormsModule, RouterLink,
-    MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatProgressBarModule,
+    ReactiveFormsModule, RouterLink, Logo, BwButton,
+    MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule,
   ],
   templateUrl: './login.html',
   styleUrl: '../auth-page.scss',

@@ -1,54 +1,57 @@
-<mat-card appearance="outlined">
-  @if (loading()) {
-    <mat-progress-bar mode="indeterminate" />
-  }
-  <mat-card-content>
-    <div class="brand"><mat-icon>explore</mat-icon> Bawsla</div>
-    <p>Créez votre compte.</p>
+<header class="brand">
+  <bw-logo variant="stacked" [size]="180" />
+  <p class="slogan">La boussole du savoir</p>
+  <p class="slogan-ar" lang="ar" dir="auto">بوصلة المعرفة</p>
+</header>
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-button-toggle-group formControlName="role" aria-label="Je suis" class="role-toggle">
-        <mat-button-toggle value="ETUDIANT">Étudiant</mat-button-toggle>
-        <mat-button-toggle value="ENSEIGNANT">Enseignant</mat-button-toggle>
-      </mat-button-toggle-group>
+<main class="card">
+  <h1>Inscription</h1>
+  <p class="intro">Crée ton compte en moins d'une minute.</p>
 
-      <div class="row">
-        <mat-form-field appearance="outline">
-          <mat-label>Prénom</mat-label>
-          <input matInput formControlName="prenom" autocomplete="given-name" />
-          <mat-error>Prénom obligatoire</mat-error>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Nom</mat-label>
-          <input matInput formControlName="nom" autocomplete="family-name" />
-          <mat-error>Nom obligatoire</mat-error>
-        </mat-form-field>
-      </div>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <mat-button-toggle-group formControlName="role" aria-label="Je suis" class="role-toggle">
+      <mat-button-toggle value="ETUDIANT">Étudiant</mat-button-toggle>
+      <mat-button-toggle value="ENSEIGNANT">Enseignant</mat-button-toggle>
+    </mat-button-toggle-group>
 
+    <div class="row">
       <mat-form-field appearance="outline">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" autocomplete="email" />
-        @if (form.controls.email.hasError('email')) {
-          <mat-error>Email invalide</mat-error>
-        } @else {
-          <mat-error>Email obligatoire</mat-error>
-        }
+        <mat-label>Prénom</mat-label>
+        <input matInput formControlName="prenom" autocomplete="given-name" />
+        <mat-error>Le prénom est obligatoire.</mat-error>
       </mat-form-field>
-
       <mat-form-field appearance="outline">
-        <mat-label>Mot de passe</mat-label>
-        <input matInput type="password" formControlName="motDePasse" autocomplete="new-password" />
-        <mat-hint>8 caractères minimum</mat-hint>
-        <mat-error>Entre 8 et 72 caractères</mat-error>
+        <mat-label>Nom</mat-label>
+        <input matInput formControlName="nom" autocomplete="family-name" />
+        <mat-error>Le nom est obligatoire.</mat-error>
       </mat-form-field>
+    </div>
 
-      @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" autocomplete="email" />
+      @if (form.controls.email.hasError('email')) {
+        <mat-error>Cet email n'est pas valide.</mat-error>
+      } @else {
+        <mat-error>L'email est obligatoire.</mat-error>
       }
+    </mat-form-field>
 
-      <button mat-flat-button type="submit" [disabled]="loading()">Créer mon compte</button>
-    </form>
+    <mat-form-field appearance="outline">
+      <mat-label>Mot de passe</mat-label>
+      <input matInput type="password" formControlName="motDePasse" autocomplete="new-password" />
+      <mat-hint>8 caractères minimum</mat-hint>
+      <mat-error>Entre 8 et 72 caractères.</mat-error>
+    </mat-form-field>
 
-    <p class="switch">Déjà inscrit ? <a routerLink="/login">Se connecter</a></p>
-  </mat-card-content>
-</mat-card>
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button type="submit" bwButton="principal" bwBlock [bwLoading]="loading()" [disabled]="loading()">
+      Créer mon compte
+    </button>
+  </form>
+
+  <p class="switch">Déjà inscrit ? <a routerLink="/login">Connecte-toi</a></p>
+</main>

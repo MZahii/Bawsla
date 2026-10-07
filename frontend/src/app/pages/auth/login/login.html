@@ -1,49 +1,52 @@
-<mat-card appearance="outlined">
-  @if (loading()) {
-    <mat-progress-bar mode="indeterminate" />
-  }
-  <mat-card-content>
-    <div class="brand"><mat-icon>explore</mat-icon> Bawsla</div>
-    <p>Connectez-vous à votre espace.</p>
+<header class="brand">
+  <bw-logo variant="stacked" [size]="180" />
+  <p class="slogan">La boussole du savoir</p>
+  <p class="slogan-ar" lang="ar" dir="auto">بوصلة المعرفة</p>
+</header>
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" autocomplete="email" />
-        @if (form.controls.email.hasError('email')) {
-          <mat-error>Email invalide</mat-error>
-        } @else {
-          <mat-error>Email obligatoire</mat-error>
-        }
-      </mat-form-field>
+<main class="card">
+  <h1>Connexion</h1>
+  <p class="intro">Content de te revoir. Connecte-toi pour reprendre ton parcours.</p>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Mot de passe</mat-label>
-        <input
-          matInput
-          [type]="hidePassword() ? 'password' : 'text'"
-          formControlName="motDePasse"
-          autocomplete="current-password"
-        />
-        <button
-          mat-icon-button
-          matSuffix
-          type="button"
-          (click)="hidePassword.set(!hidePassword())"
-          [attr.aria-label]="hidePassword() ? 'Afficher le mot de passe' : 'Masquer le mot de passe'"
-        >
-          <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
-        </button>
-        <mat-error>Mot de passe obligatoire</mat-error>
-      </mat-form-field>
-
-      @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" formControlName="email" autocomplete="email" />
+      @if (form.controls.email.hasError('email')) {
+        <mat-error>Cet email n'est pas valide.</mat-error>
+      } @else {
+        <mat-error>L'email est obligatoire.</mat-error>
       }
+    </mat-form-field>
 
-      <button mat-flat-button type="submit" [disabled]="loading()">Se connecter</button>
-    </form>
+    <mat-form-field appearance="outline">
+      <mat-label>Mot de passe</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="motDePasse"
+        autocomplete="current-password"
+      />
+      <button
+        mat-icon-button
+        matSuffix
+        type="button"
+        (click)="hidePassword.set(!hidePassword())"
+        [attr.aria-label]="hidePassword() ? 'Afficher le mot de passe' : 'Masquer le mot de passe'"
+      >
+        <mat-icon>{{ hidePassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+      </button>
+      <mat-error>Le mot de passe est obligatoire.</mat-error>
+    </mat-form-field>
 
-    <p class="switch">Pas encore de compte ? <a routerLink="/register">Créer un compte</a></p>
-  </mat-card-content>
-</mat-card>
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button type="submit" bwButton="principal" bwBlock [bwLoading]="loading()" [disabled]="loading()">
+      Se connecter
+    </button>
+  </form>
+
+  <p class="switch">Pas encore de compte ? <a routerLink="/register">Crée ton compte</a></p>
+</main>
