@@ -1,0 +1,97 @@
+// Échelle typographique (DESIGN.md, section 3).
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+h1, h2, h3, .bw-display {
+  font-family: var(--font-heading);
+  color: var(--color-text);
+  margin: 0 0 var(--space-4);
+}
+
+.bw-display {
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 700;
+}
+
+h1, .bw-h1 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+}
+
+h2, .bw-h2 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+h3, .bw-h3 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+.bw-body-lg {
+  font-size: 18px;
+  line-height: 30px;
+}
+
+small, .bw-small {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.bw-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.bw-muted {
+  color: var(--color-text-muted);
+}
+
+// Contenu long d'un cours : 72 caractères max.
+.bw-reading {
+  max-width: var(--reading-max-width);
+  font-size: 18px;
+  line-height: 30px;
+}
+
+code, kbd, pre, samp, .bw-code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--color-neutral-soft);
+  color: var(--color-on-neutral-soft);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+// Arabe : police Cairo. Toujours accompagné de dir="auto" (ou "rtl") dans le HTML.
+[lang='ar'], .bw-arabic {
+  font-family: var(--font-arabic);
+  font-weight: 600;
+}
+
+a {
+  color: var(--color-bordeaux-600);
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: var(--color-bordeaux-700);
+  }
+}
+
+[data-theme='dark'] a:hover {
+  color: var(--color-bordeaux-600);
+}

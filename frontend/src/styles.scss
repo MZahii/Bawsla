@@ -1,39 +1,72 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
+// Styles globaux Bawsla. La charte (couleurs, polices, espacements) vit dans DESIGN.md ;
+// les tokens CSS sont dans styles/_tokens.scss. Dans les composants : var(--color-...) uniquement.
 @use '@angular/material' as mat;
+@use 'styles/material-palettes' as palettes;
+
+@use 'styles/tokens';
+@use 'styles/semantic';
+@use 'styles/base';
+@use 'styles/typography';
+@use 'styles/buttons';
 
 html {
-  height: 100%;
+  // Palette générée à partir de navy-700 (primaire), bordeaux-600 (secondaire) et gold-500 (tertiaire).
+  // theme-type: color-scheme → Material suit color-scheme, piloté par [data-theme] (ThemeService).
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: palettes.$primary-palette,
+        tertiary: palettes.$tertiary-palette,
+        theme-type: color-scheme,
       ),
-      typography: Roboto,
+      typography: (
+        brand-family: 'Poppins',
+        plain-family: 'Inter',
+        bold-weight: 700,
+        medium-weight: 600,
+        regular-weight: 400,
+      ),
       density: 0,
+    )
+  );
+
+  // Les rôles Material pointent vers les tokens : un seul jeu de couleurs, clair comme sombre.
+  @include mat.theme-overrides(
+    (
+      primary: var(--color-primary),
+      on-primary: var(--color-on-primary),
+      primary-container: var(--color-neutral-soft),
+      on-primary-container: var(--color-on-neutral-soft),
+      secondary: var(--color-bordeaux-600),
+      secondary-container: var(--color-bordeaux-100),
+      on-secondary-container: var(--color-bordeaux-600),
+      tertiary: var(--color-gold-500),
+      tertiary-container: var(--color-gold-100),
+      on-tertiary-container: var(--color-gold-700),
+      error: var(--color-error),
+      background: var(--color-bg),
+      on-background: var(--color-text),
+      surface: var(--color-surface),
+      on-surface: var(--color-text),
+      on-surface-variant: var(--color-text-muted),
+      surface-container-lowest: var(--color-surface),
+      surface-container-low: var(--color-surface),
+      surface-container: var(--color-surface),
+      surface-container-high: var(--color-surface),
+      surface-container-highest: var(--color-surface),
+      outline-variant: var(--color-border),
     )
   );
 }
 
-body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
-  margin: 0;
-  height: 100%;
+// Champs de formulaire : focus en navy-700 (primary), erreurs en couleur d'erreur.
+.mat-mdc-form-field-error {
+  color: var(--color-error);
 }
-/* You can add global styles to this file, and also import other style files */
+
+// Snackbar (toast) : fond navy, texte blanc.
+.mat-mdc-snack-bar-container {
+  --mat-snack-bar-container-color: var(--color-navy-700);
+  --mat-snack-bar-supporting-text-color: var(--color-white);
+  --mat-snack-bar-button-color: var(--color-gold-500);
+}

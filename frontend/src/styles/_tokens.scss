@@ -1,0 +1,52 @@
+// Tokens de la charte Bawsla : copie EXACTE de la section 11 de DESIGN.md.
+// Ne rien ajouter ni modifier ici sans mettre à jour DESIGN.md (PR).
+
+:root {
+  --color-navy-900: #141C2C;
+  --color-navy-700: #1C2639;
+  --color-navy-500: #2E3B55;
+  --color-navy-100: #E8EBF1;
+  --color-bordeaux-700: #5A1726;
+  --color-bordeaux-600: #6B1E2E;
+  --color-bordeaux-500: #8E2F40;
+  --color-bordeaux-100: #F6E8EB;
+  --color-gold-500: #D4A440;
+  --color-gold-700: #7E5A12;
+  --color-gold-100: #FBF3DF;
+  --color-bg: #F8F6F1;
+  --color-surface: #FFFFFF;
+  --color-border: #E4E1DA;
+  --color-text: #1C2639;
+  --color-text-muted: #5B6475;
+  --color-success: #1A7A4D;
+  --color-warning: #9A5B00;
+  --color-error: #C62828;
+  --color-info: #2F6FD0;
+
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-arabic: 'Cairo', sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 28, 44, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 28, 44, 0.08);
+  --shadow-lg: 0 12px 32px rgba(20, 28, 44, 0.12);
+}
+
+[data-theme="dark"] {
+  --color-bg: #141C2C;
+  --color-surface: #1C2639;
+  --color-border: #2E3B55;
+  --color-text: #E8ECF3;
+  --color-text-muted: #A3AEC2;
+  --color-bordeaux-600: #D96B7E;
+  --color-bordeaux-100: #3A1E28;
+  --color-gold-500: #F2BE4A;
+  --color-gold-700: #F2BE4A;
+  --color-gold-100: #2F2817;
+}

@@ -1,0 +1,49 @@
+// Alias sémantiques construits UNIQUEMENT à partir des tokens de DESIGN.md.
+// Ils règlent les cas où un token "navy" fixe deviendrait illisible en thème sombre
+// (ex. bouton principal navy-700 sur un fond navy). Les composants utilisent ces alias
+// quand la couleur doit s'inverser avec le thème.
+
+:root {
+  --color-white: #FFFFFF;
+  --color-white-80: rgba(255, 255, 255, 0.8);
+  --color-white-8: rgba(255, 255, 255, 0.08);
+
+  // Action principale (bouton principal, bordure du secondaire, focus des champs)
+  --color-primary: var(--color-navy-700);
+  --color-primary-hover: var(--color-navy-500);
+  --color-on-primary: var(--color-white);
+
+  // Chips neutres (catégorie), survol de ligne
+  --color-neutral-soft: var(--color-navy-100);
+  --color-on-neutral-soft: var(--color-navy-700);
+
+  // Menu latéral : navy-900 dans les deux thèmes
+  --color-sidebar: var(--color-navy-900);
+
+  // Grille de 8 px
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --sidebar-width: 256px;
+  --sidebar-width-collapsed: 72px;
+  --content-max-width: 1200px;
+  --reading-max-width: 720px;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --color-primary: var(--color-text);
+  --color-primary-hover: var(--color-navy-100);
+  --color-on-primary: var(--color-navy-900);
+  --color-neutral-soft: var(--color-navy-500);
+  --color-on-neutral-soft: var(--color-text);
+
+  color-scheme: dark;
+}
