@@ -1,0 +1,128 @@
+<bw-page-header title="Mon compte" subtitle="Tes informations, ta sécurité et tes préférences." />
+
+<div class="layout">
+  <aside class="card card-pad who">
+    <bw-avatar [nom]="nom()" [size]="88" />
+    <h2>{{ nom() }}</h2>
+    <p class="muted small">{{ user()?.email }}</p>
+    @if (user(); as u) { <span class="pill accent plain">{{ roles[u.role] }}</span> }
+    <dl>
+      <div><dt>Membre depuis</dt><dd>septembre 2026</dd></div>
+      @if (etudiant()) {
+        <div><dt>Profil</dt><dd>{{ profilLibelle }}</dd></div>
+        <div><dt>Cours suivis</dt><dd>4</dd></div>
+        <div><dt>Certificats</dt><dd>1</dd></div>
+      } @else {
+        <div><dt>Expertise</dt><dd>Bases de données</dd></div>
+        <div><dt>Statut</dt><dd>Formatrice validée</dd></div>
+        <div><dt>Cours publiés</dt><dd>3</dd></div>
+      }
+    </dl>
+  </aside>
+
+  <section class="card">
+    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+      <mat-tab label="Informations">
+        <div class="form">
+          <div class="row2">
+            <mat-form-field appearance="outline"><mat-label>Prénom</mat-label><input matInput [value]="user()?.prenom ?? ''" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Nom</mat-label><input matInput [value]="user()?.nom ?? ''" /></mat-form-field>
+          </div>
+          <mat-form-field appearance="outline"><mat-label>Email</mat-label><input matInput [value]="user()?.email ?? ''" disabled /><mat-hint>Pour changer d’email, contacte le support.</mat-hint></mat-form-field>
+          <mat-form-field appearance="outline" class="mt-s"><mat-label>Présentation</mat-label><textarea matInput rows="3" placeholder="Quelques mots sur toi, visibles sur le forum"></textarea></mat-form-field>
+          <p class="lbl">Photo de profil</p>
+          <bw-dropzone accept="image/*" hint="PNG ou JPG, 2 Mo maximum" />
+          <div class="actions"><button type="button" bwButton="principal" (click)="enregistrer('Informations')">Enregistrer</button></div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="etudiant() ? 'Mon parcours' : 'Profil de formateur'">
+        <div class="form">
+          @if (etudiant()) {
+            <p class="muted small">Ces réponses servent à l’IA pour te recommander des cours. Elles ne sont jamais envoyées avec ton nom ou ton email.</p>
+            <mat-form-field appearance="outline"><mat-label>Ce qui te décrit le mieux</mat-label>
+              <mat-select [value]="parcours?.profil ?? null">
+                @for (p of profils; track p.code) { <mat-option [value]="p.code">{{ p.titre }}</mat-option> }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Ton objectif</mat-label>
+              <mat-select [value]="parcours?.objectif ?? null">
+                @for (o of objectifs; track o) { <mat-option [value]="o">{{ o }}</mat-option> }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Domaines qui t’intéressent</mat-label>
+              <mat-select multiple [value]="parcours?.domaines ?? []">
+                @for (d of domainesListe; track d) { <mat-option [value]="d">{{ d }}</mat-option> }
+              </mat-select>
+            </mat-form-field>
+            <div class="actions"><a bwButton="fantome" routerLink="/demarrer">Refaire le questionnaire</a><button type="button" bwButton="principal" (click)="enregistrer('Parcours')">Enregistrer</button></div>
+          } @else {
+            <mat-form-field appearance="outline"><mat-label>Domaine d’expertise</mat-label><input matInput value="Bases de données, back-end" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Titre affiché sur tes cours</mat-label><input matInput value="Ingénieure logiciel et formatrice indépendante" /></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Présentation</mat-label><textarea matInput rows="4">Travaille depuis 9 ans sur des applications de gestion et forme des développeurs en entreprise.</textarea></mat-form-field>
+            <mat-form-field appearance="outline"><mat-label>Lien (LinkedIn, site)</mat-label><input matInput value="linkedin.com/in/imen-ayari" /></mat-form-field>
+            <p class="muted small">Pour recevoir les revenus de tes cours payants, ajoute un RIB (bientôt disponible).</p>
+            <div class="actions"><button type="button" bwButton="principal" (click)="enregistrer('Profil de formateur')">Enregistrer</button></div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Sécurité">
+        <div class="form">
+          <mat-form-field appearance="outline"><mat-label>Mot de passe actuel</mat-label><input matInput type="password" autocomplete="current-password" /></mat-form-field>
+          <mat-form-field appearance="outline"><mat-label>Nouveau mot de passe</mat-label><input matInput type="password" autocomplete="new-password" /><mat-hint>8 caractères minimum</mat-hint></mat-form-field>
+          <div class="actions"><button type="button" bwButton="principal" (click)="enregistrer('Mot de passe')">Changer le mot de passe</button></div>
+          <p class="lbl">Sessions ouvertes</p>
+          <ul class="sessions">
+            @for (s of sessions; track s.appareil) {
+              <li>
+                <mat-icon class="muted">{{ s.icone }}</mat-icon>
+                <span class="t"><strong class="small">{{ s.appareil }}</strong><span class="muted small">{{ s.lieu }}, {{ s.quand }}</span></span>
+                @if (s.actuelle) { <span class="pill ok">Cet appareil</span> } @else { <button type="button" bwButton="fantome">Déconnecter</button> }
+              </li>
+            }
+          </ul>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Notifications">
+        <div class="form">
+          <mat-slide-toggle [checked]="true">Réponses à mes questions sur le forum</mat-slide-toggle>
+          @if (etudiant()) {
+            <mat-slide-toggle [checked]="true">Rappel de mon objectif de la semaine</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Examen final débloqué</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Sessions en direct de mes cours</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Nouvelles recommandations de l’IA</mat-slide-toggle>
+            <mat-slide-toggle [checked]="false">Résumé de ma semaine par email</mat-slide-toggle>
+          } @else {
+            <mat-slide-toggle [checked]="true">Nouvelle question sur un de mes cours</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Nouvelle inscription ou nouvel avis</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Apprenant qui risque d’abandonner</mat-slide-toggle>
+            <mat-slide-toggle [checked]="true">Contenus générés prêts à relire</mat-slide-toggle>
+          }
+          <div class="actions"><button type="button" bwButton="principal" (click)="enregistrer('Préférences de notification')">Enregistrer</button></div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Préférences">
+        <div class="form">
+          <p class="lbl">Thème</p>
+          <mat-radio-group [value]="theme.theme()" (change)="theme.set($event.value)" class="radios">
+            <mat-radio-button value="light">Clair</mat-radio-button>
+            <mat-radio-button value="dark">Sombre</mat-radio-button>
+          </mat-radio-group>
+          <mat-form-field appearance="outline" class="mt-s"><mat-label>Langue</mat-label>
+            <mat-select value="fr"><mat-option value="fr">Français</mat-option><mat-option value="ar">العربية</mat-option><mat-option value="en">English</mat-option></mat-select>
+          </mat-form-field>
+          @if (etudiant()) {
+            <mat-form-field appearance="outline"><mat-label>Objectif d’étude par semaine</mat-label>
+              <mat-select value="300"><mat-option value="120">2 heures</mat-option><mat-option value="300">5 heures</mat-option><mat-option value="600">10 heures</mat-option></mat-select>
+            </mat-form-field>
+            <mat-slide-toggle [checked]="true">Lire les résumés à voix haute automatiquement</mat-slide-toggle>
+          }
+          <mat-slide-toggle [checked]="false">Réduire les animations</mat-slide-toggle>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </section>
+</div>

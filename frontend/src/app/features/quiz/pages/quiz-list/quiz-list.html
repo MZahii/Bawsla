@@ -1,0 +1,85 @@
+<bw-page-header
+  title="Évaluations"
+  subtitle="Un quiz après chaque chapitre pour t’entraîner, puis l’examen final du cours. Réussis-le pour obtenir ton certificat."
+/>
+
+<div class="grid-4">
+  <bw-kpi label="Quiz passés" [value]="historique.length" icon="task_alt" />
+  <bw-kpi label="Ta moyenne aux quiz" [value]="moyenne + ' %'" icon="percent" [trend]="[62, 70, 74, 71, 66, 71]" />
+  <bw-kpi label="Examens disponibles" [value]="examensDispo" icon="assignment" />
+  <bw-kpi label="Certificats obtenus" [value]="nbCertificats" icon="workspace_premium" />
+</div>
+
+<div class="paths mt">
+  @for (p of parcours; track p.cours.id) {
+    <section class="card path" [attr.aria-labelledby]="'c-' + p.cours.id">
+      <header class="path-head">
+        <img [src]="p.image" alt="" />
+        <div class="ph-text">
+          <h2 [id]="'c-' + p.cours.id"><a [routerLink]="['/app/cours', p.cours.id, 'lecture']">{{ p.cours.titre }}</a></h2>
+          <p class="muted small">{{ p.faits }} chapitre{{ p.faits > 1 ? 's' : '' }} terminé{{ p.faits > 1 ? 's' : '' }} sur {{ p.cours.chapitres.length }}</p>
+          <span class="bar" aria-hidden="true"><span [style.width.%]="(p.faits / p.cours.chapitres.length) * 100"></span></span>
+        </div>
+      </header>
+
+      <ol class="steps">
+        @for (q of p.quiz; track q.id) {
+          <li>
+            <mat-icon class="ic" aria-hidden="true">quiz</mat-icon>
+            <span class="t"><strong>Quiz : {{ q.titre }}</strong><span class="muted small">{{ q.questions }} questions, {{ q.duree }} min, sans limite de tentatives</span></span>
+            @if (q.score !== null) {
+              <span [class]="'pill ' + ton(q.score)">{{ q.score }} %</span>
+            } @else {
+              <span class="pill plain">À faire</span>
+            }
+            <a bwButton="fantome" [routerLink]="['/app/evaluations', q.id]">{{ q.score === null ? 'Commencer' : 'Refaire' }}</a>
+          </li>
+        } @empty {
+          <li class="muted small">Les quiz de ce cours arrivent avec les prochains chapitres.</li>
+        }
+
+        <li class="exam" [class]="'exam ' + p.examen.etat">
+          <mat-icon class="ic" aria-hidden="true">{{ p.examen.etat === 'verrouille' ? 'lock' : p.examen.etat === 'reussi' ? 'workspace_premium' : 'assignment' }}</mat-icon>
+          <span class="t">
+            <strong>Examen final</strong>
+            <span class="muted small">{{ p.examen.questions }} questions, {{ p.examen.duree }} min, {{ p.examen.seuil }} % pour réussir</span>
+            @if (p.examen.etat === 'verrouille') {
+              <span class="small">Termine les {{ p.restants }} chapitre{{ p.restants > 1 ? 's' : '' }} restant{{ p.restants > 1 ? 's' : '' }} pour le débloquer.</span>
+            } @else if (p.examen.etat === 'disponible') {
+              <span class="small">Débloqué. {{ p.examen.restantes }} tentative{{ p.examen.restantes > 1 ? 's' : '' }} possible{{ p.examen.restantes > 1 ? 's' : '' }}.</span>
+            }
+          </span>
+          @if (p.examen.etat === 'reussi' && p.certificat) {
+            <span class="pill ok">Réussi, {{ p.certificat.score }} %</span>
+            <a bwButton="secondaire" [routerLink]="['/app/certificats', p.certificat.numero]">Voir le certificat</a>
+          } @else if (p.examen.etat === 'disponible') {
+            <span class="pill accent">Disponible</span>
+            <a bwButton="principal" [routerLink]="['/app/evaluations/examen', p.cours.id]">Passer l’examen</a>
+          } @else {
+            <span class="pill plain">Verrouillé</span>
+          }
+        </li>
+      </ol>
+    </section>
+  }
+</div>
+
+<div class="grid-main mt">
+  <section class="card">
+    <div class="card-head"><h2>Toi et les autres apprenants</h2><span class="sub">Score par quiz, en %</span></div>
+    <div class="card-body">
+      <bw-chart type="bar" [labels]="comparaison.labels" [series]="comparaison.series" unit="%" [max]="100" [height]="260" ariaLabel="Ton score comparé à la moyenne des autres apprenants du même cours" />
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Historique</h2></div>
+    <ul class="hist">
+      @for (h of historique; track h.quizId) {
+        <li>
+          <span class="t"><strong>{{ h.titre }}</strong><span class="muted small">{{ h.date }}</span></span>
+          <span [class]="'pill ' + ton(h.score)">{{ h.score }} %</span>
+        </li>
+      }
+    </ul>
+  </section>
+</div>

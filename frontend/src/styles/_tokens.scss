@@ -13,9 +13,9 @@
   --color-gold-500: #D4A440;
   --color-gold-700: #7E5A12;
   --color-gold-100: #FBF3DF;
-  --color-bg: #F8F6F1;
+  --color-bg: #F5F6F8;
   --color-surface: #FFFFFF;
-  --color-border: #E4E1DA;
+  --color-border: #E1E4EA;
   --color-text: #1C2639;
   --color-text-muted: #5B6475;
   --color-success: #1A7A4D;
@@ -23,8 +23,8 @@
   --color-error: #C62828;
   --color-info: #2F6FD0;
 
-  --font-heading: 'Poppins', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Poppins', 'Segoe UI', sans-serif;
+  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
   --font-arabic: 'Cairo', sans-serif;
   --font-code: 'JetBrains Mono', monospace;
 
@@ -33,8 +33,15 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(20, 28, 44, 0.06);
-  --shadow-md: 0 4px 12px rgba(20, 28, 44, 0.08);
+  // Graphiques (Chart.js) : ordre fixe, validé daltonisme (outil dataviz). Ne pas permuter.
+  --chart-1: #2F5FA8;
+  --chart-2: #A33A4D;
+  --chart-3: #C08A1E;
+  --chart-4: #16917A;
+  --chart-grid: #E9ECF1;
+
+  --shadow-sm: none;
+  --shadow-md: none;
   --shadow-lg: 0 12px 32px rgba(20, 28, 44, 0.12);
 }
 
@@ -49,4 +56,12 @@
   --color-gold-500: #F2BE4A;
   --color-gold-700: #F2BE4A;
   --color-gold-100: #2F2817;
+  // Couleurs d'état éclaircies : sur fond nuit, #C62828 et #1A7A4D n'atteignent pas 4.5:1.
+  --color-success: #5CC995;
+  --color-error: #F28B82;
+  --chart-1: #5B8AD6;
+  --chart-2: #D45D72;
+  --chart-3: #BF8A22;
+  --chart-4: #1FA388;
+  --chart-grid: #26324A;
 }

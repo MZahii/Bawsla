@@ -1,0 +1,111 @@
+@if (cours(); as c) {
+  <nav class="crumbs" aria-label="Fil d’Ariane">
+    <a routerLink="/app/evaluations">Évaluations</a>
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    <span aria-current="page">Examen final : {{ c.titre }}</span>
+  </nav>
+
+  @switch (phase()) {
+    @case ('intro') {
+      <section class="card intro">
+        <p class="kicker"><mat-icon aria-hidden="true">assignment</mat-icon> Examen final</p>
+        <h1>{{ c.titre }}</h1>
+        <ul class="rules">
+          <li><mat-icon aria-hidden="true">help</mat-icon><span><strong>{{ c.examen.questions }} questions</strong> sur tout le cours (aperçu : {{ questions.length }})</span></li>
+          <li><mat-icon aria-hidden="true">timer</mat-icon><span><strong>{{ c.examen.duree }} minutes</strong>, l’examen se termine tout seul à la fin du temps</span></li>
+          <li><mat-icon aria-hidden="true">flag</mat-icon><span><strong>{{ c.examen.seuil }} %</strong> de bonnes réponses pour réussir</span></li>
+          <li><mat-icon aria-hidden="true">replay</mat-icon><span><strong>{{ c.examen.tentatives }} tentatives</strong> au total, il t’en reste {{ tentativesRestantes() }}</span></li>
+          <li><mat-icon aria-hidden="true">workspace_premium</mat-icon><span>Si tu réussis, ton <strong>certificat</strong> est créé tout de suite</span></li>
+        </ul>
+        <p class="muted small">Tu ne vois pas la correction pendant l’examen : tu peux revenir sur une question avant de terminer. Les notes, le forum et l’IA ne sont pas disponibles pendant l’examen.</p>
+
+        @if (dejaCertifie(); as cert) {
+          <div class="note ok"><mat-icon aria-hidden="true">verified</mat-icon><span>Tu as déjà réussi cet examen ({{ cert.score }} %). <a [routerLink]="['/app/certificats', cert.numero]">Voir ton certificat</a></span></div>
+        } @else if (restants() > 0) {
+          <div class="note"><mat-icon aria-hidden="true">lock</mat-icon><span>Termine les {{ restants() }} chapitres restants pour débloquer l’examen.</span></div>
+          <a bwButton="principal" [routerLink]="['/app/cours', c.id, 'lecture']">Continuer le cours</a>
+        } @else if (tentativesRestantes() <= 0) {
+          <div class="note"><mat-icon aria-hidden="true">block</mat-icon><span>Tu as utilisé toutes tes tentatives. Écris au formateur depuis le forum du cours pour en obtenir une nouvelle.</span></div>
+        } @else {
+          <div class="actions-row">
+            <a bwButton="fantome" routerLink="/app/evaluations">Plus tard</a>
+            <button type="button" bwButton="principal" (click)="commencer()">Commencer l’examen</button>
+          </div>
+        }
+      </section>
+    }
+
+    @case ('examen') {
+      <div class="player">
+        <header class="top exam-top">
+          <div>
+            <h2 class="quiz-title">Examen final</h2>
+            <p class="counter" aria-live="polite">Question {{ index() + 1 }} sur {{ questions.length }}, {{ repondues() }} répondue{{ repondues() > 1 ? 's' : '' }}</p>
+          </div>
+          <span class="chrono" [class.urgent]="secondes() < 120" role="timer" [attr.aria-label]="'Temps restant ' + chrono()"><mat-icon aria-hidden="true">timer</mat-icon>{{ chrono() }}</span>
+        </header>
+        <nav class="dots" aria-label="Questions de l’examen">
+          @for (q of questions; track $index) {
+            <button type="button" [class.on]="$index === index()" [class.done]="reponses()[$index] !== null" (click)="aller($index)" [attr.aria-label]="'Question ' + ($index + 1)">{{ $index + 1 }}</button>
+          }
+        </nav>
+
+        <section class="card" [attr.aria-labelledby]="'q-' + index()">
+          <p class="statement" [id]="'q-' + index()">{{ question().enonce }}</p>
+          <div class="options" role="radiogroup" [attr.aria-labelledby]="'q-' + index()">
+            @for (o of question().options; track $index) {
+              <button type="button" role="radio" [class]="'option ' + (reponses()[index()] === $index ? 'choisie' : '')" [attr.aria-checked]="reponses()[index()] === $index" (click)="choisir($index)">
+                <span class="letter" aria-hidden="true">{{ lettres[$index] }}</span>
+                <span class="option-text">{{ o }}</span>
+              </button>
+            }
+          </div>
+          <footer class="actions">
+            <button type="button" bwButton="fantome" [disabled]="index() === 0" (click)="aller(index() - 1)">Précédente</button>
+            @if (index() < questions.length - 1) {
+              <button type="button" bwButton="secondaire" (click)="aller(index() + 1)">Suivante</button>
+            } @else {
+              <button type="button" bwButton="principal" (click)="terminer()">Terminer l’examen</button>
+            }
+          </footer>
+        </section>
+      </div>
+    }
+
+    @case ('resultat') {
+      <section class="card intro result-exam">
+        @if (reussi()) {
+          <mat-icon class="big ok" aria-hidden="true">workspace_premium</mat-icon>
+          <h1>Bravo, tu as réussi l’examen !</h1>
+          <p class="pct">{{ score() }} %</p>
+          <p class="muted">Seuil de réussite : {{ c.examen.seuil }} %</p>
+          @if (certificat() ?? dejaCertifie(); as cert) {
+            <p>Ton certificat <strong>{{ cert.numero }}</strong> est prêt. Tu peux le télécharger et le partager.</p>
+            <div class="actions-row">
+              <a bwButton="secondaire" routerLink="/app/evaluations">Mes évaluations</a>
+              <a bwButton="principal" [routerLink]="['/app/certificats', cert.numero]">Voir mon certificat</a>
+            </div>
+          }
+        } @else {
+          <mat-icon class="big" aria-hidden="true">sentiment_neutral</mat-icon>
+          <h1>Pas encore cette fois</h1>
+          <p class="pct">{{ score() }} %</p>
+          <p class="muted">Il faut {{ c.examen.seuil }} % pour obtenir le certificat. Il te reste {{ tentativesRestantes() }} tentative{{ tentativesRestantes() > 1 ? 's' : '' }}.</p>
+          @if (aRevoir().length) {
+            <p>À revoir avant de réessayer : <strong>{{ aRevoir().join(', ') }}</strong>.</p>
+          }
+          <div class="actions-row">
+            <a bwButton="secondaire" [routerLink]="['/app/cours', c.id, 'lecture']">Revoir le cours</a>
+            @if (tentativesRestantes() > 0) {
+              <button type="button" bwButton="principal" (click)="phase.set('intro')">Retour aux consignes</button>
+            }
+          </div>
+        }
+      </section>
+    }
+  }
+} @else {
+  <bw-empty-state icon="assignment" title="Cet examen n’existe pas.">
+    <a bwButton="principal" routerLink="/app/evaluations">Voir mes évaluations</a>
+  </bw-empty-state>
+}

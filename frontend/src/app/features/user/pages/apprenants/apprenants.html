@@ -1,0 +1,110 @@
+<bw-page-header title="Apprenants" subtitle="Toutes les personnes inscrites à tes cours. Repère tôt celles qui risquent d’abandonner." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Apprenants' }]">
+  <button type="button" bwButton="secondaire"><mat-icon>download</mat-icon> Exporter</button>
+  <button type="button" bwButton="principal"><mat-icon>campaign</mat-icon> Annonce aux inscrits</button>
+</bw-page-header>
+
+<div class="grid-4">
+  <bw-kpi label="Inscriptions affichées" [value]="source.data.length" icon="groups" />
+  <bw-kpi label="Moyenne aux quiz" [value]="moyenne + ' %'" icon="percent" [delta]="3" deltaLabel="en 4 semaines" [trend]="[61, 62, 60, 63, 64, 64]" />
+  <bw-kpi label="Certificats obtenus" [value]="certifies" icon="workspace_premium" />
+  <bw-kpi label="Risque d’abandon" [value]="compte('eleve')" icon="support" />
+</div>
+
+<section class="card mt">
+  <div class="card-head">
+    <div class="toolbar" style="margin: 0; flex: 1">
+      <mat-button-toggle-group [value]="risque()" (change)="risque.set($event.value)" hideSingleSelectionIndicator aria-label="Filtrer par risque">
+        <mat-button-toggle value="tous">Tous</mat-button-toggle>
+        <mat-button-toggle value="eleve">Risque d’abandon</mat-button-toggle>
+        <mat-button-toggle value="moyen">À surveiller</mat-button-toggle>
+        <mat-button-toggle value="faible">Suivi normal</mat-button-toggle>
+      </mat-button-toggle-group>
+      <mat-select class="sel" [value]="coursChoisi()" (valueChange)="coursChoisi.set($event)" placeholder="Tous mes cours" aria-label="Cours">
+        <mat-option [value]="null">Tous mes cours</mat-option>
+        @for (c of cours; track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+      </mat-select>
+      <span class="grow"></span>
+      <label class="field-search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Rechercher un apprenant" aria-label="Rechercher un apprenant" />
+      </label>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table mat-table [dataSource]="source" matSort class="bw-table">
+      <ng-container matColumnDef="nom">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Apprenant</th>
+        <td mat-cell *matCellDef="let e">
+          <span class="cell-main"><bw-avatar [nom]="e.nom" /><span class="t"><strong>{{ e.nom }}</strong><span>{{ $any(profil)[e.profil] }}</span></span></span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="cours">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Cours</th>
+        <td mat-cell *matCellDef="let e" class="small">{{ e.cours }}</td>
+      </ng-container>
+      <ng-container matColumnDef="inscritLe">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Inscrit le</th>
+        <td mat-cell *matCellDef="let e" class="num small">{{ e.inscritLe }}</td>
+      </ng-container>
+      <ng-container matColumnDef="progression">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Progression</th>
+        <td mat-cell *matCellDef="let e"><span class="bar-cell"><span class="bar"><span [style.width.%]="e.progression"></span></span><span class="num small">{{ e.progression }} %</span></span></td>
+      </ng-container>
+      <ng-container matColumnDef="moyenne">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Moyenne</th>
+        <td mat-cell *matCellDef="let e" class="num"><strong>{{ e.moyenne }}</strong> %</td>
+      </ng-container>
+      <ng-container matColumnDef="tendance">
+        <th mat-header-cell *matHeaderCellDef>Tendance</th>
+        <td mat-cell *matCellDef="let e">
+          <svg width="80" height="24" viewBox="0 0 80 24" aria-hidden="true" class="spark" [class.down]="e.tendance[5] < e.tendance[0]"><polyline [attr.points]="sparkline(e.tendance)" /></svg>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="risque">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Suivi</th>
+        <td mat-cell *matCellDef="let e"><span class="pill" [class.ok]="e.risque === 'faible'" [class.warn]="e.risque === 'moyen'" [class.ko]="e.risque === 'eleve'">{{ $any(libelle)[e.risque] }}</span></td>
+      </ng-container>
+      <ng-container matColumnDef="activite">
+        <th mat-header-cell *matHeaderCellDef>Dernière activité</th>
+        <td mat-cell *matCellDef="let e" class="muted">{{ e.derniereActivite }}</td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
+      <tr mat-row *matRowDef="let row; columns: colonnes" (click)="ouvert.set(row)" (keydown.enter)="ouvert.set(row)" tabindex="0" class="clickable" [class.sel]="row === ouvert()"></tr>
+    </table>
+  </div>
+  <mat-paginator [pageSizeOptions]="[8, 18]" [pageSize]="8" aria-label="Pages" />
+</section>
+
+@if (ouvert(); as e) {
+  <div class="backdrop" (click)="ouvert.set(null)" aria-hidden="true"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" [attr.aria-label]="'Fiche de ' + e.nom">
+    <header>
+      <bw-avatar [nom]="e.nom" [size]="48" />
+      <div class="who"><h2>{{ e.nom }}</h2><span class="muted small">{{ profil[e.profil] }}, inscrit le {{ e.inscritLe }}</span><span class="muted small">{{ e.cours }}</span></div>
+      <button type="button" class="icon-btn" (click)="ouvert.set(null)" aria-label="Fermer"><mat-icon>close</mat-icon></button>
+    </header>
+    <div class="facts">
+      <div><span class="muted small">Moyenne aux quiz</span><strong>{{ e.moyenne }} %</strong></div>
+      <div><span class="muted small">Progression</span><strong>{{ e.progression }} %</strong></div>
+      <div><span class="muted small">Suivi</span><span class="pill" [class.ok]="e.risque === 'faible'" [class.warn]="e.risque === 'moyen'" [class.ko]="e.risque === 'eleve'">{{ libelle[e.risque] }}</span></div>
+    </div>
+    @if (detail(); as d) {
+      <h3>Scores des 6 dernières semaines</h3>
+      <bw-chart type="line" [labels]="d.courbe.labels" [series]="d.courbe.series" unit="%" [max]="100" [height]="180" ariaLabel="Évolution du score moyen" />
+      <h3>Maîtrise par notion</h3>
+      @for (n of d.notions; track n.nom) {
+        <div class="nrow"><span class="small">{{ n.nom }}</span><span class="bar-cell"><span class="bar"><span [style.width.%]="n.valeur"></span></span><span class="num small">{{ n.valeur }} %</span></span></div>
+      }
+    }
+    @if (e.risque !== 'faible') {
+      <bw-ai-box heading="Pourquoi ce risque d’abandon ?">
+        <p>Scores en baisse sur les 3 derniers quiz de ce cours, surtout sur les jointures. Moins d’une heure d’étude par semaine depuis 2 semaines.</p>
+        <span bwAiSource>Modèle de risque v3, précision 87 % sur l’échantillon de test</span>
+      </bw-ai-box>
+    }
+    <footer>
+      <button type="button" bwButton="secondaire"><mat-icon>mail</mat-icon> Message</button>
+      <button type="button" bwButton="principal"><mat-icon>assignment</mat-icon> Suggérer un chapitre à revoir</button>
+    </footer>
+  </aside>
+}

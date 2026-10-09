@@ -1,0 +1,68 @@
+<mat-sidenav-container class="wrap">
+  <mat-sidenav #drawer mode="over" position="end" class="drawer">
+    <nav aria-label="Menu" (click)="drawer.close()">
+      <a routerLink="/catalogue">Catalogue</a>
+      @for (c of categories; track c.nom) {
+        <a routerLink="/catalogue" [queryParams]="{ domaine: c.nom }" class="sub">{{ c.nom }}</a>
+      }
+      <a routerLink="/bienvenue" fragment="enseigner">Enseigner sur Bawsla</a>
+      <a routerLink="/verifier">Vérifier un certificat</a>
+      <a routerLink="/login">Se connecter</a>
+      <a routerLink="/register" class="strong">Créer un compte</a>
+    </nav>
+  </mat-sidenav>
+  <mat-sidenav-content>
+    <header class="top">
+      <div class="in">
+        <a routerLink="/bienvenue" class="brand" aria-label="Bawsla, accueil"><bw-logo variant="horizontal" [size]="36" /></a>
+        <app-explorer-menu base="/catalogue" class="hide-md" />
+        <a routerLink="/catalogue" class="lnk hide-md">Catalogue</a>
+        <a routerLink="/bienvenue" fragment="enseigner" class="lnk hide-md">Enseigner sur Bawsla</a>
+        <div class="right">
+          <button type="button" class="ico" (click)="theme.toggle()" [attr.aria-label]="theme.theme() === 'dark' ? 'Thème clair' : 'Thème sombre'">
+            <mat-icon>{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+          </button>
+          <a routerLink="/login" class="lnk hide-sm">Se connecter</a>
+          <a bwButton="principal" routerLink="/register" class="hide-sm">Rejoindre gratuitement</a>
+          <button type="button" class="ico burger" (click)="drawer.open()" aria-label="Ouvrir le menu"><mat-icon>menu</mat-icon></button>
+        </div>
+      </div>
+    </header>
+
+    <main id="contenu" [class.page]="!pleinePage()" tabindex="-1">
+      <router-outlet />
+    </main>
+
+    <footer class="foot">
+      <div class="in cols">
+        <div class="about">
+          <bw-logo variant="horizontal" theme="dark" [size]="36" />
+          <p>La boussole du savoir. Des cours ouverts à tous, des examens et des certificats, et une IA qui t’indique quoi revoir ensuite.</p>
+        </div>
+        <div>
+          <h3>Domaines</h3>
+          @for (c of categories; track c.nom) {
+            <a routerLink="/catalogue" [queryParams]="{ domaine: c.nom }">{{ c.nom }}</a>
+          }
+        </div>
+        <div>
+          <h3>Plateforme</h3>
+          <a routerLink="/catalogue">Catalogue</a>
+          <a routerLink="/register">Créer un compte</a>
+          <a routerLink="/login">Se connecter</a>
+          <a routerLink="/bienvenue" fragment="faq">Questions fréquentes</a>
+        </div>
+        <div>
+          <h3>Bawsla</h3>
+          <a routerLink="/bienvenue" fragment="enseigner">Devenir formateur</a>
+          <a routerLink="/verifier">Vérifier un certificat</a>
+          <a routerLink="/bienvenue" fragment="certificat">Les certificats</a>
+        </div>
+      </div>
+      <div class="in legal">
+        <span>© 2026 Bawsla</span>
+        <span lang="ar" dir="rtl" class="ar">البوصلة</span>
+      </div>
+    </footer>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,123 @@
+@if (quiz(); as qz) {
+  <nav class="crumbs" aria-label="Fil d’Ariane">
+    <a routerLink="/app/evaluations">Évaluations</a>
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    <span aria-current="page">{{ qz.titre }}</span>
+  </nav>
+
+  @if (phase() !== 'resultat') {
+    <div class="player">
+      <header class="top">
+        <div class="top-text">
+          <h2 class="quiz-title">{{ qz.titre }}</h2>
+          <p class="counter" aria-live="polite">Question {{ index() + 1 }} sur {{ questions.length }}</p>
+        </div>
+        <bw-route class="steps" [steps]="etapes()" [current]="index()" orientation="horizontal" label="Questions du quiz" />
+      </header>
+
+      <section class="card" [attr.aria-labelledby]="'q-' + index()">
+        <div class="tags">
+          <bw-badge variant="categorie">{{ question().bloom }}</bw-badge>
+          <bw-badge variant="categorie">{{ question().notion }}</bw-badge>
+        </div>
+        <p class="statement" [id]="'q-' + index()">{{ question().enonce }}</p>
+
+        <div class="options" role="radiogroup" [attr.aria-labelledby]="'q-' + index()">
+          @for (o of question().options; track $index) {
+            <button
+              type="button"
+              role="radio"
+              class="option"
+              [class]="'option ' + etatOption($index)"
+              [attr.aria-checked]="choix() === $index"
+              [disabled]="phase() === 'correction'"
+              (click)="choisir($index)"
+            >
+              <span class="letter" aria-hidden="true">{{ lettres[$index] }}</span>
+              <span class="option-text">{{ o }}</span>
+              @if (etatOption($index) === 'bonne') {
+                <mat-icon class="mark ok" aria-hidden="true">check_circle</mat-icon>
+                <span class="bw-visually-hidden">Bonne réponse</span>
+              } @else if (etatOption($index) === 'fausse') {
+                <mat-icon class="mark ko" aria-hidden="true">cancel</mat-icon>
+                <span class="bw-visually-hidden">Ta réponse, incorrecte</span>
+              }
+            </button>
+          }
+        </div>
+
+        @if (phase() === 'correction') {
+          <div class="feedback" [class.ok]="juste()" [class.ko]="!juste()" role="status">
+            <mat-icon aria-hidden="true">{{ juste() ? 'check_circle' : 'error' }}</mat-icon>
+            <div>
+              <p class="verdict">{{ juste() ? 'Correct' : 'Pas tout à fait' }}</p>
+              <p>{{ question().explication }}</p>
+            </div>
+          </div>
+        }
+
+        <footer class="actions">
+          <a bwButton="fantome" routerLink="/app/evaluations">Quitter</a>
+          @if (phase() === 'question') {
+            <button type="button" bwButton="principal" [disabled]="choix() === null" (click)="valider()">Valider ma réponse</button>
+          } @else {
+            <button type="button" bwButton="principal" (click)="suivante()">
+              {{ index() === questions.length - 1 ? 'Voir mon résultat' : 'Question suivante' }}
+            </button>
+          }
+        </footer>
+      </section>
+    </div>
+  } @else {
+    <!-- ============================== Résultat -->
+    <div class="result">
+      <section class="score-card">
+        <p class="score" [attr.aria-label]="'Score : ' + score() + ' sur ' + questions.length">
+          <span class="score-num">{{ score() }}</span><span class="score-den">/{{ questions.length }}</span>
+        </p>
+        <bw-route class="on-dark" [steps]="etapes()" [current]="-1" orientation="horizontal" label="Ton trajet" />
+        <p class="mention">{{ mention() }}</p>
+        <div class="result-actions">
+          @if (cours(); as c) {
+            <a bwButton="principal" [routerLink]="['/app/cours', c.id, 'lecture']">Revoir le chapitre</a>
+          }
+          <button type="button" bwButton="secondaire" (click)="recommencer()">Repasser le quiz</button>
+        </div>
+      </section>
+
+      <div class="result-side">
+        @if (erreurs().length > 0) {
+          <bw-ai-box heading="Remédiation">
+            <p class="remed-notion">Notion à revoir : <strong>{{ erreurs()[0].notion }}</strong></p>
+            <p>
+              Un LEFT JOIN garde toutes les lignes de la table de gauche. Les colonnes de la table de droite valent NULL
+              quand il n’y a pas de correspondance : un filtre WHERE sur ces colonnes les élimine.
+            </p>
+            <button type="button" bwButton="ia">Essayer une question de rattrapage</button>
+            <span bwAiSource>Source : Bases de données relationnelles, chapitre « Les jointures »</span>
+          </bw-ai-box>
+
+          <section class="mistakes" aria-labelledby="mistakes-title">
+            <h3 id="mistakes-title">Tes erreurs</h3>
+            <ol>
+              @for (e of erreurs(); track e.numero) {
+                <li>
+                  <span class="m-num">Question {{ e.numero }}</span>
+                  <span class="m-text">{{ e.enonce }}</span>
+                  <span class="m-given"><mat-icon aria-hidden="true">close</mat-icon> Ta réponse : {{ e.options[e.donnee] }}</span>
+                  <span class="m-answer"><mat-icon aria-hidden="true">check</mat-icon> Bonne réponse : {{ e.options[e.bonne] }}</span>
+                </li>
+              }
+            </ol>
+          </section>
+        } @else {
+          <bw-empty-state icon="workspace_premium" title="Aucune erreur" message="Passe au quiz suivant ou aide les autres sur le forum." />
+        }
+      </div>
+    </div>
+  }
+} @else {
+  <bw-empty-state icon="quiz" title="Ce quiz n’existe pas ou a été retiré.">
+    <a bwButton="principal" routerLink="/app/evaluations">Voir mes évaluations</a>
+  </bw-empty-state>
+}

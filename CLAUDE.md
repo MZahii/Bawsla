@@ -5,8 +5,9 @@ Ce fichier est lu par Claude Code (et par les humains) à chaque session. Il fai
 ## Contexte
 
 Plateforme e-learning **Bawsla** : mini-projet ESPRIT 5SAE9, module « IA for Software Engineering », 2026-2027.
+Le produit est une **plateforme ouverte à tous, comme Coursera** (pas un outil d'école) : n'importe qui s'inscrit comme apprenant ou demande à devenir formateur, choisit un cours (gratuit ou payant), passe les quiz puis l'examen final et obtient un certificat vérifiable. Aucune mention d'ESPRIT, de classe ou de groupe dans l'interface.
 Quatre étudiants, chacun propriétaire d'un module : **User**, **Cours**, **Quiz**, **Forum**.
-Trois rôles : `ADMIN`, `ENSEIGNANT`, `ETUDIANT`.
+Trois rôles : `ADMIN`, `ENSEIGNANT` (affiché « formateur »), `ETUDIANT` (affiché « apprenant »). Les codes ne changent pas.
 
 Le socle (architecture, sécurité, conventions, contrats) est en place. Les fonctionnalités IA ne sont **pas** implémentées : seules les interfaces et des stubs existent dans `ai-service`.
 
@@ -136,14 +137,15 @@ Erreur (`ApiError`, produit par `GlobalExceptionHandler`) :
 
 ## Design
 
-La charte graphique est dans [DESIGN.md](DESIGN.md) : c'est la source de vérité (couleurs, typographie, logos, composants, ton). Elle est visible en direct sur `/styleguide` (ADMIN ou mode dev).
+La charte graphique est dans [DESIGN.md](DESIGN.md) : c'est la source de vérité (couleurs, typographie, logos, composants, ton). Elle est visible en direct dans le back-office : **Admin → Composants** (`/admin/composants`).
 
 > **Utilise les composants de shared/ et les variables du thème, n'invente aucun style.**
 
 - Couleurs : uniquement `var(--color-…)` (tokens dans `src/styles/_tokens.scss`, alias clair/sombre dans `_semantic.scss`). Aucun HEX dans `src/app`.
 - Composants : `bw-logo`, `bw-ai-box` (tout contenu généré par l'IA), `bw-ai-loading`, `bw-empty-state`, `bw-stat-tile`, `bw-badge` et la directive `[bwButton]` (`principal`, `secondaire`, `fantome`, `ia`, `danger` ; un seul `principal` par écran). Import : `shared/index.ts`.
+- Bibliothèque d'interface dans `shared/ui/` (import `shared/ui/index.ts`) : `bw-page-header`, `bw-kpi`, `bw-chart` (Chart.js), `bw-course-tile`, `bw-avatar`, `bw-rating`, `bw-progress-ring`, `bw-heatmap`, `bw-timeline`, `bw-calendar`, `bw-dropzone`, `bw-video-player`, `bw-skeleton`, `bw-section-head`. Mise en page avec les classes globales de `styles/_app.scss` (`.card`, `.grid-*`, `.pill`, `.bw-table`…).
 - UI plate (dégradés réservés au logo), WCAG AA, cibles de 44 px, icônes Material Symbols Rounded.
-- Textes en français, tutoiement pour les étudiants ; texte arabe avec `dir="auto"` (police Cairo).
+- Textes en français, tutoiement pour les apprenants ; texte arabe avec `dir="auto"` (police Cairo).
 
 ## Git
 

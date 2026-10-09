@@ -1,0 +1,105 @@
+<bw-page-header
+  [title]="espace === 'etudiant' ? 'Explorer le catalogue' : 'Catalogue des cours'"
+  subtitle="Des cours ouverts à tous, gratuits pour la plupart, avec quiz, examen final et certificat."
+  [crumbs]="espace === 'etudiant' ? [{ label: 'Accueil', link: '/app' }, { label: 'Explorer' }] : [{ label: 'Accueil', link: '/bienvenue' }, { label: 'Catalogue' }]"
+/>
+
+<div class="layout">
+  <aside class="filters" [class.open]="filtresMobile()" aria-label="Filtres">
+    <div class="f-head">
+      <h2>Filtres</h2>
+      @if (nbFiltres()) {
+        <button type="button" class="reset" (click)="reinitialiser()">Tout effacer</button>
+      }
+    </div>
+
+    <fieldset>
+      <legend>Domaine</legend>
+      @for (c of categories; track c.nom) {
+        <mat-checkbox [checked]="domaines().includes(c.nom)" (change)="basculer('domaines', c.nom)">
+          {{ c.nom }} <span class="muted">({{ compte(c.nom) }})</span>
+        </mat-checkbox>
+      }
+    </fieldset>
+
+    <fieldset>
+      <legend>Niveau</legend>
+      @for (n of niveaux; track n.code) {
+        <mat-checkbox [checked]="niveauxChoisis().includes(n.code)" (change)="basculer('niveauxChoisis', n.code)">{{ n.libelle }}</mat-checkbox>
+      }
+    </fieldset>
+
+    <fieldset>
+      <legend>Prix</legend>
+      <mat-radio-group [ngModel]="prix()" (ngModelChange)="prix.set($event); page.set(0)" class="radios">
+        <mat-radio-button value="">Tous</mat-radio-button>
+        <mat-radio-button value="gratuit">Gratuit</mat-radio-button>
+        <mat-radio-button value="payant">Payant</mat-radio-button>
+      </mat-radio-group>
+    </fieldset>
+
+    <fieldset>
+      <legend>Durée</legend>
+      <mat-radio-group [ngModel]="duree()" (ngModelChange)="duree.set($event); page.set(0)" class="radios">
+        <mat-radio-button value="">Toutes</mat-radio-button>
+        @for (d of durees; track d.code) {
+          <mat-radio-button [value]="d.code">{{ d.libelle }}</mat-radio-button>
+        }
+      </mat-radio-group>
+    </fieldset>
+
+    <fieldset>
+      <legend>Note</legend>
+      <mat-radio-group [ngModel]="noteMin()" (ngModelChange)="noteMin.set($event); page.set(0)" class="radios">
+        <mat-radio-button [value]="0">Toutes</mat-radio-button>
+        <mat-radio-button [value]="4.5">4,5 et plus</mat-radio-button>
+        <mat-radio-button [value]="4">4,0 et plus</mat-radio-button>
+      </mat-radio-group>
+    </fieldset>
+  </aside>
+
+  <section class="results">
+    <div class="toolbar">
+      <label class="field-search grow">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input [ngModel]="q()" (ngModelChange)="q.set($event); page.set(0)" placeholder="Titre, notion, mot-clé…" aria-label="Rechercher dans le catalogue" />
+      </label>
+      <button type="button" class="f-btn" (click)="filtresMobile.set(!filtresMobile())">
+        <mat-icon>tune</mat-icon> Filtres @if (nbFiltres()) { ({{ nbFiltres() }}) }
+      </button>
+      <mat-form-field appearance="outline" class="sort" subscriptSizing="dynamic">
+        <mat-label>Trier par</mat-label>
+        <mat-select [ngModel]="tri()" (ngModelChange)="tri.set($event)">
+          <mat-option value="pertinence">Pertinence</mat-option>
+          <mat-option value="populaires">Les plus suivis</mat-option>
+          <mat-option value="note">Les mieux notés</mat-option>
+          <mat-option value="recents">Les plus récents</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-button-toggle-group [value]="vue()" (change)="vue.set($event.value)" aria-label="Affichage" hideSingleSelectionIndicator>
+        <mat-button-toggle value="grid" aria-label="Grille"><mat-icon>grid_view</mat-icon></mat-button-toggle>
+        <mat-button-toggle value="row" aria-label="Liste"><mat-icon>view_list</mat-icon></mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+
+    <p class="count" aria-live="polite"><strong>{{ resultats().length }}</strong> résultat{{ resultats().length > 1 ? 's' : '' }}</p>
+
+    @if (pageCourante().length) {
+      <div [class]="vue() === 'grid' ? 'grid' : 'list'">
+        @for (c of pageCourante(); track c.id) {
+          <bw-course-tile [cours]="c" [link]="[base, c.id]" [variant]="vue()" />
+        }
+      </div>
+      <mat-paginator
+        [length]="resultats().length"
+        [pageIndex]="page()"
+        [pageSize]="parPage()"
+        [pageSizeOptions]="[6, 12, 24]"
+        (page)="paginer($event)"
+        aria-label="Pages de résultats"
+      />
+    } @else {
+      <bw-empty-state icon="search_off" title="Aucun cours ne correspond" message="Essaie un autre mot-clé ou retire des filtres." actionLabel="Effacer les filtres" (action)="reinitialiser()" />
+    }
+  </section>
+</div>

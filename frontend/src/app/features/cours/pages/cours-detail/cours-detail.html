@@ -1,0 +1,193 @@
+@if (cours(); as c) {
+  <section class="hero">
+    <div class="hero-in">
+      <div class="hero-text">
+        <bw-page-header
+          [title]="c.titre"
+          [subtitle]="c.description"
+          [crumbs]="[{ label: espace === 'etudiant' ? 'Explorer' : 'Catalogue', link: base }, { label: c.categorie, link: base }, { label: c.titre }]"
+        />
+        <div class="facts">
+          @if (m().note) {
+            <bw-rating [value]="m().note" [count]="m().avis" />
+          }
+          <span><mat-icon>group</mat-icon>{{ m().inscrits }} inscrits</span>
+          <span><mat-icon>signal_cellular_alt</mat-icon>{{ niveau() }}</span>
+          <span><mat-icon>schedule</mat-icon>{{ duree() }}</span>
+          <span><mat-icon>update</mat-icon>Mis à jour le {{ m().majLe }}</span>
+        </div>
+        <p class="by"><bw-avatar [nom]="c.enseignant" [size]="32" /><span>Par <strong>{{ c.enseignant }}</strong>, formateur sur Bawsla</span></p>
+      </div>
+
+      <aside class="buy card">
+        <img [src]="m().image" alt="" />
+        <div class="buy-body">
+          @if (!inscrit()) {
+            <p class="price" [class.free]="!payant()">{{ prix() }}</p>
+            <p class="muted small price-sub">{{ payant() ? 'Paiement unique, accès sans limite de durée' : 'Examen final et certificat inclus' }}</p>
+          } @else {
+            <p class="enrolled"><mat-icon aria-hidden="true">check_circle</mat-icon> Tu es inscrit à ce cours</p>
+          }
+          @if (cta().link; as lien) {
+            <a bwButton="principal" bwBlock [routerLink]="lien" [queryParams]="cta().params">{{ cta().label }}</a>
+          } @else {
+            <button type="button" bwButton="principal" bwBlock (click)="inscrire()">{{ cta().label }}</button>
+          }
+          @if (inscrit() && c.progression > 0) {
+            <p class="muted small prog">Tu as terminé {{ c.progression }} % de ce cours.</p>
+          }
+          @if (certificat(); as cert) {
+            <a bwButton="secondaire" bwBlock class="cert-btn" [routerLink]="['/app/certificats', cert.numero]"><mat-icon>workspace_premium</mat-icon> Voir mon certificat</a>
+          } @else if (inscrit() && c.progression >= 100) {
+            <a bwButton="secondaire" bwBlock class="cert-btn" [routerLink]="['/app/evaluations/examen', c.id]"><mat-icon>assignment</mat-icon> Passer l’examen final</a>
+          }
+          <h3>Ce cours comprend</h3>
+          <ul class="incl">
+            <li><mat-icon>menu_book</mat-icon>{{ c.chapitres.length }} chapitres, {{ duree() }}</li>
+            <li><mat-icon>headphones</mat-icon>Résumé audio de chaque chapitre</li>
+            <li><mat-icon>quiz</mat-icon>Un quiz par chapitre</li>
+            <li><mat-icon>assignment</mat-icon>Examen final : {{ c.examen.questions }} questions, {{ c.examen.duree }} min</li>
+            <li><mat-icon>workspace_premium</mat-icon>Certificat à partager, vérifiable en ligne</li>
+            <li><mat-icon>forum</mat-icon>Forum du cours avec le formateur</li>
+            <li><mat-icon>all_inclusive</mat-icon>À ton rythme, sans date limite</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="body">
+    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false" class="tabs">
+      <mat-tab label="À propos">
+        <div class="tab">
+          <section class="card card-pad learn">
+            <h2>Ce que tu vas apprendre</h2>
+            <ul>
+              @for (a of apprendre; track a) {
+                <li><mat-icon>check</mat-icon>{{ a }}</li>
+              }
+            </ul>
+          </section>
+          @if (notions().length || c.motsCles.length) {
+            <section>
+              <h2>Notions abordées</h2>
+              <div class="chips">
+                @for (k of c.motsCles; track k) {
+                  <span class="pill plain">{{ k }}</span>
+                }
+                @for (n of notions(); track n.id) {
+                  <span class="pill plain">{{ n.nom }}</span>
+                }
+              </div>
+            </section>
+          }
+          <section class="card card-pad cert-card">
+            <div>
+              <h2>Obtiens un certificat</h2>
+              <p class="muted">Termine les {{ c.chapitres.length }} chapitres, puis réussis l’examen final avec au moins {{ c.examen.seuil }} %. Ton certificat est créé tout de suite, à ton nom, avec un numéro que n’importe qui peut vérifier.</p>
+              <p class="small"><mat-icon aria-hidden="true">share</mat-icon> À ajouter à ton CV ou à ton profil LinkedIn.</p>
+            </div>
+            <div class="mini-cert" aria-hidden="true">
+              <mat-icon>workspace_premium</mat-icon>
+              <span class="mc-k">Certificat de réussite</span>
+              <span class="mc-t">{{ c.titre }}</span>
+              <span class="mc-n">Bawsla</span>
+            </div>
+          </section>
+          <section>
+            <h2>Prérequis</h2>
+            <p class="muted">{{ c.niveau === 'DEBUTANT' ? 'Aucun. Ce cours part de zéro.' : 'Avoir suivi un cours de niveau débutant dans ce domaine.' }}</p>
+          </section>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Programme">
+        <div class="tab">
+          <p class="muted">{{ c.chapitres.length }} chapitres, {{ duree() }} au total, puis l’examen final</p>
+          <mat-accordion multi>
+            @for (ch of c.chapitres; track ch.titre; let i = $index) {
+              <mat-expansion-panel [expanded]="i === 0">
+                <mat-expansion-panel-header>
+                  <mat-panel-title><span class="ch-n">{{ i + 1 }}</span>{{ ch.titre }}</mat-panel-title>
+                  <mat-panel-description>{{ ch.duree }} min</mat-panel-description>
+                </mat-expansion-panel-header>
+                <ul class="lessons">
+                  <li><mat-icon>play_circle</mat-icon>Vidéo de présentation <span>8 min</span></li>
+                  <li><mat-icon>article</mat-icon>Lecture du chapitre <span>{{ ch.duree - 12 }} min</span></li>
+                  <li><mat-icon>headphones</mat-icon>Résumé audio <span>2 min</span></li>
+                  <li><mat-icon>quiz</mat-icon>Quiz du chapitre <span>5 questions</span></li>
+                </ul>
+              </mat-expansion-panel>
+            }
+            <mat-expansion-panel class="final">
+              <mat-expansion-panel-header>
+                <mat-panel-title><span class="ch-n exam"><mat-icon>assignment</mat-icon></span>Examen final et certificat</mat-panel-title>
+                <mat-panel-description>{{ c.examen.duree }} min</mat-panel-description>
+              </mat-expansion-panel-header>
+              <ul class="lessons">
+                <li><mat-icon>lock_open</mat-icon>Se débloque quand tous les chapitres sont terminés</li>
+                <li><mat-icon>help</mat-icon>{{ c.examen.questions }} questions sur tout le cours <span>{{ c.examen.duree }} min</span></li>
+                <li><mat-icon>flag</mat-icon>{{ c.examen.seuil }} % pour réussir <span>{{ c.examen.tentatives }} tentatives</span></li>
+                <li><mat-icon>workspace_premium</mat-icon>Certificat créé dès la réussite</li>
+              </ul>
+            </mat-expansion-panel>
+          </mat-accordion>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Formateur">
+        <div class="tab teacher">
+          <bw-avatar [nom]="c.enseignant" [size]="72" />
+          <div>
+            <h2>{{ c.enseignant }}</h2>
+            <p class="muted">Ingénieure logiciel et formatrice indépendante</p>
+            <p>Travaille depuis 9 ans sur des applications de gestion et forme des développeurs en entreprise. Ses cours partent toujours d’un cas réel : une application que l’on construit chapitre après chapitre.</p>
+            <p class="muted small">3 cours publiés, 271 apprenants, note moyenne 4,7</p>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Avis">
+        <div class="tab">
+          @if (m().avis) {
+            <div class="reviews-top">
+              <div class="score"><span class="big">{{ m().note.toFixed(1) }}</span><bw-rating [value]="m().note" /><span class="muted small">{{ m().avis }} avis</span></div>
+              <ul class="dist">
+                @for (r of repartition; track r.etoiles) {
+                  <li><span>{{ r.etoiles }} étoiles</span><span class="bar"><span [style.width.%]="r.part"></span></span><span class="num muted">{{ r.part }} %</span></li>
+                }
+              </ul>
+            </div>
+            @for (a of avis(); track a.id) {
+              <article class="review">
+                <bw-avatar [nom]="a.nom" [size]="36" />
+                <div>
+                  <p class="rh"><strong>{{ a.nom }}</strong> <bw-rating [value]="a.note" /> <span class="muted small">{{ a.quand }}</span></p>
+                  <p>{{ a.texte }}</p>
+                  @if (a.reponse) {
+                    <p class="reply"><strong>Réponse de {{ c.enseignant }} :</strong> {{ a.reponse }}</p>
+                  }
+                </div>
+              </article>
+            }
+          } @else {
+            <bw-empty-state icon="rate_review" title="Pas encore d’avis" message="Ce cours vient d’être publié. Les premiers avis arriveront bientôt." />
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <section class="mt">
+      <h2>Cours similaires</h2>
+      <div class="sim">
+        @for (s of similaires(); track s.id) {
+          <bw-course-tile [cours]="s" [link]="[base, s.id]" />
+        }
+      </div>
+    </section>
+  </div>
+} @else {
+  <bw-empty-state icon="search_off" title="Ce cours n’existe pas ou n’est plus publié.">
+    <a bwButton="principal" [routerLink]="base">Retour au catalogue</a>
+  </bw-empty-state>
+}

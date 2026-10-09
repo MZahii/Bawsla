@@ -106,6 +106,10 @@
     filter: brightness(0.9);
     color: var(--color-white);
   }
+
+  // En thème sombre, le rouge d'erreur est éclairci : le texte passe en nuit pour rester lisible.
+  [data-theme="dark"] &,
+  [data-theme="dark"] &:hover { color: var(--color-navy-900); }
 }
 
 .bw-btn--block {

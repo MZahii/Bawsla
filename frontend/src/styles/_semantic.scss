@@ -5,8 +5,8 @@
 
 :root {
   --color-white: #FFFFFF;
-  --color-white-80: rgba(255, 255, 255, 0.8);
-  --color-white-8: rgba(255, 255, 255, 0.08);
+  --color-white-80: #C8CFDA; // texte secondaire sur fond nuit (opaque)
+  --color-white-8: #263247; // surface active sur fond nuit (opaque)
 
   // Action principale (bouton principal, bordure du secondaire, focus des champs)
   --color-primary: var(--color-navy-700);
@@ -19,6 +19,7 @@
 
   // Menu latéral : navy-900 dans les deux thèmes
   --color-sidebar: var(--color-navy-900);
+  --color-sidebar-muted: #8C97AB; // libellés secondaires sur fond nuit (contraste 5.9:1)
 
   // Grille de 8 px
   --space-1: 4px;

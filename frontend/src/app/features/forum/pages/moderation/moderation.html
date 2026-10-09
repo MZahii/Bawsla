@@ -1,0 +1,61 @@
+<bw-page-header title="Forum de mes cours" subtitle="Réponds aux questions, confirme les réponses de l’IA et traite les signalements." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Forum' }]" />
+
+<div class="grid-4">
+  <bw-kpi label="À traiter" [value]="aTraiter().length" icon="mark_chat_unread" />
+  <bw-kpi label="Signalements" [value]="signalements().length" icon="flag" />
+  <bw-kpi label="Temps de réponse moyen" value="3 h 20" icon="timer" [delta]="-18" deltaLabel="vs septembre" />
+  <bw-kpi label="Réponses IA confirmées" value="81 %" icon="verified" />
+</div>
+
+<section class="card mt">
+  <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+    <mat-tab [label]="'À traiter (' + aTraiter().length + ')'">
+      @for (d of aTraiter(); track d.id) {
+        <article class="card-body" style="border-bottom: 1px solid var(--color-border)">
+          <div style="display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap">
+            <bw-avatar [nom]="d.auteur" />
+            <div style="flex: 1; min-width: 240px">
+              <a [routerLink]="['/studio/forum', d.id]" style="font: 600 16px var(--font-heading); color: var(--color-primary)">{{ d.titre }}</a>
+              <p class="muted small" style="margin: 2px 0 8px">{{ d.auteur }}, {{ d.date }}, {{ d.cours }}</p>
+              <p style="margin: 0 0 8px">{{ d.contenu }}</p>
+              <span class="pill ia">Réponse IA proposée, confiance {{ d.confiance }} %</span>
+              @if (d.reponses === 0) { <span class="pill warn" style="margin-left: 6px">Aucune réponse humaine</span> }
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <a bwButton="fantome" [routerLink]="['/studio/forum', d.id]">Répondre</a>
+              <button type="button" bwButton="secondaire" (click)="confirmer(d.id)"><mat-icon>verified</mat-icon> Confirmer l’IA</button>
+            </div>
+          </div>
+        </article>
+      } @empty {
+        <bw-empty-state icon="task_alt" title="Tout est traité" message="Aucune question en attente sur tes cours." />
+      }
+    </mat-tab>
+
+    <mat-tab [label]="'Signalements (' + signalements().length + ')'">
+      @for (s of signalements(); track s.discussion) {
+        <article class="card-body" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--color-border)">
+          <mat-icon style="color: var(--color-error)">flag</mat-icon>
+          <div style="flex: 1; min-width: 240px">
+            <strong>{{ s.discussion }}</strong>
+            <p class="muted small" style="margin: 2px 0 0">Signalé par {{ s.auteur }}, {{ s.quand }}</p>
+          </div>
+          <span class="pill ko">{{ s.motif }}</span>
+          <button type="button" bwButton="fantome" (click)="traiter(s, 'Signalement ignoré')">Ignorer</button>
+          <button type="button" bwButton="danger" (click)="traiter(s, 'Discussion masquée')">Masquer</button>
+        </article>
+      } @empty {
+        <bw-empty-state icon="verified_user" title="Aucun signalement" />
+      }
+    </mat-tab>
+
+    <mat-tab label="Toutes les discussions">
+      @for (d of toutes; track d.id) {
+        <a class="card-body" [routerLink]="['/studio/forum', d.id]" style="display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--color-border); color: inherit; text-decoration: none">
+          <span style="flex: 1"><strong>{{ d.titre }}</strong><br /><span class="muted small">{{ d.cours }}, {{ d.reponses }} réponses, {{ d.vues }} vues</span></span>
+          <span class="pill" [class.ok]="d.resolue" [class.warn]="!d.resolue">{{ d.resolue ? 'Résolue' : 'Ouverte' }}</span>
+        </a>
+      }
+    </mat-tab>
+  </mat-tab-group>
+</section>

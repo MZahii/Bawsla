@@ -105,3 +105,33 @@
 .sg-loading {
   margin-top: var(--space-2);
 }
+
+.sg-toc {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-5);
+  padding: var(--space-2) 0;
+  overflow-x: auto;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+
+  a {
+    flex: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+
+    &:hover { background: var(--color-neutral-soft); color: var(--color-text); }
+  }
+}
+
+.sg-section { scroll-margin-top: 64px; }
+.sg-stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.sg-tight { gap: var(--space-2); }
+.sg-note { margin: 0; }

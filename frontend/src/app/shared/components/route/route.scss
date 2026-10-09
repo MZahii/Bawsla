@@ -1,0 +1,180 @@
+:host {
+  display: block;
+}
+
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// ---------- Horizontal : escales reliées par un trait
+.h {
+  display: flex;
+  align-items: center;
+}
+
+.h-step {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  display: flex;
+  align-items: center;
+
+  // trait vers l'escale suivante
+  &::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    right: -7px;
+    top: 6px;
+    border-top: 2px dashed var(--color-border);
+  }
+
+  &.fait::before {
+    border-top-style: solid;
+    border-top-color: var(--color-bordeaux-600);
+  }
+
+  &:last-child {
+    flex: 0 0 14px;
+
+    &::before { display: none; }
+  }
+
+  // l'escale
+  &::after {
+    content: '';
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+  }
+
+  &.fait::after {
+    border-color: var(--color-bordeaux-600);
+    background: var(--color-bordeaux-600);
+  }
+
+  // escale manquée (question ratée) : anneau d'erreur, l'icône est dans le texte accessible
+  &.rate::before {
+    border-top-style: solid;
+    border-top-color: var(--color-bordeaux-600);
+  }
+
+  &.rate::after {
+    border-color: var(--color-error);
+    background: var(--color-surface);
+  }
+
+  &.ici::after {
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--color-bordeaux-600);
+    background: var(--color-surface);
+  }
+}
+
+// ---------- Vertical : la route le long des chapitres
+.v-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  column-gap: var(--space-3);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: -4px;
+    border-left: 2px dashed var(--color-border);
+  }
+
+  &.fait::before {
+    border-left-style: solid;
+    border-left-color: var(--color-bordeaux-600);
+  }
+
+  &:last-child::before { display: none; }
+}
+
+.mark {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  margin-top: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--color-white);
+  }
+
+  .fait & {
+    background: var(--color-bordeaux-600);
+    border-color: var(--color-bordeaux-600);
+  }
+
+  .ici & {
+    border: 3px solid var(--color-bordeaux-600);
+  }
+}
+
+.v-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+
+button.v-body {
+  cursor: pointer;
+
+  &:hover { background: var(--color-neutral-soft); }
+}
+
+.ici .v-body { background: var(--color-bordeaux-100); }
+
+.v-title {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+
+  .ici & { font-weight: 600; }
+}
+
+.v-detail {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-muted);
+
+  .ici & { color: var(--color-bordeaux-600); font-weight: 500; }
+}
+
+// Sur un fond nuit (ex. carte de résultat du quiz) : <bw-route class="on-dark" … />
+:host(.on-dark) {
+  --color-bordeaux-600: var(--color-white);
+  --color-bordeaux-100: var(--color-white-8);
+  --color-surface: var(--color-sidebar);
+  --color-border: var(--color-navy-500);
+}

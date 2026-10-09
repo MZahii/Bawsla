@@ -8,6 +8,7 @@
 @use 'styles/base';
 @use 'styles/typography';
 @use 'styles/buttons';
+@use 'styles/app';
 @use 'styles/styleguide';
 
 html {
@@ -22,7 +23,7 @@ html {
       ),
       typography: (
         brand-family: 'Poppins',
-        plain-family: 'Inter',
+        plain-family: 'Source Sans 3',
         bold-weight: 700,
         medium-weight: 600,
         regular-weight: 400,

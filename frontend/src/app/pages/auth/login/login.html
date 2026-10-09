@@ -1,5 +1,19 @@
+<aside class="chart" aria-hidden="true">
+  <img class="photo" src="assets/demo/cours/frontend.jpg" alt="" />
+  <div class="chart-text">
+    <p class="chart-ar" lang="ar" dir="rtl">البوصلة</p>
+    <p class="chart-fr">La boussole du savoir. Chaque cours, chaque quiz et chaque question t’indiquent ton prochain pas.</p>
+    <ul class="chart-list">
+      <li><mat-icon aria-hidden="true">menu_book</mat-icon>Des cours avec un résumé et une version audio</li>
+      <li><mat-icon aria-hidden="true">quiz</mat-icon>Des quiz qui te disent quelle notion revoir</li>
+      <li><mat-icon aria-hidden="true">workspace_premium</mat-icon>Un examen final et un certificat à partager</li>
+    </ul>
+  </div>
+</aside>
+
+<div class="pane">
 <header class="brand">
-  <bw-logo variant="stacked" [size]="180" />
+  <a routerLink="/bienvenue" class="home-link" aria-label="Retour à l’accueil de Bawsla"><bw-logo variant="stacked" [size]="180" /></a>
   <p class="slogan">La boussole du savoir</p>
   <p class="slogan-ar" lang="ar" dir="auto">بوصلة المعرفة</p>
 </header>
@@ -50,3 +64,4 @@
 
   <p class="switch">Pas encore de compte ? <a routerLink="/register">Crée ton compte</a></p>
 </main>
+</div>

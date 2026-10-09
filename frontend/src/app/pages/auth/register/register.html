@@ -1,18 +1,37 @@
+<aside class="chart" aria-hidden="true">
+  <img class="photo" src="assets/demo/cours/donnees.jpg" alt="" />
+  <div class="chart-text">
+    <p class="chart-ar" lang="ar" dir="rtl">البوصلة</p>
+    <p class="chart-fr">La boussole du savoir. Chaque cours, chaque quiz et chaque question t’indiquent ton prochain pas.</p>
+    <ul class="chart-list">
+      <li><mat-icon aria-hidden="true">menu_book</mat-icon>Des cours avec un résumé et une version audio</li>
+      <li><mat-icon aria-hidden="true">quiz</mat-icon>Des quiz qui te disent quelle notion revoir</li>
+      <li><mat-icon aria-hidden="true">workspace_premium</mat-icon>Un examen final et un certificat à partager</li>
+    </ul>
+  </div>
+</aside>
+
+<div class="pane">
 <header class="brand">
-  <bw-logo variant="stacked" [size]="180" />
+  <a routerLink="/bienvenue" class="home-link" aria-label="Retour à l’accueil de Bawsla"><bw-logo variant="stacked" [size]="180" /></a>
   <p class="slogan">La boussole du savoir</p>
   <p class="slogan-ar" lang="ar" dir="auto">بوصلة المعرفة</p>
 </header>
 
 <main class="card">
   <h1>Inscription</h1>
-  <p class="intro">Crée ton compte en moins d'une minute.</p>
+  <p class="intro">Gratuit, avec n’importe quelle adresse email. Moins d’une minute.</p>
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    <mat-button-toggle-group formControlName="role" aria-label="Je suis" class="role-toggle">
-      <mat-button-toggle value="ETUDIANT">Étudiant</mat-button-toggle>
-      <mat-button-toggle value="ENSEIGNANT">Enseignant</mat-button-toggle>
-    </mat-button-toggle-group>
+    <div class="roles" role="radiogroup" aria-label="Ce que tu veux faire sur Bawsla">
+      @for (r of roles; track r.code) {
+        <button type="button" role="radio" class="role" [class.on]="choix() === r.code" [attr.aria-checked]="choix() === r.code" (click)="choisir(r.code)">
+          <mat-icon aria-hidden="true">{{ r.icone }}</mat-icon>
+          <strong>{{ r.titre }}</strong>
+          <span>{{ r.texte }}</span>
+        </button>
+      }
+    </div>
 
     <div class="row">
       <mat-form-field appearance="outline">
@@ -44,14 +63,36 @@
       <mat-error>Entre 8 et 72 caractères.</mat-error>
     </mat-form-field>
 
+    @if (formateur()) {
+      <fieldset class="teach">
+        <legend>Ton profil de formateur</legend>
+        <mat-form-field appearance="outline">
+          <mat-label>Domaine d’expertise</mat-label>
+          <input matInput formControlName="expertise" placeholder="Ex. : bases de données, cybersécurité" />
+          <mat-error>Indique au moins un domaine.</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Présente-toi en quelques lignes</mat-label>
+          <textarea matInput rows="3" formControlName="bio" placeholder="Ton expérience, ce que tu veux enseigner"></textarea>
+          <mat-hint align="end">{{ form.controls.bio.value.length }} / 400</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Lien (LinkedIn, portfolio…) facultatif</mat-label>
+          <input matInput formControlName="lien" />
+        </mat-form-field>
+        <p class="hint"><mat-icon aria-hidden="true">info</mat-icon> L’équipe Bawsla valide ton profil sous 48 h. Tu peux préparer tes cours en attendant.</p>
+      </fieldset>
+    }
+
     @if (error()) {
       <p class="error" role="alert">{{ error() }}</p>
     }
 
     <button type="submit" bwButton="principal" bwBlock [bwLoading]="loading()" [disabled]="loading()">
-      Créer mon compte
+      {{ formateur() ? 'Envoyer ma demande' : 'Créer mon compte' }}
     </button>
   </form>
 
   <p class="switch">Déjà inscrit ? <a routerLink="/login">Connecte-toi</a></p>
 </main>
+</div>

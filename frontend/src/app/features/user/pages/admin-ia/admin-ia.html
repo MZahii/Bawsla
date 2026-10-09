@@ -1,0 +1,80 @@
+<bw-page-header title="Supervision IA" subtitle="Qualité des modèles, volume d’appels, quota et incidents." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Supervision IA' }]">
+  <button type="button" bwButton="secondaire"><mat-icon>download</mat-icon> Rapport mensuel</button>
+</bw-page-header>
+
+<div class="grid-4">
+  <bw-kpi label="Requêtes (14 jours)" [value]="total" icon="bolt" [delta]="21" deltaLabel="vs période précédente" [trend]="requetes.series[0].data" />
+  <bw-kpi label="Temps de réponse médian" value="2,4 s" icon="timer" [delta]="-8" deltaLabel="vs période précédente" />
+  <bw-kpi label="Taux d’erreur" value="0,9 %" icon="error" />
+  <bw-kpi label="Coût estimé ce mois" [value]="quota.cout + ' €'" icon="payments" />
+</div>
+
+<div class="grid-main mt">
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Requêtes par module</h2><span class="sub">par jour, 14 derniers jours</span></div>
+      <mat-button-toggle-group [value]="vue()" (change)="vue.set($event.value)" hideSingleSelectionIndicator aria-label="Type de graphique">
+        <mat-button-toggle value="stacked" aria-label="Barres empilées"><mat-icon>stacked_bar_chart</mat-icon></mat-button-toggle>
+        <mat-button-toggle value="line" aria-label="Courbes"><mat-icon>show_chart</mat-icon></mat-button-toggle>
+      </mat-button-toggle-group>
+    </div>
+    <div class="card-body">
+      <bw-chart [type]="vue()" [labels]="requetes.labels" [series]="requetes.series" [height]="280" ariaLabel="Requêtes IA par module et par jour" />
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Quota mensuel</h2></div>
+    <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+      <bw-progress-ring [value]="quotaPct" [size]="140" label="Quota utilisé" />
+      <p style="margin: 0"><strong class="num">{{ quota.utilise }}</strong> requêtes sur {{ quota.limite }}</p>
+      <p class="muted small" style="margin: 0">Au rythme actuel, le quota sera atteint le 27 octobre.</p>
+      <button type="button" bwButton="fantome">Modifier le quota</button>
+    </div>
+  </section>
+</div>
+
+<section class="card mt">
+  <div class="card-head"><h2>Qualité des modèles</h2><span class="sub">mesurée sur un échantillon de test, un modèle par module</span></div>
+  <div class="grid-4 card-body">
+    @for (m of modeles; track m.module) {
+      <article class="card card-pad">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span class="pill plain">{{ m.module }}</span>
+          <span class="pill" [class.ok]="m.etat === 'ok'" [class.warn]="m.etat !== 'ok'">{{ m.etat === 'ok' ? 'Stable' : 'À surveiller' }}</span>
+        </div>
+        <h3 style="margin: 12px 0 2px; font: 600 16px var(--font-heading)">{{ m.usage }}</h3>
+        <p class="muted small" style="margin: 0 0 12px">{{ m.modele }}</p>
+        <p style="margin: 0; font: 600 28px var(--font-heading)" class="num">{{ m.valeur }} %</p>
+        <p class="muted small" style="margin: 0">{{ m.metrique }}, {{ m.echantillon }}</p>
+      </article>
+    }
+  </div>
+</section>
+
+<div class="grid-main mt">
+  <section class="card">
+    <div class="card-head"><h2>Erreurs récentes</h2><span class="pill ko">{{ erreurs.length }}</span></div>
+    <div class="table-wrap">
+      <table mat-table [dataSource]="erreurs" class="bw-table dense">
+        <ng-container matColumnDef="quand"><th mat-header-cell *matHeaderCellDef>Date</th><td mat-cell *matCellDef="let e" class="num muted">{{ e.quand }}</td></ng-container>
+        <ng-container matColumnDef="module"><th mat-header-cell *matHeaderCellDef>Module</th><td mat-cell *matCellDef="let e">{{ e.module }}</td></ng-container>
+        <ng-container matColumnDef="type"><th mat-header-cell *matHeaderCellDef>Type</th><td mat-cell *matCellDef="let e"><span class="pill" [class.warn]="e.type !== 'Quota'" [class.ko]="e.type === 'Quota'">{{ e.type }}</span></td></ng-container>
+        <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Détail</th><td mat-cell *matCellDef="let e" class="small">{{ e.detail }}</td></ng-container>
+        <tr mat-header-row *matHeaderRowDef="colErreurs"></tr>
+        <tr mat-row *matRowDef="let row; columns: colErreurs"></tr>
+      </table>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Fonctionnalités</h2></div>
+    <ul style="list-style: none; margin: 0; padding: 0">
+      @for (f of fonctions; track f.nom) {
+        <li style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--color-border)">
+          <span style="flex: 1"><strong class="small">{{ f.nom }}</strong><br /><span class="muted small">Module {{ f.module }}</span></span>
+          <mat-slide-toggle [checked]="f.actif" [aria-label]="f.nom" />
+        </li>
+      }
+    </ul>
+    <p class="card-body muted small" style="margin: 0">Désactiver une fonctionnalité masque ses boutons pour tous les utilisateurs. Les clés API restent dans le fichier .env du serveur.</p>
+  </section>
+</div>

@@ -35,12 +35,10 @@ import { Component, computed, input } from '@angular/core';
       padding: var(--space-5);
     }
     .label {
-      font-size: 12px;
-      line-height: 16px;
+      font-size: 14px;
+      line-height: 20px;
       font-weight: 500;
       color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
     .value {
       font-family: var(--font-heading);

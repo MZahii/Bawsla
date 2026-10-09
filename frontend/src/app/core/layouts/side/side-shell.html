@@ -1,0 +1,81 @@
+<a class="skip" href="#contenu">Aller au contenu</a>
+<mat-sidenav-container class="wrap">
+  <mat-sidenav #nav [mode]="mode()" [opened]="!isMobile()" class="nav" [class.mini]="collapsed() && !isMobile()">
+    <div class="brand">
+      <a [routerLink]="home()" aria-label="Bawsla, accueil de l’espace">
+        @if (collapsed() && !isMobile()) {
+          <bw-logo variant="icon" [theme]="variant() === 'dark' ? 'dark' : 'auto'" [size]="32" />
+        } @else {
+          <bw-logo variant="horizontal" [theme]="variant() === 'dark' ? 'dark' : 'auto'" [size]="34" />
+        }
+      </a>
+      @if (!collapsed() || isMobile()) {
+        <span class="espace">{{ espace() }}</span>
+      }
+    </div>
+
+    <nav class="groups" aria-label="Menu principal">
+      @for (g of groups(); track g.titre) {
+        <div class="group">
+          @if (!collapsed() || isMobile()) {
+            <p class="gt">{{ g.titre }}</p>
+          }
+          @for (it of g.items; track it.link) {
+            <a
+              class="item"
+              [routerLink]="it.link"
+              routerLinkActive="on"
+              [routerLinkActiveOptions]="{ exact: it.exact ?? false }"
+              [matTooltip]="collapsed() && !isMobile() ? it.label : ''"
+              matTooltipPosition="right"
+              (click)="isMobile() && nav.close()"
+            >
+              <mat-icon aria-hidden="true">{{ it.icone }}</mat-icon>
+              <span class="lbl">{{ it.label }}</span>
+              @if (it.compteur) {
+                <span class="count">{{ it.compteur }}</span>
+              }
+            </a>
+          }
+        </div>
+      }
+    </nav>
+
+    @if (!isMobile()) {
+      <button type="button" class="collapse" (click)="collapsed.set(!collapsed())" [attr.aria-label]="collapsed() ? 'Déplier le menu' : 'Replier le menu'">
+        <mat-icon>{{ collapsed() ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left' }}</mat-icon>
+        <span class="lbl">Replier</span>
+      </button>
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    <header class="bar">
+      @if (isMobile()) {
+        <button type="button" class="ico" (click)="nav.toggle()" aria-label="Ouvrir le menu"><mat-icon>menu</mat-icon></button>
+      }
+      <label class="search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input type="search" [placeholder]="searchPlaceholder()" [attr.aria-label]="searchPlaceholder()" />
+        <kbd>Ctrl K</kbd>
+      </label>
+      <div class="right">
+        @if (actions().length) {
+          <button type="button" class="create" [matMenuTriggerFor]="create">
+            <mat-icon>add</mat-icon><span class="hide-sm">Créer</span>
+          </button>
+          <mat-menu #create="matMenu" xPosition="before">
+            @for (a of actions(); track a.link) {
+              <a mat-menu-item [routerLink]="a.link"><mat-icon>{{ a.icone }}</mat-icon>{{ a.label }}</a>
+            }
+          </mat-menu>
+        }
+        <app-notif-menu />
+        <app-user-menu />
+      </div>
+    </header>
+    <main id="contenu" class="main" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

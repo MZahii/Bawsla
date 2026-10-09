@@ -1,0 +1,25 @@
+:host { display: block; }
+.wrap { min-height: 100vh; background: var(--color-surface); }
+.in { max-width: 1280px; margin: 0 auto; padding-inline: var(--space-4); @media (min-width: 960px) { padding-inline: var(--space-6); } }
+.top { position: sticky; top: 0; z-index: 20; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.top .in { display: flex; align-items: center; gap: var(--space-4); height: 68px; }
+.brand { display: inline-flex; }
+.lnk { color: var(--color-text); font-weight: 600; font-size: 15px; text-decoration: none; &:hover { text-decoration: underline; } }
+.right { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; }
+.ico { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--color-text); cursor: pointer; &:hover { background: var(--color-neutral-soft); } }
+.burger { @media (min-width: 960px) { display: none; } }
+.hide-sm { @media (max-width: 599px) { display: none !important; } }
+.hide-md { @media (max-width: 959px) { display: none !important; } }
+.drawer { width: 280px; padding: var(--space-4) 0; nav { display: flex; flex-direction: column; } a { padding: var(--space-3) var(--space-5); color: var(--color-text); text-decoration: none; font-weight: 600; } .sub { padding-left: var(--space-7); font-weight: 400; } .strong { color: var(--color-bordeaux-600); } }
+
+.foot { margin-top: var(--space-8); background: var(--color-navy-900); color: var(--color-white-80); font-size: 15px; }
+.cols { display: grid; gap: var(--space-6); padding-block: var(--space-7); @media (min-width: 720px) { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+.cols div { display: flex; flex-direction: column; gap: var(--space-2); }
+.cols h3 { margin: 0 0 var(--space-2); font: 600 15px var(--font-heading); color: var(--color-white); }
+.cols a { color: var(--color-white-80); text-decoration: none; &:hover { color: var(--color-white); text-decoration: underline; } }
+.about p { max-width: 36ch; margin: var(--space-3) 0 0; line-height: 24px; }
+.about bw-logo { filter: none; }
+.legal { display: flex; justify-content: space-between; padding-block: var(--space-4); border-top: 1px solid var(--color-navy-500); font-size: 14px; }
+.ar { font-family: var(--font-arabic); }
+main { display: block; outline: 0; }
+.page { max-width: 1280px; margin: 0 auto; padding: var(--space-6) var(--space-4) 0; @media (min-width: 960px) { padding-inline: var(--space-6); } }

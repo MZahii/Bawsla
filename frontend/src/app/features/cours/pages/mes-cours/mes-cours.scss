@@ -1,0 +1,8 @@
+.list { display: grid; gap: var(--space-4); padding-top: var(--space-5); }
+.row { display: grid; grid-template-columns: 160px 1fr auto auto; align-items: center; gap: var(--space-5); padding: var(--space-4); @media (max-width: 719px) { grid-template-columns: 1fr; } }
+img { width: 160px; aspect-ratio: 16 / 10; border-radius: 4px; object-fit: cover; @media (max-width: 719px) { width: 100%; } }
+.info { min-width: 0; p { margin: 0; } }
+h2 { margin: 2px 0 var(--space-2); font: 600 18px var(--font-heading); a { color: inherit; text-decoration: none; &:hover { text-decoration: underline; } } }
+.next, .done { display: flex; align-items: center; gap: 6px; margin-bottom: 2px !important; mat-icon { font-size: 18px; width: 18px; height: 18px; } }
+.next mat-icon { color: var(--color-bordeaux-600); }
+.done mat-icon { color: var(--color-success); }

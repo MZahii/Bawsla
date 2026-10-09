@@ -1,9 +1,13 @@
 export type Role = 'ADMIN' | 'ENSEIGNANT' | 'ETUDIANT';
 
+/**
+ * Libellés affichés. Les codes ETUDIANT / ENSEIGNANT restent ceux du backend (CONTRATS_API.md) :
+ * à l'écran on parle d'« apprenant » et de « formateur », car Bawsla est ouvert à tous.
+ */
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Administrateur',
-  ENSEIGNANT: 'Enseignant',
-  ETUDIANT: 'Étudiant',
+  ENSEIGNANT: 'Formateur',
+  ETUDIANT: 'Apprenant',
 };
 
 export interface User {
