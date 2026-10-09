@@ -1,0 +1,98 @@
+<header class="hello">
+  <div>
+    <p class="muted date">{{ date }}</p>
+    <h1>Bonjour {{ prenom() }}</h1>
+  </div>
+  <span class="streak"><mat-icon>local_fire_department</mat-icon> 6 jours d’affilée</span>
+</header>
+
+<div class="top">
+  <section class="card resume">
+    <img [src]="image" alt="" />
+    <div class="rb">
+      <p class="eyebrow">Reprendre</p>
+      <h2>{{ reprendre.titre }}</h2>
+      @if (prochain) { <p class="muted">Chapitre suivant : <strong>{{ prochain.titre }}</strong>, {{ prochain.duree }} min</p> }
+      <div class="bar-cell prog"><span class="bar"><span [style.width.%]="reprendre.progression"></span></span><span class="num small">{{ faits }}/{{ reprendre.chapitres.length }} chapitres</span></div>
+      <div class="acts">
+        <a bwButton="principal" [routerLink]="['/app/cours', reprendre.id, 'lecture']"><mat-icon>play_arrow</mat-icon> Continuer</a>
+        <a bwButton="fantome" routerLink="/app/cours">Tous mes cours</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="card card-pad goal">
+    <h2>Objectif de la semaine</h2>
+    <bw-progress-ring [value]="objectifPct" [size]="112" label="Objectif hebdomadaire" />
+    <p class="small"><strong>{{ objectif.fait }} min</strong> sur {{ objectif.cible }} min</p>
+    <a routerLink="/app/progres" class="lnk">Voir ma progression</a>
+  </section>
+</div>
+
+@if (examenPret; as ex) {
+  <section class="card exam-ready mt">
+    <mat-icon aria-hidden="true">workspace_premium</mat-icon>
+    <div class="t">
+      <strong>Ton examen final est débloqué : {{ ex.titre }}</strong>
+      <span class="muted small">{{ ex.examen.questions }} questions, {{ ex.examen.duree }} min. Réussis-le avec {{ ex.examen.seuil }} % pour obtenir ton certificat.</span>
+    </div>
+    <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', ex.id]">Passer l’examen</a>
+  </section>
+}
+
+@if (!onboarding || onboarding.passe) {
+  <section class="card onb mt">
+    <mat-icon aria-hidden="true">tune</mat-icon>
+    <div class="t">
+      <strong>Aide l’IA à mieux te conseiller</strong>
+      <span class="muted small">Dis-nous qui tu es et ce que tu veux apprendre : 4 questions, 1 minute.</span>
+    </div>
+    <a bwButton="fantome" routerLink="/demarrer">Répondre</a>
+  </section>
+}
+
+<bw-section-head class="mt" title="Recommandé pour toi" [subtitle]="sousTitreReco" link="/app/explorer" linkLabel="Explorer le catalogue" />
+<div class="grid-3">
+  @for (r of recommandations; track r.coursId) {
+    <div class="reco">
+      <p class="why"><mat-icon>auto_awesome</mat-icon>{{ r.raison }}</p>
+      <bw-course-tile [cours]="r.tuile" [link]="r.lien" />
+    </div>
+  }
+</div>
+
+<div class="grid-main mt">
+  <section class="card">
+    <div class="card-head"><h2>Ton activité</h2><a routerLink="/app/progres" class="lnk small">Détails</a></div>
+    <div class="card-body"><bw-heatmap [values]="jours" /></div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Mes rappels</h2><a routerLink="/app/agenda" class="lnk small">Agenda</a></div>
+    <ul class="due">
+      @for (e of echeances; track e.titre) {
+        <li>
+          <span class="d"><strong>{{ e.date.slice(0, 2) }}</strong><small>{{ e.jour }}</small></span>
+          <span class="t"><strong class="small">{{ e.titre }}</strong><span class="muted small">{{ e.cours }}</span></span>
+          <mat-icon class="muted" [attr.aria-label]="e.type">{{ icones[e.type] }}</mat-icon>
+        </li>
+      }
+    </ul>
+  </section>
+</div>
+
+@if (tuilesEnCours.length) {
+  <bw-section-head class="mt" title="Tes autres cours en cours" link="/app/cours" />
+  <div class="grid-3">
+    @for (c of tuilesEnCours; track c.id) { <bw-course-tile [cours]="c" [link]="['/app/cours', c.id, 'lecture']" /> }
+  </div>
+}
+
+<section class="card mt">
+  <div class="card-head"><h2>Sur le forum</h2><a routerLink="/app/forum" class="lnk small">Tout le forum</a></div>
+  @for (d of discussions; track d.id) {
+    <a class="thread" [routerLink]="['/app/forum', d.id]">
+      <mat-icon [class.ok]="d.resolue">{{ d.resolue ? 'check_circle' : 'help' }}</mat-icon>
+      <span class="t"><strong>{{ d.titre }}</strong><span class="muted small">{{ d.auteur }}, {{ d.date }}, {{ d.reponses }} réponses</span></span>
+    </a>
+  }
+</section>

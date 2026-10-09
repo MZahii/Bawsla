@@ -1,0 +1,74 @@
+<bw-page-header title="Avis" subtitle="Ce que les apprenants pensent de tes cours. Ta réponse s’affiche publiquement sous leur avis." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Avis' }]" />
+
+<div class="grid-4">
+  <bw-kpi label="Note moyenne" [value]="moyenne()" icon="star" />
+  <bw-kpi label="Avis reçus" [value]="avis().length" icon="reviews" />
+  <bw-kpi label="Sans réponse" [value]="sansReponse()" icon="mark_chat_unread" />
+  <bw-kpi label="Taux de réponse" [value]="Math.round(((avis().length - sansReponse()) / avis().length) * 100) + ' %'" icon="reply" />
+</div>
+
+<div class="layout mt">
+  <section class="card">
+    <div class="card-head">
+      <div class="toolbar" style="margin: 0; flex: 1">
+        <mat-button-toggle-group [value]="filtre()" (change)="filtre.set($event.value)" hideSingleSelectionIndicator aria-label="Filtrer les avis">
+          <mat-button-toggle value="tous">Tous</mat-button-toggle>
+          <mat-button-toggle value="sansReponse">Sans réponse ({{ sansReponse() }})</mat-button-toggle>
+          <mat-button-toggle value="negatifs">3 étoiles ou moins</mat-button-toggle>
+        </mat-button-toggle-group>
+        <span class="grow"></span>
+        <mat-select class="sel" [value]="coursChoisi()" (valueChange)="coursChoisi.set($event)" placeholder="Tous mes cours" aria-label="Cours">
+          <mat-option [value]="null">Tous mes cours</mat-option>
+          @for (c of cours; track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+        </mat-select>
+      </div>
+    </div>
+
+    @for (a of visibles(); track a.id) {
+      <article class="rev">
+        <bw-avatar [nom]="a.nom" [size]="40" />
+        <div class="body">
+          <p class="rh"><strong>{{ a.nom }}</strong><bw-rating [value]="a.note" /><span class="muted small">{{ a.quand }}</span></p>
+          <p class="muted small course">{{ titre(a.coursId) }}</p>
+          <p>{{ a.texte }}</p>
+
+          @if (enEdition() === a.id) {
+            <label class="sr" [for]="'r-' + a.id">Ta réponse</label>
+            <textarea [id]="'r-' + a.id" rows="3" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)" placeholder="Remercie, réponds à la remarque, dis ce que tu vas changer."></textarea>
+            <div class="acts">
+              <button type="button" bwButton="ia" (click)="suggerer(a)">Proposer une réponse</button>
+              <span class="grow"></span>
+              <button type="button" bwButton="fantome" (click)="enEdition.set(null)">Annuler</button>
+              <button type="button" bwButton="secondaire" [disabled]="!brouillon().trim()" (click)="publier(a.id)">Publier la réponse</button>
+            </div>
+          } @else if (a.reponse) {
+            <div class="reply">
+              <p class="small"><strong>Ta réponse</strong></p>
+              <p class="small">{{ a.reponse }}</p>
+              <button type="button" class="lnk" (click)="repondre(a)">Modifier</button>
+            </div>
+          } @else {
+            <button type="button" bwButton="secondaire" (click)="repondre(a)"><mat-icon>reply</mat-icon> Répondre</button>
+          }
+        </div>
+      </article>
+    } @empty {
+      <bw-empty-state icon="reviews" title="Aucun avis pour ce filtre." />
+    }
+  </section>
+
+  <aside class="stack">
+    <section class="card card-pad">
+      <h2>Répartition des notes</h2>
+      <ul class="dist">
+        @for (r of repartition; track r.etoiles) {
+          <li><span>{{ r.etoiles }} étoiles</span><span class="bar"><span [style.width.%]="r.part"></span></span><span class="num muted">{{ r.part }} %</span></li>
+        }
+      </ul>
+    </section>
+    <bw-ai-box heading="Ce qui revient dans les avis">
+      <p>Points forts : la clarté des explications et les résumés audio. À améliorer : le chapitre « Normalisation » (3 avis le trouvent trop rapide) et le manque d’exercices pratiques.</p>
+      <span bwAiSource>Synthèse de 6 avis récents, sans nom ni donnée personnelle</span>
+    </bw-ai-box>
+  </aside>
+</div>

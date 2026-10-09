@@ -1,0 +1,67 @@
+<header class="top">
+  <bw-logo variant="horizontal" [size]="36" />
+  <button type="button" bwButton="fantome" (click)="terminer(true)">Passer</button>
+</header>
+
+<main class="wrap">
+  <p class="hello">Bienvenue{{ prenom() ? ' ' + prenom() : '' }} ! Quelques questions pour que l’IA te propose les bons cours dès le départ.</p>
+
+  <ol class="progress" aria-label="Étapes">
+    @for (e of etapes; track e; let i = $index) {
+      <li [class.on]="i === etape()" [class.done]="i < etape()" [attr.aria-current]="i === etape() ? 'step' : null">{{ e }}</li>
+    }
+  </ol>
+
+  <section class="card">
+    @switch (etape()) {
+      @case (0) {
+        <h1>Qu’est-ce qui te décrit le mieux ?</h1>
+        <div class="tiles" role="radiogroup" aria-label="Ton profil">
+          @for (p of o.profils; track p.code) {
+            <button type="button" role="radio" class="tile" [class.on]="profil() === p.code" [attr.aria-checked]="profil() === p.code" (click)="profil.set(p.code)">
+              <mat-icon aria-hidden="true">{{ p.icone }}</mat-icon><strong>{{ p.titre }}</strong><span>{{ p.texte }}</span>
+            </button>
+          }
+        </div>
+      }
+      @case (1) {
+        <h1>Qu’est-ce que tu veux accomplir ?</h1>
+        <div class="chips" role="radiogroup" aria-label="Ton objectif">
+          @for (x of o.objectifs; track x) {
+            <button type="button" role="radio" class="chip" [class.on]="objectif() === x" [attr.aria-checked]="objectif() === x" (click)="objectif.set(x)">{{ x }}</button>
+          }
+        </div>
+      }
+      @case (2) {
+        <h1>Quels domaines t’intéressent ?</h1>
+        <p class="muted">Choisis-en autant que tu veux.</p>
+        <div class="tiles">
+          @for (c of categories; track c.nom) {
+            <button type="button" class="tile" [class.on]="domaines().includes(c.nom)" [attr.aria-pressed]="domaines().includes(c.nom)" (click)="basculerDomaine(c.nom)">
+              <mat-icon aria-hidden="true">{{ c.icone }}</mat-icon><strong>{{ c.nom }}</strong><span>{{ c.description }}</span>
+            </button>
+          }
+        </div>
+      }
+      @case (3) {
+        <h1>Combien de temps peux-tu y consacrer par semaine ?</h1>
+        <p class="muted">On s’en sert pour ton objectif de la semaine. Tu pourras le changer à tout moment.</p>
+        <div class="chips" role="radiogroup" aria-label="Temps par semaine">
+          @for (x of o.temps; track x) {
+            <button type="button" role="radio" class="chip" [class.on]="temps() === x" [attr.aria-checked]="temps() === x" (click)="temps.set(x)">{{ x }}</button>
+          }
+        </div>
+      }
+    }
+
+    <footer class="acts">
+      @if (etape() > 0) {
+        <button type="button" bwButton="fantome" (click)="etape.set(etape() - 1)">Retour</button>
+      }
+      <span class="grow"></span>
+      <span class="muted small">{{ etape() + 1 }} sur {{ etapes.length }}</span>
+      <button type="button" bwButton="principal" (click)="suivant()">{{ etape() === etapes.length - 1 ? 'Voir mes recommandations' : 'Continuer' }}</button>
+    </footer>
+  </section>
+  <p class="muted small note"><mat-icon aria-hidden="true">lock</mat-icon> Ces réponses restent sur ton profil. L’IA ne reçoit ni ton nom ni ton email.</p>
+</main>

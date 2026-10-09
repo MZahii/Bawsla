@@ -1,0 +1,108 @@
+@if (discussion(); as d) {
+  <nav class="crumbs" aria-label="Fil d’Ariane">
+    <a [routerLink]="base">Forum</a>
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    <span aria-current="page">Discussion</span>
+  </nav>
+
+  <div class="layout">
+    <div class="main">
+      <article class="question">
+        <div class="q-tags">
+          @if (cours(); as c) {
+            <a [routerLink]="studio ? ['/studio/cours', c.id] : ['/app/explorer', c.id]"><bw-badge variant="categorie">{{ c.titre }}</bw-badge></a>
+          }
+          <span class="status" [class.resolue]="d.resolue">
+            <mat-icon aria-hidden="true">{{ d.resolue ? 'check_circle' : 'help' }}</mat-icon>
+            {{ d.resolue ? 'Résolue' : 'En attente de réponse' }}
+          </span>
+        </div>
+        <h2 class="q-title">{{ d.titre }}</h2>
+        <p class="q-body">{{ d.contenu }}</p>
+        <p class="q-meta">
+          <span class="avatar" aria-hidden="true">{{ initiales(d.auteur) }}</span>
+          {{ d.auteur }}, {{ d.date }}
+        </p>
+      </article>
+
+      @if (ia(); as a) {
+        <bw-ai-box heading="Première piste">
+          <p class="ai-text">{{ a.contenu }}</p>
+          <div class="confidence" role="img" [attr.aria-label]="'Confiance de l’IA : ' + a.confiance + ' %'">
+            <span class="conf-label">Confiance</span>
+            <span class="conf-track"><span class="conf-fill" [style.width.%]="a.confiance"></span></span>
+            <span class="conf-value">{{ a.confiance }} %</span>
+          </div>
+          <span bwAiSource>
+            Source :
+            <a [routerLink]="['/app/cours', a.source.coursId, 'lecture']">{{ cours()?.titre }}</a>, chapitre « {{ a.source.chapitre }} », passage
+            « {{ a.source.passage }} »
+          </span>
+        </bw-ai-box>
+      }
+
+      <section aria-labelledby="answers-title">
+        <h3 id="answers-title" class="answers-title">
+          {{ reponses().length }} {{ reponses().length > 1 ? 'réponses' : 'réponse' }} de la communauté
+        </h3>
+        @for (r of reponses(); track $index) {
+          <article class="answer" [class.best]="r.meilleure">
+            <div class="vote">
+              <button
+                type="button"
+                class="vote-btn"
+                [attr.aria-pressed]="!!votes()[$index]"
+                [attr.aria-label]="'Cette réponse est utile (' + (r.votes + (votes()[$index] || 0)) + ' votes)'"
+                (click)="voter($index)"
+              >
+                <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+              </button>
+              <span class="vote-count" aria-hidden="true">{{ r.votes + (votes()[$index] || 0) }}</span>
+            </div>
+            <div class="a-body">
+              <header class="a-head">
+                <span class="avatar" aria-hidden="true">{{ initiales(r.auteur) }}</span>
+                <span class="a-who">
+                  <strong>{{ r.auteur }}</strong>
+                  <span class="bw-muted">{{ roleLabels[r.role] }}, {{ r.date }}</span>
+                </span>
+                @if (r.meilleure) {
+                  <bw-badge variant="meilleure-reponse" />
+                }
+              </header>
+              <p>{{ r.contenu }}</p>
+            </div>
+          </article>
+        } @empty {
+          <p class="bw-muted">Personne n’a encore répondu. Si tu connais la réponse, lance-toi.</p>
+        }
+      </section>
+
+      <form class="reply" (submit)="$event.preventDefault()">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Ta réponse</mat-label>
+          <textarea matInput rows="4" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)" name="reponse"></textarea>
+          <mat-hint>Explique ton raisonnement, un extrait de code aide souvent.</mat-hint>
+        </mat-form-field>
+        <button type="submit" bwButton="principal" [disabled]="!brouillon().trim()">Publier ma réponse</button>
+      </form>
+    </div>
+
+    <aside class="side" aria-label="À propos de la discussion">
+      <dl class="facts">
+        <div><dt>Réponses</dt><dd>{{ d.reponses }}</dd></div>
+        <div><dt>Vues</dt><dd>{{ d.vues }}</dd></div>
+      </dl>
+      @if (cours(); as c) {
+        <a class="side-link" [routerLink]="studio ? ['/studio/cours', c.id] : ['/app/explorer', c.id]">
+          <mat-icon aria-hidden="true">menu_book</mat-icon>
+          Revoir le cours lié
+        </a>
+      }
+    </aside>
+  </div>
+} @else {
+  <bw-empty-state icon="forum" title="Cette discussion n’existe pas ou a été supprimée.">
+    <a bwButton="principal" [routerLink]="base">Retour au forum</a>
+  </bw-empty-state>
+}

@@ -1,0 +1,134 @@
+<bw-page-header title="Catalogue" subtitle="Catégories, niveaux et cours de la plateforme." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Catalogue' }]">
+  <button type="button" bwButton="principal" (click)="ouvrir()"><mat-icon>add</mat-icon> Nouvelle catégorie</button>
+</bw-page-header>
+
+<section class="card">
+  <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+    <mat-tab [label]="'Catégories (' + categories().length + ')'">
+      <div class="table-wrap">
+        <table mat-table [dataSource]="categories()" class="bw-table dense">
+          <ng-container matColumnDef="icone">
+            <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Icône</span></th>
+            <td mat-cell *matCellDef="let c" style="width: 56px"><mat-icon class="muted">{{ c.icone }}</mat-icon></td>
+          </ng-container>
+          <ng-container matColumnDef="nom">
+            <th mat-header-cell *matHeaderCellDef>Catégorie</th>
+            <td mat-cell *matCellDef="let c"><strong>{{ c.nom }}</strong><br /><span class="muted small">{{ c.description }}</span></td>
+          </ng-container>
+          <ng-container matColumnDef="cours">
+            <th mat-header-cell *matHeaderCellDef>Cours</th>
+            <td mat-cell *matCellDef="let c" class="num">{{ c.cours }}</td>
+          </ng-container>
+          <ng-container matColumnDef="visible">
+            <th mat-header-cell *matHeaderCellDef>Visible au public</th>
+            <td mat-cell *matCellDef="let c"><mat-slide-toggle [checked]="c.visible" (change)="basculer(c)" [aria-label]="'Visibilité de ' + c.nom" /></td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
+            <td mat-cell *matCellDef="let c" style="text-align: right">
+              <button type="button" class="icon-btn" (click)="ouvrir(c)" [attr.aria-label]="'Modifier ' + c.nom"><mat-icon>edit</mat-icon></button>
+              <button type="button" class="icon-btn" (click)="supprimer(c)" [disabled]="c.cours > 0" [attr.aria-label]="'Supprimer ' + c.nom"><mat-icon>delete</mat-icon></button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="colCat"></tr>
+          <tr mat-row *matRowDef="let row; columns: colCat"></tr>
+        </table>
+      </div>
+      <p class="muted small card-body">Une catégorie qui contient des cours ne peut pas être supprimée : déplace d’abord ses cours.</p>
+    </mat-tab>
+
+    <mat-tab label="Niveaux">
+      <div class="card-body grid-3">
+        @for (n of niveaux; track n.code; let i = $index) {
+          <div class="card card-pad">
+            <p class="muted small" style="margin: 0">Niveau {{ i + 1 }}</p>
+            <h3 style="margin: 4px 0; font: 600 18px var(--font-heading)">{{ n.libelle }}</h3>
+            <p class="muted" style="margin: 0 0 12px">{{ n.description }}</p>
+            <span class="pill plain">{{ n.cours }} cours</span>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab [label]="'Tous les cours (' + cours.length + ')'">
+      <div class="table-wrap">
+        <table mat-table [dataSource]="cours" class="bw-table dense">
+          <ng-container matColumnDef="titre">
+            <th mat-header-cell *matHeaderCellDef>Cours</th>
+            <td mat-cell *matCellDef="let c">
+              <span class="cell-main"><img [src]="c.image" alt="" /><span class="t"><strong>{{ c.titre }}</strong><span>{{ c.categorie }}</span></span></span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="enseignant">
+            <th mat-header-cell *matHeaderCellDef>Formateur</th>
+            <td mat-cell *matCellDef="let c">{{ c.enseignant }}</td>
+          </ng-container>
+          <ng-container matColumnDef="niveau">
+            <th mat-header-cell *matHeaderCellDef>Niveau</th>
+            <td mat-cell *matCellDef="let c">{{ c.niveau }}</td>
+          </ng-container>
+          <ng-container matColumnDef="prix">
+            <th mat-header-cell *matHeaderCellDef>Prix</th>
+            <td mat-cell *matCellDef="let c" class="num">{{ c.prix }}</td>
+          </ng-container>
+          <ng-container matColumnDef="statut">
+            <th mat-header-cell *matHeaderCellDef>Statut</th>
+            <td mat-cell *matCellDef="let c"><span class="pill" [class.ok]="c.statut === 'PUBLIE'">{{ c.statut === 'PUBLIE' ? 'Publié' : 'Brouillon' }}</span></td>
+          </ng-container>
+          <ng-container matColumnDef="inscrits">
+            <th mat-header-cell *matHeaderCellDef>Inscrits</th>
+            <td mat-cell *matCellDef="let c" class="num">{{ c.inscrits }}</td>
+          </ng-container>
+          <ng-container matColumnDef="note">
+            <th mat-header-cell *matHeaderCellDef>Note</th>
+            <td mat-cell *matCellDef="let c">@if (c.note) { <bw-rating [value]="c.note" /> } @else { <span class="muted">–</span> }</td>
+          </ng-container>
+          <ng-container matColumnDef="vedette">
+            <th mat-header-cell *matHeaderCellDef>En vedette</th>
+            <td mat-cell *matCellDef="let c"><mat-slide-toggle [checked]="c.vedette" [aria-label]="'Mettre en vedette ' + c.titre" /></td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
+            <td mat-cell *matCellDef="let c">
+              <button type="button" class="icon-btn" [matMenuTriggerFor]="m" [attr.aria-label]="'Actions pour ' + c.titre"><mat-icon>more_vert</mat-icon></button>
+              <mat-menu #m="matMenu" xPosition="before">
+                <button mat-menu-item type="button"><mat-icon>visibility</mat-icon>Voir la fiche</button>
+                <button mat-menu-item type="button"><mat-icon>swap_horiz</mat-icon>Changer de catégorie</button>
+                <button mat-menu-item type="button" class="danger"><mat-icon>block</mat-icon>Retirer du catalogue</button>
+              </mat-menu>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="colCours"></tr>
+          <tr mat-row *matRowDef="let row; columns: colCours"></tr>
+        </table>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>
+
+<ng-template #formCategorie>
+  <h2 mat-dialog-title>{{ edition ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}</h2>
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px">
+      <mat-label>Nom</mat-label>
+      <input matInput [(ngModel)]="brouillon.nom" required />
+    </mat-form-field>
+    <mat-form-field appearance="outline" style="width: 100%">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="2" [(ngModel)]="brouillon.description"></textarea>
+    </mat-form-field>
+    <mat-form-field appearance="outline" style="width: 100%">
+      <mat-label>Icône</mat-label>
+      <mat-select [(ngModel)]="brouillon.icone">
+        @for (i of icones; track i) {
+          <mat-option [value]="i"><mat-icon>{{ i }}</mat-icon>{{ i }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-slide-toggle [(ngModel)]="brouillon.visible">Visible au public</mat-slide-toggle>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button type="button" bwButton="fantome" mat-dialog-close>Annuler</button>
+    <button type="button" bwButton="principal" (click)="enregistrer()" [disabled]="!brouillon.nom.trim()">Enregistrer</button>
+  </mat-dialog-actions>
+</ng-template>

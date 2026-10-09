@@ -1,3 +1,7 @@
+<bw-page-header title="Composants" subtitle="Toute la bibliothèque d’interface de Bawsla, en clair et en sombre." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Composants' }]" />
+<nav class="sg-toc" aria-label="Sections">
+  @for (s of sections; track s.id) { <a [href]="'#' + s.id" (click)="aller($event, s.id)">{{ s.label }}</a> }
+</nav>
 <div class="sg">
   <p class="bw-body-lg bw-muted sg-intro">
     Référence vivante de <strong>DESIGN.md</strong>. Utilise les composants de <code>shared/</code> et les
@@ -5,7 +9,7 @@
   </p>
 
   <!-- Palette -->
-  <section class="sg-section" aria-labelledby="sg-palette">
+  <section class="sg-section" id="sg-palette-s" aria-labelledby="sg-palette">
     <h2 id="sg-palette">Palette</h2>
     @for (p of palettes; track p.name) {
       <h3 class="sg-sub">{{ p.name }}</h3>
@@ -24,24 +28,24 @@
   </section>
 
   <!-- Typographie -->
-  <section class="sg-section" aria-labelledby="sg-type">
+  <section class="sg-section" id="sg-type-s" aria-labelledby="sg-type">
     <h2 id="sg-type">Typographie</h2>
     <div class="bw-card sg-type">
       <p class="bw-display">Display · Poppins 40/48</p>
       <p class="bw-h1">Titre 1 · Poppins 32/40</p>
       <p class="bw-h2">Titre 2 · Poppins 24/32</p>
       <p class="bw-h3">Titre 3 · Poppins 20/28</p>
-      <p class="bw-body-lg">Corps large · Inter 18/30 : pour les textes de lecture longue.</p>
-      <p>Corps · Inter 16/24 : le texte courant de l'interface, avec un <a href="#sg-type">lien</a>.</p>
-      <p class="bw-small">Petit · Inter 14/20 : aides et métadonnées.</p>
-      <p class="bw-caption">Légende · Inter 12/16</p>
+      <p class="bw-body-lg">Corps large · Source Sans 3, 18/30 : pour les textes de lecture longue.</p>
+      <p>Corps · Source Sans 3, 16/24 : le texte courant de l'interface, avec un <a href="#sg-type">lien</a>.</p>
+      <p class="bw-small">Petit · Source Sans 3, 14/20 : aides et métadonnées.</p>
+      <p class="bw-caption">Légende · Source Sans 3, 12/16</p>
       <p><code>Code · JetBrains Mono : SELECT * FROM cours;</code></p>
       <p class="bw-arabic" lang="ar" dir="auto">البوصلة · بوصلة المعرفة (Cairo)</p>
     </div>
   </section>
 
   <!-- Logos -->
-  <section class="sg-section" aria-labelledby="sg-logos">
+  <section class="sg-section" id="sg-logos-s" aria-labelledby="sg-logos">
     <h2 id="sg-logos">Logos</h2>
     <h3 class="sg-sub">Symbole</h3>
     <div class="sg-logos">
@@ -81,7 +85,7 @@
   </section>
 
   <!-- Boutons -->
-  <section class="sg-section" aria-labelledby="sg-buttons">
+  <section class="sg-section" id="sg-buttons-s" aria-labelledby="sg-buttons">
     <h2 id="sg-buttons">Boutons <code class="bw-caption">[bwButton]</code></h2>
     <div class="sg-row">
       <button type="button" bwButton="principal">Principal</button>
@@ -97,7 +101,7 @@
   </section>
 
   <!-- Badges -->
-  <section class="sg-section" aria-labelledby="sg-badges">
+  <section class="sg-section" id="sg-badges-s" aria-labelledby="sg-badges">
     <h2 id="sg-badges">Badges <code class="bw-caption">bw-badge</code></h2>
     <div class="sg-row">
       <bw-badge variant="categorie" label="Bases de données" />
@@ -110,17 +114,192 @@
   </section>
 
   <!-- Statistiques -->
-  <section class="sg-section" aria-labelledby="sg-stats">
+  <section class="sg-section" id="sg-stats-s" aria-labelledby="sg-stats">
     <h2 id="sg-stats">Tuiles de statistique <code class="bw-caption">bw-stat-tile</code></h2>
-    <div class="bw-grid">
+    <div class="grid-3">
       <bw-stat-tile label="Cours suivis" value="12" [trend]="8" trendLabel="vs mois dernier" />
       <bw-stat-tile label="Score moyen" value="74 %" [trend]="-3" trendLabel="vs mois dernier" />
       <bw-stat-tile label="Réponses au forum" value="5" [trend]="0" />
     </div>
   </section>
 
+  <!-- KPI -->
+  <section class="sg-section" id="sg-kpi" aria-labelledby="sg-kpi-t">
+    <h2 id="sg-kpi-t">Indicateurs <code class="bw-caption">bw-kpi</code></h2>
+    <div class="grid-4">
+      <bw-kpi label="Étudiants actifs" value="96" icon="bolt" [delta]="7" deltaLabel="vs hier" [trend]="[70, 82, 77, 90, 88, 96]" />
+      <bw-kpi label="Score moyen" value="68 %" icon="percent" [delta]="-2" deltaLabel="vs septembre" [trend]="[72, 70, 71, 69, 70, 68]" />
+      <bw-kpi label="Cours publiés" value="5" icon="video_library" />
+      <bw-kpi label="Requêtes IA" value="6 420" icon="psychology" [delta]="21" deltaLabel="ce mois" />
+    </div>
+  </section>
+
+  <!-- Graphiques -->
+  <section class="sg-section" id="sg-charts" aria-labelledby="sg-charts-t">
+    <h2 id="sg-charts-t">Graphiques <code class="bw-caption">bw-chart</code></h2>
+    <p class="bw-small bw-muted sg-note">Chart.js via ng2-charts. Couleurs lues dans les variables <code>--chart-1</code> à <code>--chart-4</code>, toujours dans le même ordre, avec légende dès 2 séries. Un seul axe vertical.</p>
+    <div class="grid-3">
+      @for (c of charts; track c.type) {
+        <div class="card">
+          <div class="card-head"><h3>{{ c.titre }}</h3><code class="bw-caption">type="{{ c.type }}"</code></div>
+          <div class="card-body"><bw-chart [type]="c.type" [labels]="c.labels" [series]="c.series" [height]="200" [ariaLabel]="c.titre" /></div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Cartes de cours -->
+  <section class="sg-section" id="sg-tiles" aria-labelledby="sg-tiles-t">
+    <h2 id="sg-tiles-t">Cartes de cours <code class="bw-caption">bw-course-tile</code></h2>
+    <div class="grid-3">
+      @for (t of tuiles; track t.id) { <bw-course-tile [cours]="t" /> }
+    </div>
+    <bw-course-tile [cours]="tuiles[0]" variant="row" />
+  </section>
+
+  <!-- Données -->
+  <section class="sg-section" id="sg-data" aria-labelledby="sg-data-t">
+    <h2 id="sg-data-t">Petits éléments de données</h2>
+    <div class="grid-2">
+      <div class="card card-pad sg-stack">
+        <h3 class="sg-sub">Avatars <code class="bw-caption">bw-avatar</code></h3>
+        <div class="sg-row">
+          @for (n of noms; track n) { <bw-avatar [nom]="n" /> }
+          <bw-avatar nom="Malek Ouji" [size]="56" />
+        </div>
+        <h3 class="sg-sub">Note <code class="bw-caption">bw-rating</code></h3>
+        <div class="sg-row"><bw-rating [value]="4.7" [count]="54" /><bw-rating [value]="3.5" /></div>
+        <h3 class="sg-sub">Pastilles d’état <code class="bw-caption">.pill</code></h3>
+        <div class="sg-row">
+          <span class="pill ok">Publié</span><span class="pill warn">À surveiller</span><span class="pill ko">Besoin d’aide</span>
+          <span class="pill accent">Nouveau</span><span class="pill ia">Généré par l’IA</span><span class="pill">Brouillon</span><span class="pill plain">sql</span>
+        </div>
+      </div>
+      <div class="card card-pad sg-stack">
+        <h3 class="sg-sub">Anneaux de progression <code class="bw-caption">bw-progress-ring</code></h3>
+        <div class="sg-row"><bw-progress-ring [value]="25" /><bw-progress-ring [value]="68" [size]="88" /><bw-progress-ring [value]="100" [size]="110" /></div>
+        <h3 class="sg-sub">Barre dans un tableau <code class="bw-caption">.bar-cell</code></h3>
+        <span class="bar-cell"><span class="bar"><span style="width: 62%"></span></span><span class="num bw-small">62 %</span></span>
+        <h3 class="sg-sub">Chargement <code class="bw-caption">bw-skeleton</code></h3>
+        <div class="sg-stack sg-tight"><bw-skeleton height="20px" width="60%" /><bw-skeleton /><bw-skeleton width="80%" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Activité, chronologie, calendrier -->
+  <section class="sg-section" id="sg-time" aria-labelledby="sg-time-t">
+    <h2 id="sg-time-t">Temps et activité</h2>
+    <div class="card card-pad">
+      <h3 class="sg-sub">Carte d’activité <code class="bw-caption">bw-heatmap</code></h3>
+      <bw-heatmap [values]="jours" />
+    </div>
+    <div class="grid-main">
+      <div class="card card-pad">
+        <h3 class="sg-sub">Calendrier <code class="bw-caption">bw-calendar</code></h3>
+        <bw-calendar [annee]="2026" [mois]="9" [events]="evenements" [aujourdhui]="8" (select)="dernier.set($event.titre)" />
+      </div>
+      <div class="card card-pad">
+        <h3 class="sg-sub">Chronologie <code class="bw-caption">bw-timeline</code></h3>
+        <bw-timeline [items]="timeline" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Formulaires -->
+  <section class="sg-section" id="sg-forms" aria-labelledby="sg-forms-t">
+    <h2 id="sg-forms-t">Formulaires <code class="bw-caption">Angular Material</code></h2>
+    <div class="grid-2">
+      <div class="card card-pad sg-stack">
+        <mat-form-field appearance="outline"><mat-label>Titre du cours</mat-label><input matInput value="Bases de données relationnelles" /><mat-hint>80 caractères maximum</mat-hint></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Email</mat-label><input matInput value="pas-un-email" [formControl]="email" /><mat-error>Cet email n’est pas valide.</mat-error></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Catégorie</mat-label>
+          <mat-select value="Données">@for (c of categories; track c) { <mat-option [value]="c">{{ c }}</mat-option> }</mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Date de publication</mat-label><input matInput [matDatepicker]="dp" /><mat-datepicker-toggle matIconSuffix [for]="dp" /><mat-datepicker #dp /></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>Description</mat-label><textarea matInput rows="3">Modéliser un schéma et écrire des requêtes SQL.</textarea></mat-form-field>
+      </div>
+      <div class="card card-pad sg-stack">
+        <mat-checkbox [checked]="true">Visible au public</mat-checkbox>
+        <mat-checkbox>Autoriser les commentaires</mat-checkbox>
+        <mat-radio-group value="mixte" class="sg-row">
+          <mat-radio-button value="facile">Facile</mat-radio-button><mat-radio-button value="mixte">Mixte</mat-radio-button><mat-radio-button value="difficile">Difficile</mat-radio-button>
+        </mat-radio-group>
+        <mat-slide-toggle [checked]="true">Notifications par email</mat-slide-toggle>
+        <mat-slider min="0" max="20" discrete style="width: 100%"><input matSliderThumb value="8" aria-label="Nombre de questions" /></mat-slider>
+        <mat-button-toggle-group value="mois" hideSingleSelectionIndicator aria-label="Vue">
+          <mat-button-toggle value="jour">Jour</mat-button-toggle><mat-button-toggle value="semaine">Semaine</mat-button-toggle><mat-button-toggle value="mois">Mois</mat-button-toggle>
+        </mat-button-toggle-group>
+        <mat-chip-listbox aria-label="Étiquettes" [multiple]="true">
+          @for (t of etiquettes; track t) { <mat-chip-option [selected]="t === 'sql'">{{ t }}</mat-chip-option> }
+        </mat-chip-listbox>
+        <label class="field-search"><mat-icon aria-hidden="true">search</mat-icon><input placeholder="Recherche compacte" aria-label="Recherche" /></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Médias -->
+  <section class="sg-section" id="sg-media" aria-labelledby="sg-media-t">
+    <h2 id="sg-media-t">Médias et fichiers</h2>
+    <div class="grid-2">
+      <div class="card card-pad"><h3 class="sg-sub">Lecteur vidéo <code class="bw-caption">bw-video-player</code></h3><bw-video-player [poster]="tuiles[1].image" /></div>
+      <div class="card card-pad sg-stack">
+        <h3 class="sg-sub">Dépôt de fichier <code class="bw-caption">bw-dropzone</code></h3>
+        <bw-dropzone accept=".pdf" hint="PDF, 20 Mo maximum" [initial]="[{ name: 'chapitre-3-jointures.pdf', size: 2400000 }]" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation -->
+  <section class="sg-section" id="sg-nav" aria-labelledby="sg-nav-t">
+    <h2 id="sg-nav-t">Navigation et structure</h2>
+    <div class="card">
+      <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+        <mat-tab label="Onglets"><p class="card-body">Les onglets séparent des vues d’une même page (profil, catalogue admin, modération).</p></mat-tab>
+        <mat-tab label="Menu"><div class="card-body sg-row">
+          <button type="button" bwButton="secondaire" [matMenuTriggerFor]="menu">Ouvrir un menu <mat-icon>expand_more</mat-icon></button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item type="button"><mat-icon>edit</mat-icon>Modifier</button>
+            <button mat-menu-item type="button"><mat-icon>content_copy</mat-icon>Dupliquer</button>
+            <button mat-menu-item type="button" class="danger"><mat-icon>delete</mat-icon>Supprimer</button>
+          </mat-menu>
+          <button type="button" bwButton="fantome" matTooltip="Une info-bulle courte">Survole-moi</button>
+          <button type="button" bwButton="fantome" (click)="toast()">Afficher un message</button>
+        </div></mat-tab>
+        <mat-tab label="Étapes"><div class="card-body">
+          <mat-stepper [linear]="false" #st>
+            <mat-step label="Informations"><p>Étape 1 de l’éditeur de cours.</p><button type="button" bwButton="principal" matStepperNext>Suivant</button></mat-step>
+            <mat-step label="Chapitres"><p>Étape 2.</p><button type="button" bwButton="principal" matStepperNext>Suivant</button></mat-step>
+            <mat-step label="Publication"><p>Dernière étape.</p></mat-step>
+          </mat-stepper>
+        </div></mat-tab>
+      </mat-tab-group>
+    </div>
+    <mat-accordion>
+      <mat-expansion-panel [expanded]="true"><mat-expansion-panel-header><mat-panel-title>Chapitre 1 : Requêtes SELECT</mat-panel-title><mat-panel-description>35 min</mat-panel-description></mat-expansion-panel-header><p>Panneau dépliant : programme d’un cours, FAQ.</p></mat-expansion-panel>
+      <mat-expansion-panel><mat-expansion-panel-header><mat-panel-title>Chapitre 2 : Les jointures</mat-panel-title><mat-panel-description>40 min</mat-panel-description></mat-expansion-panel-header><p>Contenu.</p></mat-expansion-panel>
+    </mat-accordion>
+  </section>
+
+  <!-- Tableau -->
+  <section class="sg-section" id="sg-table" aria-labelledby="sg-table-t">
+    <h2 id="sg-table-t">Tableau <code class="bw-caption">mat-table.bw-table</code></h2>
+    <div class="card">
+      <div class="table-wrap">
+        <table mat-table [dataSource]="lignes" class="bw-table">
+          <ng-container matColumnDef="nom"><th mat-header-cell *matHeaderCellDef>Apprenant</th><td mat-cell *matCellDef="let l"><span class="cell-main"><bw-avatar [nom]="l.nom" [size]="32" /><span class="t"><strong>{{ l.nom }}</strong><span>{{ l.cours }}</span></span></span></td></ng-container>
+          <ng-container matColumnDef="moyenne"><th mat-header-cell *matHeaderCellDef>Moyenne</th><td mat-cell *matCellDef="let l" class="num">{{ l.moyenne }} %</td></ng-container>
+          <ng-container matColumnDef="progression"><th mat-header-cell *matHeaderCellDef>Progression</th><td mat-cell *matCellDef="let l"><span class="bar-cell"><span class="bar"><span [style.width.%]="l.progression"></span></span><span class="num bw-small">{{ l.progression }} %</span></span></td></ng-container>
+          <ng-container matColumnDef="risque"><th mat-header-cell *matHeaderCellDef>Suivi</th><td mat-cell *matCellDef="let l"><span class="pill" [class.ok]="l.risque === 'faible'" [class.warn]="l.risque === 'moyen'" [class.ko]="l.risque === 'eleve'">{{ l.risque }}</span></td></ng-container>
+          <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
+          <tr mat-row *matRowDef="let row; columns: colonnes"></tr>
+        </table>
+      </div>
+      <mat-paginator [length]="18" [pageSize]="4" [pageSizeOptions]="[4, 10]" aria-label="Pages" />
+    </div>
+  </section>
+
   <!-- IA -->
-  <section class="sg-section" aria-labelledby="sg-ai">
+  <section class="sg-section" id="sg-ai-s" aria-labelledby="sg-ai">
     <h2 id="sg-ai">Contenu IA <code class="bw-caption">bw-ai-box · bw-ai-loading</code></h2>
     <bw-ai-box
       heading="Résumé du chapitre"
@@ -147,12 +326,12 @@
   </section>
 
   <!-- État vide -->
-  <section class="sg-section" aria-labelledby="sg-empty">
+  <section class="sg-section" id="sg-empty-s" aria-labelledby="sg-empty">
     <h2 id="sg-empty">État vide <code class="bw-caption">bw-empty-state</code></h2>
     <div class="bw-card">
       <bw-empty-state
         title="Aucun quiz pour l'instant."
-        message="Crée le premier pour tester tes étudiants."
+        message="Crée le premier pour tester tes apprenants."
         actionLabel="Créer un quiz"
         (action)="lastEvent.set('Créer un quiz')"
       />

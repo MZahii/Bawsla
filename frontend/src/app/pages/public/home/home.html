@@ -1,0 +1,180 @@
+<!-- ============================== Accroche -->
+<section class="hero">
+  <div class="in hero-in">
+    <div class="pitch">
+      <p class="kicker">Des cours ouverts à tous, gratuits pour la plupart</p>
+      <h1>Apprends à ton rythme, obtiens ton certificat. <span>L’IA t’indique le cap.</span></h1>
+      <p class="lead">Étudiant, professionnel ou en reconversion : choisis un cours, passe ses quiz et son examen final, et repars avec un certificat vérifiable. L’IA te dit toujours quoi revoir ensuite.</p>
+      <form class="search" (ngSubmit)="chercher()" role="search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input name="q" [(ngModel)]="q" placeholder="Que veux-tu apprendre ? SQL, Spring, Docker…" aria-label="Rechercher un cours" />
+        <button type="submit" bwButton="principal">Rechercher</button>
+      </form>
+      <p class="popular">
+        <span class="muted">Populaires :</span>
+        @for (p of populaires; track p) { <a routerLink="/catalogue" [queryParams]="{ q: p }">{{ p }}</a> }
+      </p>
+    </div>
+    <div class="collage" aria-hidden="true">
+      <img class="a" [src]="images[0]" alt="" />
+      <img class="b" [src]="images[1]" alt="" />
+      <img class="c" [src]="images[2]" alt="" />
+      <div class="note">
+        <mat-icon>explore</mat-icon>
+        <span><strong>Ton cap : les jointures</strong><small>4 erreurs sur 6 aux derniers quiz</small></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Chiffres -->
+<section class="band">
+  <div class="in band-in">
+    <div><strong>7</strong><span>cours dans 5 domaines</span></div>
+    <div><strong>214</strong><span>apprenants inscrits</span></div>
+    <div><strong>412</strong><span>certificats délivrés</span></div>
+    <div><strong>5 sur 7</strong><span>cours entièrement gratuits</span></div>
+  </div>
+</section>
+
+<!-- ============================== Domaines -->
+<section class="sec">
+  <div class="in">
+    <bw-section-head title="Parcourir par domaine" subtitle="Du SQL au déploiement : des compétences recherchées, pour débuter ou pour progresser." link="/catalogue" linkLabel="Tout le catalogue" />
+    <div class="cats">
+      @for (c of categories; track c.nom) {
+        <a class="cat" routerLink="/catalogue" [queryParams]="{ domaine: c.nom }">
+          <mat-icon>{{ c.icone }}</mat-icon>
+          <strong>{{ c.nom }}</strong>
+          <span class="muted small">{{ c.description }}</span>
+          <span class="small cnt">{{ c.cours }} cours <mat-icon>arrow_forward</mat-icon></span>
+        </a>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Cours populaires -->
+<section class="sec alt">
+  <div class="in">
+    <bw-section-head title="Les cours les plus suivis" subtitle="Choisis-en un et commence aujourd’hui." link="/catalogue" />
+    <div class="tiles">
+      @for (c of cours; track c.id) { <bw-course-tile [cours]="c" [link]="['/catalogue', c.id]" /> }
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Fonctionnement -->
+<section class="sec">
+  <div class="in">
+    <bw-section-head title="Comment ça marche" subtitle="Quatre étapes, de l’inscription au certificat." />
+    <ol class="steps">
+      @for (e of etapes; track e.titre; let i = $index) {
+        <li>
+          <span class="num-badge">{{ i + 1 }}</span>
+          <mat-icon>{{ e.icone }}</mat-icon>
+          <h3>{{ e.titre }}</h3>
+          <p class="muted">{{ e.texte }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<!-- ============================== IA -->
+<section class="sec dark">
+  <div class="in ia">
+    <div>
+      <p class="kicker gold">L’IA, à sa juste place</p>
+      <h2>Une aide qui montre ses sources, jamais une boîte noire.</h2>
+      <ul class="checks">
+        <li><mat-icon>check</mat-icon>Chaque contenu généré est signalé et relu par le formateur avant publication.</li>
+        <li><mat-icon>check</mat-icon>Les réponses du forum citent le chapitre et le passage utilisés.</li>
+        <li><mat-icon>check</mat-icon>Tes données personnelles ne sont jamais envoyées au modèle.</li>
+      </ul>
+    </div>
+    <div class="mock">
+      <div class="mock-q">
+        <strong>Pourquoi mon LEFT JOIN renvoie autant de lignes qu’un INNER JOIN ?</strong>
+        <small>Yassine C., il y a 2 h</small>
+      </div>
+      <div class="mock-a">
+        <p class="lab"><mat-icon>auto_awesome</mat-icon> Réponse proposée par l’IA</p>
+        <p>Ta condition WHERE s’applique après la jointure : elle élimine les lignes où la table de droite vaut NULL. Déplace-la dans le ON.</p>
+        <p class="src">Source : Bases de données relationnelles, chapitre « Les jointures »</p>
+      </div>
+      <div class="mock-v"><mat-icon>verified</mat-icon> Confirmée par Imen Ayari, formatrice</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Certificat -->
+<section class="sec alt" id="certificat">
+  <div class="in teach">
+    <div class="cert-mock" aria-hidden="true">
+      <div class="cert-top"><mat-icon>workspace_premium</mat-icon><span>Certificat de réussite</span></div>
+      <p class="cert-name">Malek Ouji</p>
+      <p class="cert-txt">a réussi l’examen final du cours</p>
+      <p class="cert-course">Git en équipe</p>
+      <p class="cert-foot"><span>Score : 92 %</span><span>N° BWS-2026-0412</span></p>
+    </div>
+    <div>
+      <p class="kicker">Certificats</p>
+      <h2>Un certificat qui prouve ce que tu sais faire.</h2>
+      <p class="muted">Chaque cours se termine par un examen final. Réussis-le et ton certificat est créé tout de suite, à ton nom, avec un numéro unique.</p>
+      <ul class="checks plain">
+        <li><mat-icon>check</mat-icon>Inclus dans tous les cours, gratuits comme payants</li>
+        <li><mat-icon>check</mat-icon>À télécharger en PDF et à partager sur ton CV ou LinkedIn</li>
+        <li><mat-icon>check</mat-icon>Vérifiable par un recruteur avec son numéro</li>
+      </ul>
+      <a bwButton="secondaire" routerLink="/verifier">Vérifier un certificat</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Formateurs -->
+<section class="sec" id="enseigner">
+  <div class="in teach">
+    <img [src]="images[1]" alt="" />
+    <div>
+      <p class="kicker">Enseigner sur Bawsla</p>
+      <h2>Partage ce que tu sais avec tous ceux qui veulent apprendre.</h2>
+      <p class="muted">Tu es expert dans ton domaine ? Présente ton profil : après validation par l’équipe Bawsla, tu publies tes cours, gratuits ou payants. Dépose ton PDF, relis le résumé proposé, génère les quiz et l’examen final, puis suis tes apprenants.</p>
+      <ul class="checks plain">
+        <li><mat-icon>check</mat-icon>Éditeur de cours en 5 étapes, examen final et certificat inclus</li>
+        <li><mat-icon>check</mat-icon>QCM générés selon les niveaux de Bloom, vérifiés automatiquement</li>
+        <li><mat-icon>check</mat-icon>Suivi des inscriptions, des avis et des apprenants qui décrochent</li>
+      </ul>
+      <a bwButton="secondaire" routerLink="/register" [queryParams]="{ role: 'formateur' }">Devenir formateur</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FAQ -->
+<section class="sec" id="faq">
+  <div class="in faq">
+    <h2>Questions fréquentes</h2>
+    <mat-accordion>
+      @for (f of faq; track f.q) {
+        <mat-expansion-panel>
+          <mat-expansion-panel-header><mat-panel-title>{{ f.q }}</mat-panel-title></mat-expansion-panel-header>
+          <p>{{ f.r }}</p>
+        </mat-expansion-panel>
+      }
+    </mat-accordion>
+  </div>
+</section>
+
+<!-- ============================== Appel final -->
+<section class="cta">
+  <div class="in cta-in">
+    <div>
+      <h2>Prêt à trouver ton cap ?</h2>
+      <p>Crée ton compte en une minute, avec n’importe quelle adresse email. C’est gratuit.</p>
+    </div>
+    <div class="cta-acts">
+      <a bwButton="principal" routerLink="/register">S’inscrire gratuitement</a>
+      <a bwButton="secondaire" routerLink="/catalogue">Voir le catalogue</a>
+    </div>
+  </div>
+</section>

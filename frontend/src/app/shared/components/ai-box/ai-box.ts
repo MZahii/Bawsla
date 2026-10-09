@@ -50,9 +50,10 @@ import { BwButton } from '../../directives/bw-button';
   styles: `
     :host { display: block; }
     .box {
-      background: var(--color-gold-100);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
       border-left: 3px solid var(--color-gold-500);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       padding: var(--space-4) var(--space-5);
       color: var(--color-text);
     }
@@ -67,7 +68,7 @@ import { BwButton } from '../../directives/bw-button';
       font-weight: 500;
     }
     .head mat-icon { font-size: 20px; width: 20px; height: 20px; }
-    .label { text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+    .label { font-weight: 600; }
     .heading { color: var(--color-text-muted); }
     .source {
       margin-top: var(--space-3);

@@ -1,0 +1,81 @@
+<bw-page-header title="Mes cours" subtitle="Crée, modifie et suis tes cours." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Mes cours' }]">
+  <a bwButton="principal" routerLink="/studio/cours/nouveau"><mat-icon>add</mat-icon> Nouveau cours</a>
+</bw-page-header>
+
+<div class="grid-4">
+  <bw-kpi label="Cours publiés" [value]="publies" icon="public" />
+  <bw-kpi label="Brouillons" [value]="lignes.length - publies" icon="edit_note" />
+  <bw-kpi label="Étudiants inscrits" [value]="inscritsTotal" icon="groups" [delta]="9" deltaLabel="ce mois" [trend]="[380, 410, 455, 470, 520, 614]" />
+  <bw-kpi label="Note moyenne" value="4,6 / 5" icon="star" [delta]="2" deltaLabel="ce mois" />
+</div>
+
+<section class="card mt">
+  <div class="card-head">
+    <div class="toolbar" style="margin: 0; flex: 1">
+      <mat-button-toggle-group [value]="filtre()" (change)="filtre.set($event.value)" hideSingleSelectionIndicator aria-label="Filtrer par statut">
+        <mat-button-toggle value="tous">Tous</mat-button-toggle>
+        <mat-button-toggle value="PUBLIE">Publiés</mat-button-toggle>
+        <mat-button-toggle value="BROUILLON">Brouillons</mat-button-toggle>
+      </mat-button-toggle-group>
+      <span class="grow"></span>
+      <label class="field-search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Rechercher un cours" aria-label="Rechercher un cours" />
+      </label>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table mat-table [dataSource]="source" matSort class="bw-table">
+      <ng-container matColumnDef="titre">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Cours</th>
+        <td mat-cell *matCellDef="let l">
+          <a class="cell-main" [routerLink]="['/studio/cours', l.id]" style="color: inherit; text-decoration: none">
+            <img [src]="l.image" alt="" />
+            <span class="t"><strong>{{ l.titre }}</strong><span>{{ l.categorie }}, {{ l.chapitres }} chapitres</span></span>
+          </a>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="statut">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Statut</th>
+        <td mat-cell *matCellDef="let l"><span class="pill" [class.ok]="l.statut === 'PUBLIE'">{{ l.statut === 'PUBLIE' ? 'Publié' : 'Brouillon' }}</span></td>
+      </ng-container>
+      <ng-container matColumnDef="prix">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Prix</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.prix }}</td>
+      </ng-container>
+      <ng-container matColumnDef="inscrits">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Inscrits</th>
+        <td mat-cell *matCellDef="let l" class="num">{{ l.inscrits }}</td>
+      </ng-container>
+      <ng-container matColumnDef="note">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Note</th>
+        <td mat-cell *matCellDef="let l">@if (l.note) { <bw-rating [value]="l.note" /> } @else { <span class="muted">Pas encore</span> }</td>
+      </ng-container>
+      <ng-container matColumnDef="completion">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Achèvement moyen</th>
+        <td mat-cell *matCellDef="let l"><span class="bar-cell"><span class="bar"><span [style.width.%]="l.completion"></span></span><span class="num small">{{ l.completion }} %</span></span></td>
+      </ng-container>
+      <ng-container matColumnDef="maj">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Modifié le</th>
+        <td mat-cell *matCellDef="let l" class="num muted">{{ l.maj }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
+        <td mat-cell *matCellDef="let l">
+          <button type="button" class="icon-btn" [matMenuTriggerFor]="m" [attr.aria-label]="'Actions pour ' + l.titre"><mat-icon>more_vert</mat-icon></button>
+          <mat-menu #m="matMenu" xPosition="before">
+            <a mat-menu-item [routerLink]="['/studio/cours', l.id]"><mat-icon>edit</mat-icon>Modifier</a>
+            <button mat-menu-item type="button"><mat-icon>visibility</mat-icon>Aperçu apprenant</button>
+            <button mat-menu-item type="button"><mat-icon>content_copy</mat-icon>Dupliquer</button>
+            <button mat-menu-item type="button"><mat-icon>{{ l.statut === 'PUBLIE' ? 'unpublished' : 'publish' }}</mat-icon>{{ l.statut === 'PUBLIE' ? 'Dépublier' : 'Publier' }}</button>
+            <button mat-menu-item type="button" class="danger"><mat-icon>archive</mat-icon>Archiver</button>
+          </mat-menu>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
+      <tr mat-row *matRowDef="let row; columns: colonnes"></tr>
+      <tr class="mat-row" *matNoDataRow><td class="mat-cell muted" [attr.colspan]="colonnes.length" style="padding: 24px">Aucun cours ne correspond.</td></tr>
+    </table>
+  </div>
+  <mat-paginator [pageSizeOptions]="[5, 10, 25]" [pageSize]="5" aria-label="Pages" />
+</section>

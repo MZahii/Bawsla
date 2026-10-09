@@ -1,0 +1,110 @@
+<header class="hello">
+  <div>
+    <p class="muted" style="margin: 0">Studio formateur</p>
+    <h1>Bonjour {{ nom() }}</h1>
+  </div>
+  <div class="acts">
+    <a bwButton="secondaire" routerLink="/studio/quiz/generer"><mat-icon>auto_awesome</mat-icon> Générer un quiz</a>
+    <a bwButton="principal" routerLink="/studio/cours/nouveau"><mat-icon>add</mat-icon> Nouveau cours</a>
+  </div>
+</header>
+
+@if (enAttente()) {
+  <section class="card pending" role="status">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <div class="t">
+      <strong>Ton profil de formateur est en cours de validation</strong>
+      <span class="muted small">L’équipe Bawsla vérifie ton expertise, en général sous 48 h. Tu peux déjà préparer tes cours : la publication sera possible après validation.</span>
+    </div>
+    <button type="button" class="icon-btn" (click)="masquerAttente()" aria-label="Masquer"><mat-icon>close</mat-icon></button>
+  </section>
+}
+
+<div class="grid-4">
+  <bw-kpi label="Inscriptions" value="271" icon="group_add" [delta]="15" deltaLabel="en un mois" [trend]="[198, 213, 228, 241, 257, 271]" />
+  <bw-kpi label="Taux d’achèvement" value="41 %" icon="task_alt" [delta]="2" deltaLabel="vs septembre" [trend]="[35, 36, 38, 38, 39, 41]" />
+  <bw-kpi label="Note moyenne (121 avis)" value="4,7" icon="star" />
+  <bw-kpi label="Certificats délivrés" value="71" icon="workspace_premium" [delta]="14" deltaLabel="en un mois" />
+</div>
+
+<div class="grid-main mt">
+  <section class="card">
+    <div class="card-head"><div><h2>Nouvelles inscriptions</h2><span class="sub">Par semaine, tous tes cours</span></div><a routerLink="/studio/apprenants" class="lnk small">Apprenants</a></div>
+    <div class="card-body"><bw-chart type="line" [labels]="inscriptions.labels" [series]="inscriptions.series" [height]="240" ariaLabel="Nouvelles inscriptions par semaine" /></div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>À valider</h2><span class="pill ia">{{ brouillons.length }} générés par l’IA</span></div>
+    <ul class="drafts">
+      @for (b of brouillons; track b.titre) {
+        <li>
+          <span class="ic"><mat-icon>{{ b.type === 'Quiz' ? 'quiz' : 'summarize' }}</mat-icon></span>
+          <span class="t"><strong class="small">{{ b.titre }}</strong><span class="muted small">{{ b.type }}, {{ b.cours }}, {{ b.quand }}</span></span>
+          <a bwButton="fantome" [routerLink]="b.type === 'Quiz' ? '/studio/quiz/generer' : '/studio/cours/1'">Relire</a>
+        </li>
+      }
+    </ul>
+  </section>
+</div>
+
+<section class="card mt">
+  <div class="card-head"><h2>Mes cours</h2><a routerLink="/studio/cours" class="lnk small">Gérer</a></div>
+  <div class="table-wrap">
+    <table class="simple">
+      <thead><tr><th>Cours</th><th>Inscriptions</th><th>Achèvement</th><th>Note</th><th>Certificats</th></tr></thead>
+      <tbody>
+        @for (s of stats; track s.coursId) {
+          <tr>
+            <td><span class="cell-main"><img [src]="s.image" alt="" /><span class="t"><strong>{{ s.titre }}</strong><span>{{ s.statut === 'PUBLIE' ? 'Publié, gratuit' : 'Brouillon' }}</span></span></span></td>
+            <td class="num">{{ s.inscriptions }} @if (s.nouvelles) { <span class="muted small">(+{{ s.nouvelles }})</span> }</td>
+            <td><span class="bar-cell"><span class="bar"><span [style.width.%]="s.achevement"></span></span><span class="num small">{{ s.achevement }} %</span></span></td>
+            <td>@if (s.note) { <bw-rating [value]="s.note" [count]="s.avis" /> } @else { <span class="muted small">Pas encore d’avis</span> }</td>
+            <td class="num">{{ s.certificats }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="grid-main mt">
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><div><h2>Nouveaux avis</h2><span class="sub">Sans réponse de ta part</span></div><a routerLink="/studio/avis" class="lnk small">Tous les avis</a></div>
+      <ul>
+        @for (a of nouveauxAvis; track a.id) {
+          <li class="rev">
+            <bw-avatar [nom]="a.nom" />
+            <span class="t"><span class="rh"><strong>{{ a.nom }}</strong><bw-rating [value]="a.note" /></span><span class="small">{{ a.texte }}</span><span class="muted small">{{ a.cours }}, {{ a.quand }}</span></span>
+          </li>
+        }
+      </ul>
+    </section>
+    <section class="card">
+      <div class="card-head"><div><h2>Risque d’abandon</h2><span class="sub">Repérés par le modèle, par inscription</span></div><a routerLink="/studio/apprenants" class="lnk small">Tous les apprenants</a></div>
+      <ul class="risk">
+        @for (e of aSuivre; track e.id) {
+          <li>
+            <bw-avatar [nom]="e.nom" />
+            <span class="t"><strong>{{ e.nom }}</strong><span class="muted small">{{ e.cours }}, actif {{ e.derniereActivite }}</span></span>
+            <span class="num small">{{ e.progression }} %</span>
+            <span class="pill ko">{{ libelle[e.risque] }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><h2>Cette semaine</h2><a routerLink="/studio/calendrier" class="lnk small">Calendrier</a></div>
+      <ul class="ev">
+        @for (e of evenements; track e.titre) {
+          <li><span class="d">{{ e.jour }} oct.</span><span [class]="'dot ' + e.type"></span><span class="small">{{ e.titre }}</span></li>
+        }
+      </ul>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Activité récente</h2></div>
+      <div class="card-body"><bw-timeline [items]="activite" /></div>
+    </section>
+  </div>
+</div>

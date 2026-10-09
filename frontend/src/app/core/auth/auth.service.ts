@@ -54,13 +54,17 @@ export class AuthService {
     );
   }
 
-  logout(redirect = true): void {
+  /**
+   * Ferme la session. Par défaut on revient à l'accueil public ; une session expirée (401)
+   * renvoie plutôt vers la connexion. `false` : pas de redirection.
+   */
+  logout(redirect: '/bienvenue' | '/login' | false = '/bienvenue'): void {
     this.tokenSignal.set(null);
     this.userSignal.set(null);
     this.remove(TOKEN_KEY);
     this.remove(USER_KEY);
     if (redirect) {
-      this.router.navigate(['/login']);
+      this.router.navigate([redirect]);
     }
   }
 

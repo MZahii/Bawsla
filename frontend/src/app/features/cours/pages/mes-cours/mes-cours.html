@@ -1,0 +1,67 @@
+<bw-page-header title="Mes cours" subtitle="Reprends là où tu t’es arrêté.">
+  <a bwButton="secondaire" routerLink="/app/explorer"><mat-icon>explore</mat-icon> Trouver un cours</a>
+</bw-page-header>
+
+<mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+  <mat-tab [label]="'En cours (' + enCours.length + ')'">
+    <div class="list">
+      @for (c of enCours; track c.id) {
+        <article class="row card">
+          <img [src]="img(c.id)" alt="" />
+          <div class="info">
+            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
+            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
+            <p class="next"><mat-icon>play_circle</mat-icon> Prochain chapitre : <strong>{{ prochain(c) }}</strong></p>
+            <p class="muted small">Encore {{ reste(c) }} pour finir</p>
+          </div>
+          <bw-progress-ring [value]="c.progression" [size]="64" label="Progression" />
+          <a bwButton="secondaire" [routerLink]="['/app/cours', c.id, 'lecture']">Reprendre</a>
+        </article>
+      }
+    </div>
+  </mat-tab>
+
+  <mat-tab [label]="'Terminés (' + termines.length + ')'">
+    <div class="list">
+      @for (c of termines; track c.id) {
+        <article class="row card">
+          <img [src]="img(c.id)" alt="" />
+          <div class="info">
+            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
+            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
+            @if (certificat(c.id); as cert) {
+              <p class="done"><mat-icon>workspace_premium</mat-icon> Certificat obtenu le {{ cert.date }}, score {{ cert.score }} %</p>
+            } @else {
+              <p class="next"><mat-icon>assignment</mat-icon> Tous les chapitres sont terminés : <strong>l’examen final est débloqué</strong></p>
+            }
+          </div>
+          <a bwButton="fantome" [routerLink]="['/app/cours', c.id, 'lecture']">Revoir</a>
+          @if (certificat(c.id); as cert) {
+            <a bwButton="secondaire" [routerLink]="['/app/certificats', cert.numero]"><mat-icon>workspace_premium</mat-icon> Certificat</a>
+          } @else {
+            <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', c.id]"><mat-icon>assignment</mat-icon> Passer l’examen</a>
+          }
+        </article>
+      }
+    </div>
+  </mat-tab>
+
+  <mat-tab [label]="'Enregistrés (' + enregistres().length + ')'">
+    <div class="list">
+      @for (c of enregistres(); track c.id) {
+        <article class="row card">
+          <img [src]="img(c.id)" alt="" />
+          <div class="info">
+            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
+            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
+            <p class="muted small">{{ c.chapitres.length }} chapitres, {{ total(c) }}, <strong>{{ prix(c.prix) }}</strong></p>
+          </div>
+          <button type="button" bwButton="fantome" (click)="retirer(c.id)">Retirer</button>
+          <a bwButton="secondaire" [routerLink]="['/app/explorer', c.id]">{{ c.prix ? 'Voir le prix' : 'S’inscrire' }}</a>
+        </article>
+      } @empty {
+        <bw-empty-state icon="bookmark" title="Aucun cours enregistré" message="Enregistre un cours depuis le catalogue pour le retrouver ici." />
+      }
+    </div>
+  </mat-tab>
+</mat-tab-group>

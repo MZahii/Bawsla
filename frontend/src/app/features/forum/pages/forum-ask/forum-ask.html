@@ -1,0 +1,65 @@
+<nav class="crumbs" aria-label="Fil d’Ariane">
+  <a routerLink="/app/forum">Forum</a>
+  <mat-icon aria-hidden="true">chevron_right</mat-icon>
+  <span aria-current="page">Nouvelle question</span>
+</nav>
+
+<div class="layout">
+  <form class="form" (submit)="$event.preventDefault()">
+    <h2 class="bw-h1">Poser une question</h2>
+    <p class="bw-muted intro">Un titre précis aide l’IA et les autres à te répondre plus vite.</p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Titre de ta question</mat-label>
+      <input matInput name="titre" required [ngModel]="titre()" (ngModelChange)="titre.set($event)" maxlength="140" />
+      <mat-hint>Au moins 10 caractères. Exemple : « Pourquoi Eureka ne voit pas mon service ? »</mat-hint>
+      <mat-hint align="end">{{ titre().length }}/140</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Cours concerné</mat-label>
+      <mat-select name="cours" [value]="coursId()" (valueChange)="coursId.set($event)">
+        <mat-option [value]="null">Aucun cours en particulier</mat-option>
+        @for (c of cours; track c.id) {
+          <mat-option [value]="c.id">{{ c.titre }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>L’IA cherchera la réponse dans ce cours en priorité.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Détails</mat-label>
+      <textarea matInput name="contenu" rows="7" required [ngModel]="contenu()" (ngModelChange)="contenu.set($event)"></textarea>
+      <mat-hint>Ce que tu as essayé, le résultat obtenu et celui que tu attendais.</mat-hint>
+    </mat-form-field>
+
+    <div class="actions">
+      <a bwButton="fantome" routerLink="/app/forum">Annuler</a>
+      <button type="submit" bwButton="principal" [disabled]="!valide()">Publier ma question</button>
+    </div>
+  </form>
+
+  <aside class="similar" aria-labelledby="similar-title" aria-live="polite">
+    <h3 id="similar-title">Questions similaires déjà posées</h3>
+    @if (similaires().length > 0) {
+      <p class="bw-muted hint">Ta réponse est peut-être déjà là.</p>
+      <ul>
+        @for (s of similaires(); track s.id) {
+          <li>
+            <a [routerLink]="['/app/forum', s.id]">
+              <span class="s-title">{{ s.titre }}</span>
+              <span class="s-meta">
+                @if (s.resolue) {
+                  <span class="resolue"><mat-icon aria-hidden="true">check_circle</mat-icon> résolue</span>
+                }
+                {{ s.reponses }} {{ s.reponses > 1 ? 'réponses' : 'réponse' }}
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="bw-muted hint">Commence à écrire ton titre : les questions proches s’afficheront ici.</p>
+    }
+  </aside>
+</div>

@@ -1,0 +1,22 @@
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-bottom: var(--space-5); }
+.back { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-muted); font-weight: 600; text-decoration: none; mat-icon { font-size: 20px; width: 20px; height: 20px; } }
+.title { flex: 1; min-width: 200px; h1 { margin: 0; font: 600 20px/28px var(--font-heading); } }
+.overall { display: flex; align-items: center; gap: var(--space-2); min-width: 200px; .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--color-neutral-soft); overflow: hidden; span { display: block; height: 100%; background: var(--color-bordeaux-600); } } }
+.toggle { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font: 600 14px var(--font-body); cursor: pointer; }
+.layout { display: grid; gap: var(--space-5); @media (min-width: 1000px) { grid-template-columns: 300px minmax(0, 1fr); } }
+.layout.closed { grid-template-columns: minmax(0, 1fr); .plan { display: none; } }
+.plan { align-self: start; border: 1px solid var(--color-border); border-radius: var(--radius-sm); overflow: hidden; ol { margin: 0; padding: 0; list-style: none; } li + li { border-top: 1px solid var(--color-border); } }
+.plan button { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 0; background: var(--color-surface); color: var(--color-text); text-align: left; font: 500 15px var(--font-body); cursor: pointer; &:hover { background: var(--color-bg); } &.on { background: var(--color-bordeaux-100); } mat-icon { flex: none; color: var(--color-text-muted); &.ok { color: var(--color-success); } } }
+.t { display: flex; flex-direction: column; small { color: var(--color-text-muted); font-size: 13px; } }
+.quiz { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); text-decoration: none; span { display: flex; flex-direction: column; } small { color: var(--color-text-muted); } mat-icon { color: var(--color-bordeaux-600); } }
+.ch-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin: var(--space-4) 0 var(--space-2); h2 { margin: 0; font: 600 22px var(--font-heading); } }
+.nav { display: flex; gap: var(--space-2); }
+.tab { padding-top: var(--space-4); }
+.reading { max-width: 72ch; font-size: 17px; line-height: 28px; }
+pre { padding: var(--space-4); border-radius: var(--radius-sm); background: var(--color-navy-900); color: var(--color-navy-100); overflow-x: auto; font: 400 14px/22px var(--font-code); }
+.audio { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: 999px; button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--color-primary); color: var(--color-on-primary); cursor: pointer; } .wave { flex: 1; height: 16px; background: repeating-linear-gradient(90deg, var(--color-border) 0 2px, transparent 2px 5px); } }
+.notes { display: grid; gap: var(--space-2); textarea { width: 100%; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); font: 400 15px/24px var(--font-body); resize: vertical; } }
+.res { margin: 0; padding: 0; list-style: none; li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); span:first-of-type { flex: 1; } } .dl { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--color-text); cursor: pointer; } }
+.quiz.exam mat-icon { color: var(--color-gold-700); }
+.quiz.locked { color: var(--color-text-muted); cursor: default; }
+.quiz.locked mat-icon { color: var(--color-text-muted); }

@@ -1,0 +1,118 @@
+<bw-page-header title="Utilisateurs" subtitle="Comptes, rôles et accès à la plateforme." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Utilisateurs' }]">
+  <button type="button" bwButton="secondaire"><mat-icon>upload</mat-icon> Importer (CSV)</button>
+  <button type="button" bwButton="principal" (click)="ouvrir()"><mat-icon>person_add</mat-icon> Ajouter</button>
+</bw-page-header>
+
+<div class="grid-4">
+  <bw-kpi label="Comptes" [value]="tous().length" icon="group" [delta]="18" deltaLabel="ce mois" [trend]="[150, 160, 172, 180, 196, 214]" />
+  <bw-kpi label="Apprenants" [value]="nombre('ETUDIANT')" icon="school" />
+  <bw-kpi label="Formateurs" [value]="nombre('ENSEIGNANT')" icon="co_present" />
+  <bw-kpi label="Administrateurs" [value]="nombre('ADMIN')" icon="admin_panel_settings" />
+</div>
+
+<section class="card mt">
+  <div class="card-head" style="flex-wrap: wrap">
+    @if (selection.selected.length > 0) {
+      <strong>{{ selection.selected.length }} sélectionné(s)</strong>
+      <span style="flex: 1"></span>
+      <button type="button" bwButton="fantome" (click)="activer(true)"><mat-icon>check_circle</mat-icon> Activer</button>
+      <button type="button" bwButton="fantome" (click)="activer(false)"><mat-icon>block</mat-icon> Désactiver</button>
+      <button type="button" bwButton="fantome"><mat-icon>mail</mat-icon> Envoyer un email</button>
+      <button type="button" class="icon-btn" (click)="selection.clear()" aria-label="Annuler la sélection"><mat-icon>close</mat-icon></button>
+    } @else {
+      <mat-chip-listbox [value]="role()" (change)="role.set($event.value ?? null)" aria-label="Filtrer par rôle">
+        @for (r of listeRoles; track r) { <mat-chip-option [value]="r">{{ roles[r] }}</mat-chip-option> }
+      </mat-chip-listbox>
+      <mat-select [value]="statut()" (valueChange)="statut.set($event)" aria-label="Statut" style="width: 150px; height: 40px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; box-sizing: border-box">
+        <mat-option value="tous">Tous les statuts</mat-option>
+        <mat-option value="actif">Actifs</mat-option>
+        <mat-option value="inactif">Désactivés</mat-option>
+      </mat-select>
+      <span style="flex: 1"></span>
+      <label class="field-search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Nom ou email" aria-label="Rechercher un utilisateur" />
+      </label>
+    }
+  </div>
+  <div class="table-wrap">
+    <table mat-table [dataSource]="source" matSort class="bw-table dense">
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef style="width: 48px">
+          <mat-checkbox [checked]="toutSelectionne()" [indeterminate]="selection.hasValue() && !toutSelectionne()" (change)="basculerTout()" aria-label="Tout sélectionner" />
+        </th>
+        <td mat-cell *matCellDef="let u"><mat-checkbox [checked]="selection.isSelected(u)" (change)="selection.toggle(u)" [aria-label]="'Sélectionner ' + u.nom" /></td>
+      </ng-container>
+      <ng-container matColumnDef="nom">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Utilisateur</th>
+        <td mat-cell *matCellDef="let u"><span class="cell-main"><bw-avatar [nom]="u.nom" [size]="32" /><span class="t"><strong>{{ u.nom }}</strong><span>{{ u.email }}</span></span></span></td>
+      </ng-container>
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Rôle</th>
+        <td mat-cell *matCellDef="let u"><span class="pill plain" [class.accent]="u.role === 'ENSEIGNANT'" [class.ia]="u.role === 'ADMIN'">{{ $any(roles)[u.role] }}</span></td>
+      </ng-container>
+      <ng-container matColumnDef="profil">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Profil ou expertise</th>
+        <td mat-cell *matCellDef="let u" class="small">{{ u.profil || '—' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="statut">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="actif">Statut</th>
+        <td mat-cell *matCellDef="let u"><span class="pill" [class.ok]="u.actif" [class.ko]="!u.actif">{{ u.actif ? 'Actif' : 'Désactivé' }}</span></td>
+      </ng-container>
+      <ng-container matColumnDef="inscrit">
+        <th mat-header-cell *matHeaderCellDef>Inscrit le</th>
+        <td mat-cell *matCellDef="let u" class="num muted">{{ u.inscrit }}</td>
+      </ng-container>
+      <ng-container matColumnDef="connexion">
+        <th mat-header-cell *matHeaderCellDef>Dernière connexion</th>
+        <td mat-cell *matCellDef="let u" class="muted">{{ u.derniereConnexion }}</td>
+      </ng-container>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
+        <td mat-cell *matCellDef="let u">
+          <button type="button" class="icon-btn" [matMenuTriggerFor]="m" [attr.aria-label]="'Actions pour ' + u.nom"><mat-icon>more_vert</mat-icon></button>
+          <mat-menu #m="matMenu" xPosition="before">
+            <button mat-menu-item type="button" (click)="ouvrir(u)"><mat-icon>edit</mat-icon>Modifier</button>
+            <button mat-menu-item type="button"><mat-icon>lock_reset</mat-icon>Réinitialiser le mot de passe</button>
+            <button mat-menu-item type="button"><mat-icon>history</mat-icon>Voir l’activité</button>
+            @if (u.actif) {
+              <button mat-menu-item type="button" class="danger" (click)="activer(false, [u])"><mat-icon>block</mat-icon>Désactiver</button>
+            } @else {
+              <button mat-menu-item type="button" (click)="activer(true, [u])"><mat-icon>check_circle</mat-icon>Réactiver</button>
+            }
+          </mat-menu>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
+      <tr mat-row *matRowDef="let row; columns: colonnes" [class.sel]="selection.isSelected(row)"></tr>
+      <tr class="mat-row" *matNoDataRow><td class="mat-cell muted" [attr.colspan]="colonnes.length" style="padding: 24px">Aucun utilisateur ne correspond.</td></tr>
+    </table>
+  </div>
+  <mat-paginator [pageSizeOptions]="[10, 25, 50]" [pageSize]="10" showFirstLastButtons aria-label="Pages" />
+</section>
+
+<ng-template #formUtilisateur>
+  <h2 mat-dialog-title>{{ edition ? 'Modifier le compte' : 'Nouveau compte' }}</h2>
+  <mat-dialog-content>
+    <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px">
+      <mat-label>Nom complet</mat-label>
+      <input matInput [(ngModel)]="brouillon.nom" required />
+    </mat-form-field>
+    <mat-form-field appearance="outline" style="width: 100%">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" [(ngModel)]="brouillon.email" required />
+      <mat-hint>Un lien d’activation sera envoyé à cette adresse.</mat-hint>
+    </mat-form-field>
+    <mat-form-field appearance="outline" style="width: 100%; margin-top: 8px">
+      <mat-label>Rôle</mat-label>
+      <mat-select [(ngModel)]="brouillon.role">
+        @for (r of listeRoles; track r) { <mat-option [value]="r">{{ roles[r] }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-checkbox [(ngModel)]="brouillon.actif">Compte actif</mat-checkbox>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button type="button" bwButton="fantome" mat-dialog-close>Annuler</button>
+    <button type="button" bwButton="principal" (click)="enregistrer()" [disabled]="!brouillon.nom.trim() || !brouillon.email.includes('@')">Enregistrer</button>
+  </mat-dialog-actions>
+</ng-template>

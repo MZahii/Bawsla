@@ -1,0 +1,51 @@
+<a class="skip" href="#contenu">Aller au contenu</a>
+<mat-sidenav-container class="wrap">
+  <mat-sidenav #drawer mode="over" class="drawer">
+    <div class="drawer-head"><bw-logo variant="horizontal" [size]="34" /></div>
+    <nav aria-label="Menu principal">
+      <a routerLink="/app/explorer" class="dl" (click)="drawer.close()"><mat-icon>explore</mat-icon>Explorer</a>
+      @for (l of liens; track l.link) {
+        <a [routerLink]="l.link" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: l.exact }" class="dl" (click)="drawer.close()">
+          <mat-icon>{{ l.icone }}</mat-icon>{{ l.label }}
+        </a>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <header class="top">
+      <div class="top-in">
+        <button type="button" class="burger" (click)="drawer.open()" aria-label="Ouvrir le menu"><mat-icon>menu</mat-icon></button>
+        <a routerLink="/app" class="brand" aria-label="Bawsla, accueil"><bw-logo variant="horizontal" [size]="34" /></a>
+        <app-explorer-menu base="/app/explorer" class="hide-md" />
+        <form class="search hide-sm" role="search" (ngSubmit)="chercher()">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input name="q" [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Que veux-tu apprendre ?" aria-label="Rechercher un cours" />
+        </form>
+        <div class="right">
+          <a routerLink="/app/agenda" class="ico hide-sm" aria-label="Agenda"><mat-icon>calendar_month</mat-icon></a>
+          <app-notif-menu />
+          <app-user-menu [showName]="false" />
+        </div>
+      </div>
+      <nav class="tabs" aria-label="Navigation de l’espace apprenant">
+        <div class="tabs-in">
+          @for (l of liens; track l.link) {
+            <a [routerLink]="l.link" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: l.exact }">{{ l.label }}</a>
+          }
+        </div>
+      </nav>
+    </header>
+
+    <main id="contenu" class="main" tabindex="-1">
+      <router-outlet />
+    </main>
+
+    <footer class="foot">
+      <div class="foot-in">
+        <span>© 2026 Bawsla</span>
+        <span class="links"><a routerLink="/app/forum">Aide et forum</a><a routerLink="/app/certificats">Mes certificats</a><a routerLink="/app/profil">Paramètres</a></span>
+      </div>
+    </footer>
+  </mat-sidenav-content>
+</mat-sidenav-container>

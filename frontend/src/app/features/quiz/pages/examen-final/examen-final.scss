@@ -1,0 +1,21 @@
+.intro { max-width: 720px; margin: 0 auto; }
+.intro h1 { margin: 0 0 var(--space-4); font: 600 26px/34px var(--font-heading); }
+.kicker { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--space-2); font-weight: 700; color: var(--color-bordeaux-600); }
+.rules { display: grid; gap: var(--space-3); margin: 0 0 var(--space-4); padding: 0; list-style: none; }
+.rules li { display: flex; align-items: flex-start; gap: var(--space-3); }
+.rules mat-icon { flex: none; color: var(--color-text-muted); }
+.note { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-4) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-left: 3px solid var(--color-warning); border-radius: 6px; background: var(--color-bg); }
+.note.ok { border-left-color: var(--color-success); }
+.actions-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-5); }
+.exam-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.chrono { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--color-border); border-radius: 999px; font: 600 16px var(--font-body); font-variant-numeric: tabular-nums; }
+.chrono.urgent { border-color: var(--color-error); color: var(--color-error); }
+.dots { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.dots button { width: 40px; height: 40px; border: 1px solid var(--color-border); border-radius: 50%; background: var(--color-surface); color: var(--color-text); font: 600 14px var(--font-body); cursor: pointer; }
+.dots button.done { background: var(--color-neutral-soft); }
+.dots button.on { border: 2px solid var(--color-primary); }
+.result-exam { text-align: center; }
+.result-exam .actions-row { justify-content: center; }
+.big { width: 56px; height: 56px; font-size: 56px; color: var(--color-text-muted); }
+.big.ok { color: var(--color-gold-700); }
+.pct { margin: 0; font: 700 48px/1.1 var(--font-heading); }

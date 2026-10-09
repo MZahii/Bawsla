@@ -1,53 +1,57 @@
-import { Component, inject, signal } from '@angular/core';
-import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { Component } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 
-import { errorMessage } from '../../../../shared/models/api-response.model';
-import { EmptyState } from '../../../../shared/components/empty-state/empty-state';
-import { Quiz } from '../../models/quiz.model';
-import { QuizService } from '../../services/quiz.service';
+import { COURS, QUIZ } from '../../../../core/demo/demo-data';
+import { CERTIFICATS, ETAT_EXAMEN, HISTORIQUE_QUIZ, meta } from '../../../../core/demo/demo-plus';
+import { BwButton } from '../../../../shared';
+import { BwChart, Kpi, PageHeader } from '../../../../shared/ui';
 
-/** Page squelette du module Quiz : à enrichir par le membre "quiz". */
+type EtatExamen = 'verrouille' | 'disponible' | 'reussi';
+
+/**
+ * Espace apprenant : « Évaluations ». Pour chaque cours suivi, les quiz de chapitre puis l'examen final,
+ * qui se débloque quand tous les chapitres sont terminés et donne le certificat.
+ * La comparaison se fait avec les autres apprenants du même cours (pas de classe).
+ * À brancher : QuizService.findForApprenant(), l'historique des tentatives et l'état des examens finaux.
+ */
 @Component({
   selector: 'app-quiz-list',
-  imports: [MatListModule, MatProgressBarModule, EmptyState],
-  template: `
-    <h1>Quiz</h1>
-    @if (loading()) {
-      <mat-progress-bar mode="indeterminate" />
-    } @else if (error()) {
-      <app-empty-state icon="error_outline" title="Erreur" [message]="error()!" />
-    } @else if (quiz().length === 0) {
-      <app-empty-state icon="quiz" title="Aucun quiz pour le moment" />
-    } @else {
-      <mat-list>
-        @for (q of quiz(); track q.id) {
-          <mat-list-item>
-            <span matListItemTitle>{{ q.titre }}</span>
-            <span matListItemLine>Cours #{{ q.coursId }}</span>
-          </mat-list-item>
-        }
-      </mat-list>
-    }
-  `,
+  imports: [RouterLink, MatIconModule, BwButton, PageHeader, Kpi, BwChart],
+  templateUrl: './quiz-list.html',
+  styleUrl: './quiz-list.scss',
 })
 export class QuizList {
-  private readonly service = inject(QuizService);
+  protected readonly parcours = COURS.filter((c) => c.inscrit).map((c) => {
+    const restants = c.chapitres.filter((ch) => !ch.fait).length;
+    const examen = ETAT_EXAMEN[c.id] ?? { tentativesFaites: 0, meilleurScore: null };
+    const certificat = CERTIFICATS.find((x) => x.coursId === c.id);
+    const etat: EtatExamen = certificat ? 'reussi' : restants === 0 ? 'disponible' : 'verrouille';
+    return {
+      cours: c,
+      image: meta(c.id).image,
+      faits: c.chapitres.length - restants,
+      restants,
+      quiz: QUIZ.filter((q) => q.coursId === c.id),
+      examen: { ...c.examen, ...examen, etat, restantes: c.examen.tentatives - examen.tentativesFaites },
+      certificat,
+    };
+  });
 
-  protected readonly quiz = signal<Quiz[]>([]);
-  protected readonly loading = signal(true);
-  protected readonly error = signal<string | null>(null);
+  protected readonly historique = HISTORIQUE_QUIZ;
+  protected readonly moyenne = Math.round(HISTORIQUE_QUIZ.reduce((t, h) => t + h.score, 0) / HISTORIQUE_QUIZ.length);
+  protected readonly examensDispo = this.parcours.filter((p) => p.examen.etat === 'disponible').length;
+  protected readonly nbCertificats = CERTIFICATS.length;
+  protected readonly comparaison = {
+    labels: HISTORIQUE_QUIZ.map((h) => h.titre),
+    series: [
+      { label: 'Toi', data: HISTORIQUE_QUIZ.map((h) => h.score) },
+      { label: 'Autres apprenants du cours', data: HISTORIQUE_QUIZ.map((h) => h.autres) },
+    ],
+  };
 
-  constructor() {
-    this.service.findAll().subscribe({
-      next: (data) => {
-        this.quiz.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(errorMessage(err));
-        this.loading.set(false);
-      },
-    });
+  protected ton(score: number | null): string {
+    if (score === null) return '';
+    return score >= 70 ? 'ok' : score >= 50 ? 'warn' : 'ko';
   }
 }

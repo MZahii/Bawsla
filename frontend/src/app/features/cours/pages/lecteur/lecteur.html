@@ -1,0 +1,107 @@
+@if (cours(); as c) {
+  <div class="top">
+    <a class="back" [routerLink]="['/app/cours']"><mat-icon>arrow_back</mat-icon> Mes cours</a>
+    <div class="title">
+      <h1>{{ c.titre }}</h1>
+      <span class="muted small">Chapitre {{ index() + 1 }} sur {{ c.chapitres.length }}</span>
+    </div>
+    <div class="overall">
+      <span class="bar"><span [style.width.%]="pourcent()"></span></span>
+      <span class="small num">{{ pourcent() }} % terminé</span>
+    </div>
+    <button type="button" class="toggle" (click)="planOuvert.set(!planOuvert())" [attr.aria-expanded]="planOuvert()">
+      <mat-icon>{{ planOuvert() ? 'left_panel_close' : 'left_panel_open' }}</mat-icon> Plan
+    </button>
+  </div>
+
+  <div class="layout" [class.closed]="!planOuvert()">
+    <aside class="plan" aria-label="Plan du cours">
+      <ol>
+        @for (ch of c.chapitres; track ch.titre; let i = $index) {
+          <li>
+            <button type="button" [class.on]="i === index()" (click)="ouvrir(i)" [attr.aria-current]="i === index() ? 'step' : null">
+              <mat-icon [class.ok]="etat()[i]">{{ etat()[i] ? 'check_circle' : i === index() ? 'play_circle' : 'radio_button_unchecked' }}</mat-icon>
+              <span class="t"><span>{{ i + 1 }}. {{ ch.titre }}</span><small>{{ ch.duree }} min</small></span>
+            </button>
+          </li>
+        }
+      </ol>
+      @if (quiz(); as q) {
+        <a class="quiz" [routerLink]="['/app/evaluations', q.id]"><mat-icon>quiz</mat-icon><span><strong>Quiz : {{ q.titre }}</strong><small>{{ q.questions }} questions</small></span></a>
+      }
+      @if (pourcent() === 100) {
+        <a class="quiz exam" [routerLink]="['/app/evaluations/examen', c.id]"><mat-icon>workspace_premium</mat-icon><span><strong>Examen final</strong><small>Débloqué : {{ c.examen.questions }} questions, certificat à la clé</small></span></a>
+      } @else {
+        <span class="quiz locked"><mat-icon>lock</mat-icon><span><strong>Examen final</strong><small>Se débloque après le dernier chapitre</small></span></span>
+      }
+    </aside>
+
+    <section class="main">
+      <bw-video-player [poster]="image()" />
+      <div class="ch-head">
+        <h2>{{ chapitre()?.titre }}</h2>
+        <div class="nav">
+          <button type="button" bwButton="secondaire" [disabled]="index() === 0" (click)="ouvrir(index() - 1)"><mat-icon>chevron_left</mat-icon> Précédent</button>
+          @if (!etat()[index()]) {
+            <button type="button" bwButton="principal" (click)="terminer()"><mat-icon>check</mat-icon> Marquer comme terminé</button>
+          } @else {
+            <button type="button" bwButton="secondaire" [disabled]="index() === c.chapitres.length - 1" (click)="ouvrir(index() + 1)">Suivant <mat-icon>chevron_right</mat-icon></button>
+          }
+        </div>
+      </div>
+
+      <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+        <mat-tab label="Résumé IA">
+          <div class="tab">
+            <bw-ai-box heading="Résumé du chapitre">
+              <p>{{ extrait.resume }}</p>
+              <div class="audio">
+                <button type="button" aria-label="Écouter le résumé"><mat-icon>play_arrow</mat-icon></button>
+                <span>Écouter le résumé</span>
+                <span class="wave" aria-hidden="true"></span>
+                <span class="muted small num">1:42</span>
+              </div>
+              <span bwAiSource>Source : {{ c.titre }}, chapitre « {{ chapitre()?.titre }} »</span>
+            </bw-ai-box>
+          </div>
+        </mat-tab>
+        <mat-tab label="Contenu">
+          <div class="tab reading">
+            @for (p of extrait.paragraphes; track $index) {
+              <p>{{ p }}</p>
+            }
+            <pre><code>{{ extrait.code }}</code></pre>
+            <p>{{ extrait.apresCode }}</p>
+          </div>
+        </mat-tab>
+        <mat-tab label="Mes notes">
+          <div class="tab">
+            <label class="notes">
+              <span class="muted small">Tes notes restent privées. Elles sont enregistrées automatiquement.</span>
+              <textarea rows="6" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+            </label>
+          </div>
+        </mat-tab>
+        <mat-tab label="Ressources">
+          <div class="tab">
+            <ul class="res">
+              @for (r of ressources; track r.nom) {
+                <li><mat-icon>{{ r.icone }}</mat-icon><span>{{ r.nom }}</span><span class="muted small">{{ r.taille }}</span><button type="button" class="dl" [attr.aria-label]="'Télécharger ' + r.nom"><mat-icon>download</mat-icon></button></li>
+              }
+            </ul>
+          </div>
+        </mat-tab>
+        <mat-tab label="Questions">
+          <div class="tab">
+            <p>Une question sur ce chapitre ? Regarde d’abord si elle a déjà été posée.</p>
+            <a bwButton="secondaire" routerLink="/app/forum">Voir le forum du cours</a>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </section>
+  </div>
+} @else {
+  <bw-empty-state icon="menu_book" title="Ce cours est introuvable.">
+    <a bwButton="principal" routerLink="/app/cours">Mes cours</a>
+  </bw-empty-state>
+}

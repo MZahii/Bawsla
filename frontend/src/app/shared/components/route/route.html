@@ -1,0 +1,54 @@
+@if (orientation() === 'horizontal') {
+  <ol class="h" [attr.aria-label]="label() + ' : ' + done() + ' étapes sur ' + steps().length">
+    @for (s of steps(); track $index) {
+      <li
+        class="h-step"
+        [class.fait]="s.fait && !s.rate"
+        [class.rate]="s.rate"
+        [class.ici]="$index === current()"
+        [attr.aria-current]="$index === current() ? 'step' : null"
+      >
+        <span class="bw-visually-hidden">{{ s.titre }}{{ s.rate ? ' (ratée)' : s.fait ? ' (terminé)' : '' }}</span>
+      </li>
+    }
+  </ol>
+} @else {
+  <ol class="v" [attr.aria-label]="label()">
+    @for (s of steps(); track $index) {
+      <li class="v-step" [class.fait]="s.fait" [class.ici]="$index === current()">
+        <span class="mark" aria-hidden="true">
+          @if (s.fait) {
+            <mat-icon>check</mat-icon>
+          }
+        </span>
+        @if (interactive()) {
+          <button
+            type="button"
+            class="v-body"
+            [attr.aria-current]="$index === current() ? 'step' : null"
+            (click)="stepSelect.emit($index)"
+          >
+            <span class="v-title">{{ s.titre }}</span>
+            <span class="v-detail">
+              @if ($index === current()) {
+                Tu es ici
+              } @else if (s.fait) {
+                Terminé
+              }
+              @if (s.detail) {
+                <span>{{ s.detail }}</span>
+              }
+            </span>
+          </button>
+        } @else {
+          <span class="v-body">
+            <span class="v-title">{{ s.titre }}</span>
+            @if (s.detail) {
+              <span class="v-detail">{{ s.detail }}</span>
+            }
+          </span>
+        }
+      </li>
+    }
+  </ol>
+}

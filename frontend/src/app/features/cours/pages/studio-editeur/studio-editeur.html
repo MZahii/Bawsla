@@ -1,0 +1,199 @@
+<bw-page-header
+  [title]="existant() ? 'Modifier le cours' : 'Nouveau cours'"
+  [subtitle]="existant() ? existant()!.titre : 'Cinq étapes : informations, chapitres, contenu, examen final, publication.'"
+  [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Mes cours', link: '/studio/cours' }, { label: existant() ? 'Modifier' : 'Nouveau cours' }]"
+>
+  <a bwButton="fantome" routerLink="/studio/cours">Annuler</a>
+  <button type="button" bwButton="secondaire" (click)="snack.open('Brouillon enregistré', 'OK', { duration: 2500 })"><mat-icon>save</mat-icon> Enregistrer</button>
+</bw-page-header>
+
+<section class="card">
+  <mat-stepper [linear]="false" #st class="stepper" [orientation]="'horizontal'">
+    <mat-step label="Informations">
+      <div class="step two">
+        <div class="fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Titre du cours</mat-label>
+            <input matInput [ngModel]="titre()" (ngModelChange)="titre.set($event)" maxlength="80" />
+            <mat-hint align="end">{{ titre().length }} / 80</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput rows="4" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+            <mat-hint>Ce que l’apprenant saura faire à la fin, en deux ou trois phrases.</mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Domaine</mat-label>
+            <mat-select [ngModel]="categorie()" (ngModelChange)="categorie.set($event)">
+              @for (c of categories; track c.nom) {
+                <mat-option [value]="c.nom"><mat-icon>{{ c.icone }}</mat-icon>{{ c.nom }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <div class="radio-field">
+            <span class="lbl">Niveau</span>
+            <mat-radio-group [ngModel]="niveau()" (ngModelChange)="niveau.set($event)">
+              @for (n of niveaux; track n.code) {
+                <mat-radio-button [value]="n.code">{{ n.libelle }}</mat-radio-button>
+              }
+            </mat-radio-group>
+          </div>
+        </div>
+        <div>
+          <p class="lbl">Image de couverture</p>
+          <bw-dropzone accept="image/*" hint="JPG ou PNG, format paysage, 2 Mo maximum" [initial]="image()" />
+        </div>
+      </div>
+      <div class="foot"><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
+    </mat-step>
+
+    <mat-step label="Chapitres">
+      <div class="step">
+        <p class="muted">Glisse les chapitres pour changer leur ordre. Durée totale : <strong>{{ dureeTotale() }} min</strong>.</p>
+        <ol class="chapters" cdkDropList (cdkDropListDropped)="deplacer($event)">
+          @for (ch of chapitres(); track ch.titre; let i = $index) {
+            <li cdkDrag class="chap">
+              <mat-icon cdkDragHandle class="handle" aria-hidden="true">drag_indicator</mat-icon>
+              <span class="n">{{ i + 1 }}</span>
+              <span class="t">{{ ch.titre }}</span>
+              <span class="muted small num">{{ ch.duree }} min</span>
+              <button type="button" class="icon-btn" (click)="retirer(i)" [attr.aria-label]="'Supprimer ' + ch.titre"><mat-icon>delete</mat-icon></button>
+            </li>
+          }
+        </ol>
+        <div class="add">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Nouveau chapitre</mat-label>
+            <input matInput [ngModel]="nouveauChapitre()" (ngModelChange)="nouveauChapitre.set($event)" (keydown.enter)="ajouter()" />
+          </mat-form-field>
+          <button type="button" bwButton="secondaire" (click)="ajouter()"><mat-icon>add</mat-icon> Ajouter</button>
+        </div>
+      </div>
+      <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
+    </mat-step>
+
+    <mat-step label="Contenu et résumé IA">
+      <div class="step two">
+        <div>
+          <p class="lbl">Support du cours (PDF)</p>
+          <bw-dropzone accept=".pdf" hint="PDF, 20 Mo maximum. Le texte sert à générer le résumé et les quiz." [initial]="existant() ? [{ name: 'bases-de-donnees-chap3.pdf', size: 1240000 }] : []" />
+          <p class="lbl mt-s">Vidéo (facultatif)</p>
+          <mat-form-field appearance="outline">
+            <mat-label>Lien de la vidéo</mat-label>
+            <input matInput placeholder="https://" />
+          </mat-form-field>
+        </div>
+        <div>
+          @switch (resumeEtat()) {
+            @case ('vide') {
+              <div class="ai-empty">
+                <mat-icon>explore</mat-icon>
+                <p>Bawsla peut proposer un résumé de ton PDF, que tu relis avant de le publier.</p>
+                <button type="button" bwButton="ia" (click)="generer()">Générer le résumé</button>
+              </div>
+            }
+            @case ('generation') {
+              <bw-ai-loading />
+            }
+            @default {
+              <bw-ai-box heading="Résumé du chapitre (brouillon)" [editable]="resumeEtat() !== 'valide'" [regenerable]="resumeEtat() !== 'valide'" [validatable]="resumeEtat() !== 'valide'" (edit)="edition.set(true)" (regenerate)="generer()" (validate)="valider()">
+                @if (edition()) {
+                  <textarea class="edit" rows="6" [ngModel]="resume()" (ngModelChange)="resume.set($event)" aria-label="Modifier le résumé"></textarea>
+                } @else {
+                  <p>{{ resume() }}</p>
+                }
+                @if (resumeEtat() === 'valide') {
+                  <p class="valid"><mat-icon>verified</mat-icon> Validé, visible par les apprenants après publication.</p>
+                }
+              </bw-ai-box>
+            }
+          }
+        </div>
+      </div>
+      <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
+    </mat-step>
+
+    <mat-step label="Examen final">
+      <div class="step two">
+        <div class="fields">
+          <p class="muted">L’examen final se débloque quand l’apprenant a terminé tous les chapitres. S’il atteint le seuil, son certificat est créé automatiquement.</p>
+          <div class="row2">
+            <mat-form-field appearance="outline">
+              <mat-label>Nombre de questions</mat-label>
+              <input matInput type="number" min="5" max="60" [ngModel]="examen().questions" (ngModelChange)="majExamen('questions', $event)" />
+              <mat-hint>Tirées de la banque de questions du cours</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Durée (minutes)</mat-label>
+              <input matInput type="number" min="5" max="180" [ngModel]="examen().duree" (ngModelChange)="majExamen('duree', $event)" />
+            </mat-form-field>
+          </div>
+          <div class="row2">
+            <mat-form-field appearance="outline">
+              <mat-label>Seuil de réussite (%)</mat-label>
+              <input matInput type="number" min="50" max="100" [ngModel]="examen().seuil" (ngModelChange)="majExamen('seuil', $event)" />
+              <mat-hint>Score minimal pour le certificat</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Tentatives autorisées</mat-label>
+              <mat-select [ngModel]="examen().tentatives" (ngModelChange)="majExamen('tentatives', $event)">
+                @for (n of [1, 2, 3, 5]; track n) { <mat-option [value]="n">{{ n }}</mat-option> }
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <mat-slide-toggle [checked]="examen().melange" (change)="examen.update((e) => ({ ...e, melange: $event.checked }))">Questions et réponses dans un ordre différent pour chaque apprenant</mat-slide-toggle>
+          <a bwButton="ia" routerLink="/studio/quiz/generer">Générer les questions de l’examen</a>
+        </div>
+        <div class="check card card-pad">
+          <h3>Ce que voit l’apprenant</h3>
+          <ul>
+            <li class="ok"><mat-icon>lock_open</mat-icon>Débloqué après les {{ chapitres().length }} chapitres</li>
+            <li class="ok"><mat-icon>help</mat-icon>{{ examen().questions }} questions en {{ examen().duree }} min</li>
+            <li class="ok"><mat-icon>flag</mat-icon>{{ examen().seuil }} % pour réussir, {{ examen().tentatives }} tentative{{ examen().tentatives > 1 ? 's' : '' }}</li>
+            <li class="ok"><mat-icon>workspace_premium</mat-icon>Certificat à son nom, vérifiable en ligne</li>
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
+    </mat-step>
+
+    <mat-step label="Publication">
+      <div class="step two">
+        <div class="fields">
+          <div class="radio-field">
+            <span class="lbl">Prix</span>
+            <mat-radio-group [ngModel]="payant()" (ngModelChange)="payant.set($event)">
+              <mat-radio-button [value]="false">Gratuit</mat-radio-button>
+              <mat-radio-button [value]="true">Payant</mat-radio-button>
+            </mat-radio-group>
+          </div>
+          @if (payant()) {
+            <mat-form-field appearance="outline">
+              <mat-label>Prix (DT)</mat-label>
+              <input matInput type="number" min="1" [ngModel]="prix()" (ngModelChange)="prix.set(+$event)" />
+              <mat-hint>Paiement unique. Bawsla garde 20 %, le reste te revient.</mat-hint>
+            </mat-form-field>
+          }
+          <mat-slide-toggle [checked]="visible()" (change)="visible.set($event.checked)">Visible dans le catalogue</mat-slide-toggle>
+          <mat-slide-toggle [checked]="forum()" (change)="forum.set($event.checked)">Ouvrir le forum du cours</mat-slide-toggle>
+          <mat-form-field appearance="outline">
+            <mat-label>Date de publication</mat-label>
+            <input matInput [matDatepicker]="dp" [ngModel]="datePublication()" (ngModelChange)="datePublication.set($event)" />
+            <mat-datepicker-toggle matIconSuffix [for]="dp" />
+            <mat-datepicker #dp />
+            <mat-hint>JJ/MM/AAAA</mat-hint>
+          </mat-form-field>
+        </div>
+        <div class="check card card-pad">
+          <h3>Avant de publier</h3>
+          <ul>
+            @for (p of pret(); track p.texte) {
+              <li [class.ok]="p.ok"><mat-icon>{{ p.ok ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>{{ p.texte }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+      <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" (click)="publier()">{{ visible() ? 'Publier le cours' : 'Enregistrer le brouillon' }}</button></div>
+    </mat-step>
+  </mat-stepper>
+</section>

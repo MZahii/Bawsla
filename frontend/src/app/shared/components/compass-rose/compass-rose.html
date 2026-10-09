@@ -1,0 +1,36 @@
+<svg viewBox="-40 -10 480 420" role="img" [attr.aria-label]="summary()">
+  <!-- Cadran : anneaux de maîtrise et graduations -->
+  <circle class="bezel" [attr.cx]="cx" [attr.cy]="cx" [attr.r]="outer" />
+  @for (ring of rings; track ring.p) {
+    <circle class="ring" [class.ring-mid]="ring.p === 50" [attr.cx]="cx" [attr.cy]="cx" [attr.r]="ring.r" />
+  }
+  @for (t of ticks; track $index) {
+    <line class="tick" [class.long]="t.long" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2" />
+  }
+
+  <!-- Branches : une par notion -->
+  @for (p of petals(); track p.id) {
+    <g [class]="'petal ' + p.etat" [attr.transform]="'rotate(' + p.deg + ' ' + cx + ' ' + cx + ')'">
+      <polygon class="half-light" [attr.points]="p.lightHalf" />
+      <polygon class="half-dark" [attr.points]="p.darkHalf" />
+    </g>
+    @if (labels()) {
+      <text class="label" [attr.x]="p.lx" [attr.y]="p.ly" [attr.text-anchor]="p.anchor">
+        <tspan class="label-name">{{ p.nom }}</tspan>
+        <tspan class="label-value" [attr.x]="p.lx" dy="15">{{ p.maitrise }} %</tspan>
+      </text>
+    }
+  }
+
+  <!-- Aiguille de l'IA -->
+  @if (needle(); as n) {
+    <g class="needle-wrap" [style.--cap]="n.deg + 'deg'">
+      <g class="needle">
+        <polygon class="needle-north" [attr.points]="cx + ',' + (cx - 176) + ' ' + (cx + 7) + ',' + cx + ' ' + (cx - 7) + ',' + cx" />
+        <polygon class="needle-south" [attr.points]="cx + ',' + (cx + 40) + ' ' + (cx - 7) + ',' + cx + ' ' + (cx + 7) + ',' + cx" />
+      </g>
+    </g>
+  }
+  <circle class="pivot" [attr.cx]="cx" [attr.cy]="cx" r="9" />
+  <circle class="pivot-dot" [attr.cx]="cx" [attr.cy]="cx" r="3" />
+</svg>

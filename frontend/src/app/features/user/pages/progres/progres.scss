@@ -1,0 +1,25 @@
+.rose-wrap { display: grid; gap: var(--space-5); align-items: center; }
+@media (min-width: 900px) { .rose-wrap { grid-template-columns: 300px minmax(0, 1fr); } }
+.rose { max-width: 300px; margin: 0 auto; width: 100%; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.legend li { display: grid; grid-template-columns: 130px minmax(0, 1fr) 104px; align-items: center; gap: var(--space-3); }
+.nm { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-size: 15px; }
+.cap { font-size: 18px; width: 18px; height: 18px; color: var(--color-gold-700); }
+.bar span.maitrisee { background: var(--color-success); }
+.bar span.en-cours { background: var(--color-warning); }
+.bar span.a-revoir { background: var(--color-error); }
+.legend .pill { justify-self: start; }
+.goal { display: flex; align-items: center; gap: var(--space-4); }
+.goal h3, .h { margin: 0 0 4px; font: 600 16px var(--font-heading); }
+.goal p { margin: 0; }
+.badges { list-style: none; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--space-4); }
+.badges li { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; }
+.medal { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--color-gold-100); color: var(--color-gold-700); border: 2px solid var(--color-gold-500); }
+.off .medal { background: var(--color-neutral-soft); color: var(--color-text-muted); border-color: var(--color-border); }
+.off { color: var(--color-text-muted); }
+.cert { display: flex; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.cert img { width: 72px; height: 48px; border-radius: 4px; object-fit: cover; }
+.cert div { flex: 1; }
+.cert p { margin: 2px 0 0; }
+@media (max-width: 600px) { .legend li { grid-template-columns: 1fr 1fr; } .legend .pill { display: none; } }
+.lnk { color: var(--color-bordeaux-600); font-weight: 600; text-decoration: none; }

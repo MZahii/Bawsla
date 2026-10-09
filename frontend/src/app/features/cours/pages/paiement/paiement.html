@@ -1,0 +1,95 @@
+@if (cours(); as c) {
+  @if (etape() !== 'confirme') {
+    <bw-page-header title="Paiement" [crumbs]="[{ label: 'Explorer', link: '/app/explorer' }, { label: c.titre, link: '/app/explorer/' + c.id }, { label: 'Paiement' }]" />
+    <p class="demo" role="note"><mat-icon aria-hidden="true">info</mat-icon> Paiement simulé : aucune carte n’est débitée. Entre par exemple 4242 4242 4242 4242, 12/28, 123.</p>
+
+    <div class="layout">
+      <form class="card card-pad pay" [formGroup]="form" (ngSubmit)="payer()" novalidate>
+        <h2>Moyen de paiement</h2>
+        <mat-radio-group formControlName="moyen" class="moyens" aria-label="Moyen de paiement">
+          <mat-radio-button value="carte"><mat-icon>credit_card</mat-icon> Carte bancaire</mat-radio-button>
+          <mat-radio-button value="edinar"><mat-icon>account_balance_wallet</mat-icon> e-Dinar</mat-radio-button>
+        </mat-radio-group>
+
+        @if (form.controls.moyen.value === 'carte') {
+          <mat-form-field appearance="outline">
+            <mat-label>Nom sur la carte</mat-label>
+            <input matInput formControlName="titulaire" autocomplete="cc-name" />
+            <mat-error>Le nom est obligatoire.</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Numéro de carte</mat-label>
+            <input matInput formControlName="numero" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242" />
+            <mat-icon matSuffix>lock</mat-icon>
+            <mat-error>16 chiffres.</mat-error>
+          </mat-form-field>
+          <div class="row">
+            <mat-form-field appearance="outline">
+              <mat-label>Expiration</mat-label>
+              <input matInput formControlName="expiration" placeholder="MM/AA" autocomplete="cc-exp" />
+              <mat-error>Format MM/AA.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>CVC</mat-label>
+              <input matInput formControlName="cvc" inputmode="numeric" autocomplete="cc-csc" />
+              <mat-error>3 chiffres.</mat-error>
+            </mat-form-field>
+          </div>
+        } @else {
+          <p class="muted">Tu seras redirigé vers ton portefeuille e-Dinar pour confirmer le paiement.</p>
+        }
+
+        <button type="submit" bwButton="principal" bwBlock [bwLoading]="etape() === 'traitement'" [disabled]="etape() === 'traitement'">
+          Payer {{ libelle(total()) }}
+        </button>
+        <p class="muted small secure"><mat-icon aria-hidden="true">verified_user</mat-icon> Paiement sécurisé. Remboursement possible sous 14 jours si tu as suivi moins de 20 % du cours.</p>
+      </form>
+
+      <aside class="card summary">
+        <img [src]="image()" alt="" />
+        <div class="card-pad">
+          <h2>Récapitulatif</h2>
+          <p class="t">{{ c.titre }}</p>
+          <p class="muted small">Par {{ c.enseignant }}, {{ c.chapitres.length }} chapitres, {{ duree() }}</p>
+          <ul class="incl">
+            <li><mat-icon aria-hidden="true">all_inclusive</mat-icon>Accès sans limite de durée</li>
+            <li><mat-icon aria-hidden="true">assignment</mat-icon>Examen final inclus</li>
+            <li><mat-icon aria-hidden="true">workspace_premium</mat-icon>Certificat vérifiable</li>
+          </ul>
+          <div class="promo">
+            <label class="field-search grow">
+              <mat-icon aria-hidden="true">sell</mat-icon>
+              <input [value]="code()" (input)="code.set($any($event.target).value)" placeholder="Code promo" aria-label="Code promo" />
+            </label>
+            <button type="button" bwButton="fantome" (click)="appliquerCode()">Appliquer</button>
+          </div>
+          @if (codeMessage()) {
+            <p class="small" [class.ok]="remise() > 0" [class.ko]="remise() === 0" role="status">{{ codeMessage() }}</p>
+          }
+          <dl class="lines">
+            <div><dt>Prix</dt><dd>{{ libelle(c.prix) }}</dd></div>
+            @if (remise()) {
+              <div><dt>Réduction</dt><dd>− {{ remise() }} DT</dd></div>
+            }
+            <div class="tot"><dt>Total</dt><dd>{{ libelle(total()) }}</dd></div>
+          </dl>
+        </div>
+      </aside>
+    </div>
+  } @else {
+    <section class="card card-pad done">
+      <mat-icon class="big" aria-hidden="true">check_circle</mat-icon>
+      <h1>Paiement confirmé</h1>
+      <p>Tu as maintenant accès à <strong>{{ c.titre }}</strong>. Un reçu a été envoyé à {{ user()?.email }}.</p>
+      <p class="muted small">Référence de commande : {{ reference }}</p>
+      <div class="acts">
+        <a bwButton="secondaire" routerLink="/app/achats">Voir mes achats</a>
+        <a bwButton="principal" [routerLink]="['/app/cours', c.id, 'lecture']">Commencer le cours</a>
+      </div>
+    </section>
+  }
+} @else {
+  <bw-empty-state icon="shopping_cart" title="Ce cours n’existe pas ou n’est plus en vente.">
+    <a bwButton="principal" routerLink="/app/explorer">Retour au catalogue</a>
+  </bw-empty-state>
+}

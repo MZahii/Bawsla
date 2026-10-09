@@ -1,0 +1,97 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bezel {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.ring-label {
+  font: 500 10px var(--font-body);
+  fill: var(--color-text-muted);
+}
+
+.tick {
+  stroke: var(--color-border);
+  stroke-width: 1;
+
+  &.long {
+    stroke: var(--color-text-muted);
+    stroke-width: 1.5;
+  }
+}
+
+// Facettes claire / sombre, comme les branches du logo.
+.petal.maitrisee {
+  .half-light { fill: var(--color-bordeaux-500); }
+  .half-dark { fill: var(--color-bordeaux-600); }
+}
+
+.petal.en-cours {
+  .half-light { fill: var(--color-navy-500); }
+  .half-dark { fill: var(--color-navy-700); }
+}
+
+.petal.a-revoir {
+  .half-light { fill: var(--color-border); }
+  .half-dark { fill: var(--color-text-muted); }
+}
+
+.half-light,
+.half-dark {
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.label-name {
+  font: 600 13px var(--font-heading);
+  fill: var(--color-text);
+}
+
+.label-value {
+  font: 500 12px var(--font-body);
+  fill: var(--color-text-muted);
+}
+
+// L'aiguille part du nord et se pose sur le cap : le seul mouvement de la page.
+.needle-wrap {
+  transform-origin: 200px 200px;
+  transform: rotate(var(--cap));
+  animation: settle 1.6s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+@keyframes settle {
+  from { transform: rotate(calc(var(--cap) - 140deg)); }
+  to { transform: rotate(var(--cap)); }
+}
+
+.needle-north { fill: var(--color-gold-500); }
+.needle-south { fill: var(--color-text-muted); }
+
+.pivot {
+  fill: var(--color-surface);
+  stroke: var(--color-gold-500);
+  stroke-width: 2;
+}
+
+.pivot-dot { fill: var(--color-gold-500); }
+
+@media (prefers-reduced-motion: reduce) {
+  .needle-wrap { animation: none; }
+}

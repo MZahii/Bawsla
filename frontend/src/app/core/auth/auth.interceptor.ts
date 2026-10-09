@@ -22,7 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(request).pipe(
     catchError((err: unknown) => {
       if (err instanceof HttpErrorResponse && err.status === 401 && isApi && !isAuthCall) {
-        auth.logout();
+        auth.logout('/login');
       }
       return throwError(() => err);
     }),

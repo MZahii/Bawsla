@@ -1,0 +1,105 @@
+<bw-page-header title="Générer un quiz" subtitle="L’IA propose des questions à partir de ton chapitre. Rien n’est publié sans ta validation." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Quiz', link: '/studio/quiz' }, { label: 'Générer' }]" />
+
+<div class="gen">
+  <aside class="card card-pad form">
+    <h2>Paramètres</h2>
+    <mat-form-field appearance="outline">
+      <mat-label>Cours</mat-label>
+      <mat-select [(ngModel)]="coursId">
+        @for (c of cours; track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Chapitre source</mat-label>
+      <mat-select [(ngModel)]="chapitre">
+        @for (ch of chapitres(); track ch.titre) { <mat-option [value]="ch.titre">{{ ch.titre }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+
+    <fieldset>
+      <legend>Niveaux de Bloom</legend>
+      <div class="bloom">
+        @for (b of bloom(); track b.nom) {
+          <mat-checkbox [checked]="b.actif" (change)="basculerBloom(b.nom)">{{ b.nom }}</mat-checkbox>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Difficulté</legend>
+      <mat-button-toggle-group [(ngModel)]="difficulte" hideSingleSelectionIndicator aria-label="Difficulté">
+        <mat-button-toggle value="facile">Facile</mat-button-toggle>
+        <mat-button-toggle value="mixte">Mixte</mat-button-toggle>
+        <mat-button-toggle value="difficile">Difficile</mat-button-toggle>
+      </mat-button-toggle-group>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nombre de questions : <strong>{{ nombre }}</strong></legend>
+      <mat-slider min="3" max="15" step="1" discrete style="width: 100%">
+        <input matSliderThumb [(ngModel)]="nombre" aria-label="Nombre de questions" />
+      </mat-slider>
+    </fieldset>
+
+    <button type="button" bwButton="ia" (click)="generer()" [disabled]="etat() === 'generation'">
+      {{ etat() === 'resultat' ? 'Régénérer' : 'Générer les questions' }}
+    </button>
+    <p class="muted small">Chaque question est générée 5 fois : celles dont les réponses divergent sont écartées automatiquement.</p>
+  </aside>
+
+  <section class="res">
+    @switch (etat()) {
+      @case ('vide') {
+        <div class="card">
+          <bw-empty-state icon="auto_awesome" title="Aucune question pour l’instant" message="Choisis un chapitre et les niveaux visés, puis lance la génération." />
+        </div>
+      }
+      @case ('generation') {
+        <div class="card card-pad"><bw-ai-loading message="Génération et vérification des questions…" /></div>
+      }
+      @case ('resultat') {
+        <div class="card card-head sticky">
+          <div>
+            <h2>{{ questions().length }} questions proposées</h2>
+            <span class="sub">{{ acceptees() }} acceptées, {{ ecartees() }} écartées par la vérification</span>
+          </div>
+          <div class="acts">
+            <button type="button" bwButton="secondaire" (click)="toutAccepter()">Tout accepter</button>
+            <button type="button" bwButton="principal" [disabled]="acceptees() === 0" (click)="enregistrer()">Enregistrer le quiz</button>
+          </div>
+        </div>
+
+        @for (q of questions(); track q.enonce; let i = $index) {
+          <article class="card q" [class.ok]="q.decision === 'acceptee'" [class.ko]="q.decision === 'rejetee'">
+            <header>
+              <span class="n">Q{{ i + 1 }}</span>
+              <span class="pill plain">{{ q.bloom }}</span>
+              <span class="pill plain">{{ q.difficulte }}</span>
+              <span class="grow"></span>
+              @if (q.decision === 'acceptee') { <span class="pill ok">Acceptée</span> }
+              @if (q.decision === 'rejetee') { <span class="pill ko">Rejetée</span> }
+            </header>
+            <p class="enonce">{{ q.enonce }}</p>
+            <ol class="opts">
+              @for (o of q.options; track $index) {
+                <li [class.bonne]="$index === q.bonne">
+                  <span class="l">{{ lettres[$index] }}</span>{{ o }}
+                  @if ($index === q.bonne) { <mat-icon aria-label="Bonne réponse">check</mat-icon> }
+                </li>
+              }
+            </ol>
+            @if (q.rejetee) {
+              <bw-ai-box heading="Écartée automatiquement"><p>{{ q.rejetee }}</p></bw-ai-box>
+            } @else {
+              <footer>
+                <button type="button" bwButton="fantome"><mat-icon>edit</mat-icon> Modifier</button>
+                <button type="button" bwButton="fantome" (click)="decider(q, 'rejetee')"><mat-icon>close</mat-icon> Rejeter</button>
+                <button type="button" bwButton="secondaire" (click)="decider(q, 'acceptee')"><mat-icon>check</mat-icon> Accepter</button>
+              </footer>
+            }
+          </article>
+        }
+      }
+    }
+  </section>
+</div>

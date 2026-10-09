@@ -1,0 +1,25 @@
+.paths { display: grid; gap: var(--space-5); }
+.path { overflow: hidden; }
+.path-head { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border); }
+.path-head img { flex: none; width: 96px; height: 60px; border-radius: 4px; object-fit: cover; }
+.ph-text { flex: 1; min-width: 0; }
+.ph-text h2 { margin: 0; font: 600 18px/24px var(--font-heading); }
+.ph-text h2 a { color: inherit; text-decoration: none; }
+.ph-text h2 a:hover { text-decoration: underline; }
+.ph-text p { margin: 2px 0 6px; }
+.bar { display: block; max-width: 320px; height: 6px; border-radius: 3px; background: var(--color-neutral-soft); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--color-bordeaux-600); }
+.steps { margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border); }
+.steps li:last-child { border-bottom: 0; }
+.ic { flex: none; color: var(--color-text-muted); }
+.t { display: flex; flex: 1; flex-direction: column; min-width: 200px; }
+.exam { background: var(--color-bg); }
+.exam.disponible .ic { color: var(--color-bordeaux-600); }
+.exam.reussi .ic { color: var(--color-gold-700); }
+.exam.verrouille { color: var(--color-text-muted); }
+.hist { list-style: none; margin: 0; padding: 0; }
+.hist li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border); }
+.hist li:last-child { border-bottom: 0; }
+.hist .t { min-width: 0; }
+@media (max-width: 599px) { .path-head img { display: none; } }
