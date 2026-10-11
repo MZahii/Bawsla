@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = 30.0
+    # Réflexion du modèle (Gemini) : nombre de jetons de « réflexion » autorisés. Bas par défaut : on veut des
+    # réponses rapides et peu coûteuses. 0 désactive la réflexion si le modèle l'accepte ; vide = réglage du fournisseur.
+    llm_thinking_budget: int | None = 128
 
     # Taille max d'un texte envoyé au LLM après nettoyage (caractères).
     sanitizer_max_chars: int = 20_000
