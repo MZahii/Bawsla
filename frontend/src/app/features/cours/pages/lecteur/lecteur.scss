@@ -25,3 +25,4 @@
 .pdf { display: flex; align-items: center; gap: var(--space-3); mat-icon { color: var(--color-text-muted); } .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
 .forum { margin: 0; color: var(--color-text-muted); a { color: var(--color-bordeaux-600); font-weight: 600; } }
+.audio-fiche { margin-top: var(--space-3); }

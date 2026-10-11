@@ -9,7 +9,9 @@ import { errorMessage } from '../../../../shared/models/api-response.model';
 import { AiBox, BwButton, EmptyState } from '../../../../shared';
 import { Skeleton } from '../../../../shared/ui';
 import { formatTaille } from '../../models/cours.constantes';
-import { Chapitre, Cours } from '../../models/cours.model';
+import { FicheAudio } from '../../components/fiche-audio';
+import { FicheContenu } from '../../components/fiche-contenu';
+import { Chapitre, Cours, Fiche } from '../../models/cours.model';
 import { CoursService } from '../../services/cours.service';
 import { analyserLienVideo } from '../../services/video-lien';
 
@@ -23,7 +25,7 @@ type Etat = 'chargement' | 'ok' | 'introuvable';
  */
 @Component({
   selector: 'app-lecteur',
-  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton],
+  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton, FicheAudio, FicheContenu],
   templateUrl: './lecteur.html',
   styleUrl: './lecteur.scss',
 })
@@ -36,6 +38,8 @@ export class Lecteur implements OnInit {
   protected readonly etat = signal<Etat>('chargement');
   protected readonly cours = signal<Cours | null>(null);
   protected readonly chapitres = signal<Chapitre[]>([]);
+  /** Dernière fiche de révision VALIDEE par le formateur ; null s'il n'y en a pas encore. */
+  protected readonly fiche = signal<Fiche | null>(null);
   protected readonly index = signal(0);
   protected readonly planOuvert = signal(true);
   protected readonly formatTaille = formatTaille;
@@ -60,6 +64,7 @@ export class Lecteur implements OnInit {
     this.service.findById(this.id()).subscribe({
       next: (c) => {
         this.cours.set(c);
+        this.chargerFiche(c.id);
         this.service.chapitres(c.id).subscribe({
           next: (l) => {
             this.chapitres.set(l);
@@ -77,6 +82,14 @@ export class Lecteur implements OnInit {
           this.snack.open(errorMessage(err, 'Impossible de charger le cours'), 'OK', { duration: 5000 });
         }
       },
+    });
+  }
+
+  /** L'apprenant ne reçoit que la fiche validée ; 404 = pas encore de résumé (ce n'est pas une erreur). */
+  private chargerFiche(coursId: number): void {
+    this.service.fiche(coursId).subscribe({
+      next: (f) => this.fiche.set(f),
+      error: () => this.fiche.set(null),
     });
   }
 

@@ -77,9 +77,23 @@
           </section>
         }
 
-        <bw-ai-box heading="Résumé du chapitre">
-          <p class="muted">Bientôt disponible.</p>
-        </bw-ai-box>
+        <section aria-label="Résumé du cours">
+          <bw-ai-box heading="Résumé du cours">
+            @if (fiche(); as f) {
+              <app-fiche-contenu [fiche]="f" />
+            } @else {
+              <p class="muted">Le formateur n’a pas encore publié de résumé pour ce cours.</p>
+            }
+            @if (fiche()) {
+              <span bwAiSource>Source : {{ c.titre }}, relu et validé par le formateur</span>
+            }
+          </bw-ai-box>
+          @if (fiche(); as f) {
+            @if (f.aAudio) {
+              <app-fiche-audio class="audio-fiche" [coursId]="c.id" [version]="f.id" />
+            }
+          }
+        </section>
 
         <p class="forum">Une question sur ce chapitre ? <a routerLink="/app/forum">Voir le forum du cours</a></p>
       </section>

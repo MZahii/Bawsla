@@ -67,3 +67,63 @@ export interface CoursTexte {
   pages?: PageTexte[];
   estScanne?: boolean;
 }
+
+// ---------------------------------------------------------------- fiche de révision générée par l'IA
+
+/** GENEREE : brouillon relu par le formateur seul. VALIDEE : visible des apprenants. */
+export type StatutFiche = 'GENEREE' | 'VALIDEE';
+
+export interface NotionFiche {
+  id: number;
+  ordre: number;
+  titre: string;
+  definition: string;
+  /** Passage du cours qui justifie la notion, recopié mot pour mot. */
+  extraitSource: string | null;
+  /** Réservé au formateur : false si l'extrait est introuvable dans le texte du cours (notion suspecte). */
+  justifiee?: boolean;
+}
+
+/** Miroir de FicheResponse. Score, alertes, modèle et version du prompt ne sont renvoyés qu'au formateur et à l'ADMIN. */
+export interface Fiche {
+  id: number;
+  statut: StatutFiche;
+  resume: string;
+  motsCles: string[];
+  notions: NotionFiche[];
+  niveau: Niveau | null;
+  aAudio: boolean;
+  dateGeneration: string;
+  dateValidation?: string;
+  scoreFidelite?: number;
+  alertes?: string[];
+  versionPrompt?: string;
+  modele?: string;
+  modifieeParFormateur?: boolean;
+  /** Une fiche validée existe (visible des apprenants), même si la plus récente est encore un brouillon. */
+  valideeDisponible?: boolean;
+}
+
+export interface FicheRequest {
+  resume: string;
+  motsCles: string[];
+  notions: { titre: string; definition: string; extraitSource: string }[];
+}
+
+export type EtapeIA = 'TEXTE' | 'FICHE' | 'AUDIO';
+export type StatutTraitement = 'EN_ATTENTE' | 'EN_COURS' | 'TERMINE' | 'ECHEC' | 'ANNULE';
+
+export interface EtapeTraitement {
+  etape: EtapeIA;
+  statut: StatutTraitement;
+  dureeMs?: number;
+  /** Message lisible, sans détail technique. */
+  erreur?: string;
+}
+
+/** Suivi du dernier lancement de l'IA sur un cours. `enCours` reste vrai tant qu'une étape n'est pas terminée. */
+export interface Traitement {
+  execution: string | null;
+  enCours: boolean;
+  etapes: EtapeTraitement[];
+}

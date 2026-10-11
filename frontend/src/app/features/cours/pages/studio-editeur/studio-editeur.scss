@@ -23,3 +23,16 @@
 .apercu { display: block; width: 100%; max-width: 360px; aspect-ratio: 16 / 9; margin-top: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); object-fit: cover; }
 .pdf-actuel { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; } }
 .alerte { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0 0 var(--space-3); padding: var(--space-3); border: 1px solid var(--color-gold-500); border-radius: var(--radius-sm); background: var(--color-gold-100); color: var(--color-gold-700); mat-icon { flex: none; } }
+.ia-attente { display: grid; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--color-gold-500); border-radius: var(--radius-sm); background: var(--color-gold-100); }
+.etapes { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.etape { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text-muted); mat-icon { font-size: 22px; width: 22px; height: 22px; } }
+.etape.en_cours { color: var(--color-gold-700); font-weight: 600; mat-icon { animation: bw-tourne 2s linear infinite; } }
+.etape.termine { color: var(--color-success); }
+.etape.echec { color: var(--color-error); font-weight: 600; }
+@keyframes bw-tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .etape.en_cours mat-icon { animation: none; } }
+.correction { display: grid; gap: var(--space-3); }
+.champ { display: grid; gap: var(--space-1); }
+.notion-edit { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); legend { padding: 0 var(--space-2); font-weight: 600; font-size: 14px; } }
+.actions-correction { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+.audio-fiche { margin-top: var(--space-3); }

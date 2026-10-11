@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Chapitre, ChapitreRequest, Cours, CoursRequest, CoursTexte, Niveau, StatutCours } from '../models/cours.model';
+import { Chapitre, ChapitreRequest, Cours, CoursRequest, CoursTexte, Fiche, FicheRequest, Niveau, StatutCours, Traitement } from '../models/cours.model';
 
 /** Appels vers cours-service (via la gateway) : cours, chapitres, statut, fichiers et texte du PDF. */
 @Injectable({ providedIn: 'root' })
@@ -84,6 +84,36 @@ export class CoursService {
 
   texte(coursId: number): Observable<CoursTexte> {
     return this.http.get<ApiResponse<CoursTexte>>(`${this.url}/${coursId}/texte`).pipe(map((r) => r.data));
+  }
+
+  // ------------------------------------------------------------------ fiche de révision (IA)
+
+  /** Lance la génération en arrière-plan (propriétaire ou ADMIN) ; suivre l'avancement avec traitement(). */
+  genererFiche(coursId: number): Observable<Traitement> {
+    return this.http.post<ApiResponse<Traitement>>(`${this.url}/${coursId}/fiche/generer`, {}).pipe(map((r) => r.data));
+  }
+
+  traitement(coursId: number): Observable<Traitement> {
+    return this.http.get<ApiResponse<Traitement>>(`${this.url}/${coursId}/traitement`).pipe(map((r) => r.data));
+  }
+
+  /** Formateur : la fiche la plus récente. Apprenant : la dernière fiche validée (404 s'il n'y en a pas). */
+  fiche(coursId: number): Observable<Fiche> {
+    return this.http.get<ApiResponse<Fiche>>(`${this.url}/${coursId}/fiche`).pipe(map((r) => r.data));
+  }
+
+  /** Enregistre la fiche corrigée ; le backend recalcule le score de fidélité. */
+  corrigerFiche(coursId: number, body: FicheRequest): Observable<Fiche> {
+    return this.http.put<ApiResponse<Fiche>>(`${this.url}/${coursId}/fiche`, body).pipe(map((r) => r.data));
+  }
+
+  validerFiche(coursId: number): Observable<Fiche> {
+    return this.http.patch<ApiResponse<Fiche>>(`${this.url}/${coursId}/fiche/valider`, {}).pipe(map((r) => r.data));
+  }
+
+  /** MP3 du résumé. Il exige le JWT : on le récupère en blob (voir FicheAudio). */
+  audio(coursId: number): Observable<Blob> {
+    return this.http.get(`${this.url}/${coursId}/audio`, { responseType: 'blob' });
   }
 }
 
