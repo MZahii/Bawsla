@@ -2,5 +2,11 @@ fastapi==0.142.2
 uvicorn[standard]==0.54.0
 pydantic==2.13.5
 pydantic-settings==2.15.0
-# Les SDK LLM (anthropic, openai…) et les libs ML (scikit-learn, sentence-transformers…)
-# seront ajoutés par PR, avec version fixée, quand un module en aura besoin.
+# LLM : Google Gemini (seul core/llm_client.py l'importe)
+google-genai==2.29.0
+# Synthèse vocale (service en ligne Microsoft, sans clé) : audio des fiches de révision
+edge-tts==7.2.8
+# Comparaison approximative de textes : contrôle de fidélité des fiches (sans LLM)
+rapidfuzz==3.14.6
+# Les libs ML (scikit-learn, sentence-transformers…) seront ajoutées par PR, avec version fixée,
+# quand un module en aura besoin.
