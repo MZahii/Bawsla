@@ -1,68 +1,116 @@
-import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 
-import { EXTRAIT_CHAPITRE, QUIZ, coursParId } from '../../../../core/demo/demo-data';
-import { meta } from '../../../../core/demo/demo-plus';
+import { errorMessage } from '../../../../shared/models/api-response.model';
 import { AiBox, BwButton, EmptyState } from '../../../../shared';
-import { VideoPlayer } from '../../../../shared/ui';
+import { Skeleton } from '../../../../shared/ui';
+import { formatTaille } from '../../models/cours.constantes';
+import { Chapitre, Cours } from '../../models/cours.model';
+import { CoursService } from '../../services/cours.service';
+import { analyserLienVideo } from '../../services/video-lien';
+
+type Etat = 'chargement' | 'ok' | 'introuvable';
 
 /**
- * Lecteur de cours : liste des chapitres à gauche, vidéo ou lecture au centre, onglets
- * Résumé IA / Contenu / Notes / Ressources. « Marquer comme terminé » fait avancer la progression.
- * À brancher : contenu du chapitre (GET /api/cours/{id}/texte), résumé (/api/ai/cours/resume), progression.
+ * Lecteur de cours : plan des chapitres à gauche ; à droite, pour le chapitre choisi, la vidéo (YouTube ou .mp4,
+ * si elle existe), le texte du chapitre, le support PDF du cours et l'emplacement du résumé IA.
+ * Les chapitres viennent de cours-service. « Marquer comme terminé » et le résumé IA sont désactivés : ils seront
+ * branchés avec la progression (lot 2) et l'IA. Rien n'est simulé.
  */
 @Component({
   selector: 'app-lecteur',
-  imports: [RouterLink, FormsModule, MatIconModule, MatTabsModule, MatTooltipModule, MatSnackBarModule, AiBox, BwButton, EmptyState, VideoPlayer],
+  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton],
   templateUrl: './lecteur.html',
   styleUrl: './lecteur.scss',
 })
-export class Lecteur {
+export class Lecteur implements OnInit {
+  private readonly service = inject(CoursService);
   private readonly snack = inject(MatSnackBar);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly id = input(0, { transform: numberAttribute });
 
-  protected readonly cours = computed(() => coursParId(this.id()));
-  protected readonly image = computed(() => meta(this.id()).image);
-  protected readonly faits = signal<boolean[] | null>(null);
-  protected readonly etat = computed(() => this.faits() ?? this.cours()?.chapitres.map((c) => c.fait) ?? []);
-  protected readonly courant = signal<number | null>(null);
-  protected readonly index = computed(() => this.courant() ?? Math.max(0, this.etat().findIndex((f) => !f)));
-  protected readonly chapitre = computed(() => this.cours()?.chapitres[this.index()]);
-  protected readonly pourcent = computed(() => Math.round((this.etat().filter(Boolean).length / Math.max(1, this.etat().length)) * 100));
-  protected readonly quiz = computed(() => QUIZ.find((q) => q.coursId === this.id()));
-  protected readonly extrait = EXTRAIT_CHAPITRE;
+  protected readonly etat = signal<Etat>('chargement');
+  protected readonly cours = signal<Cours | null>(null);
+  protected readonly chapitres = signal<Chapitre[]>([]);
+  protected readonly index = signal(0);
   protected readonly planOuvert = signal(true);
-  protected readonly notes = signal('Différence ON / WHERE avec LEFT JOIN : le filtre sur la table de droite va dans le ON.');
+  protected readonly formatTaille = formatTaille;
 
-  protected readonly ressources = [
-    { icone: 'picture_as_pdf', nom: 'Support du chapitre.pdf', taille: '1,2 Mo' },
-    { icone: 'code', nom: 'script-jointures.sql', taille: '4 Ko' },
-    { icone: 'link', nom: 'Documentation MySQL : JOIN', taille: 'lien externe' },
-  ];
+  protected readonly chapitre = computed<Chapitre | undefined>(() => this.chapitres()[this.index()]);
+  /** Texte du chapitre, sans lignes vides en début et fin ; les retours à la ligne sont conservés à l'affichage. */
+  protected readonly contenu = computed(() => (this.chapitre()?.contenu ?? '').trim());
+
+  private readonly video = computed(() => analyserLienVideo(this.chapitre()?.videoUrl));
+  protected readonly videoMp4 = computed(() => {
+    const v = this.video();
+    return v?.type === 'mp4' ? v.url : null;
+  });
+  /** Adresse d'intégration YouTube reconstruite à partir de l'identifiant seul (jamais l'URL saisie telle quelle). */
+  protected readonly videoYoutube = computed<SafeResourceUrl | null>(() => {
+    const v = this.video();
+    return v?.type === 'youtube' ? this.sanitizer.bypassSecurityTrustResourceUrl(v.embed) : null;
+  });
+  protected readonly aVideo = computed(() => this.video() !== null);
+
+  ngOnInit(): void {
+    this.service.findById(this.id()).subscribe({
+      next: (c) => {
+        this.cours.set(c);
+        this.service.chapitres(c.id).subscribe({
+          next: (l) => {
+            this.chapitres.set(l);
+            this.etat.set('ok');
+          },
+          error: (err) => {
+            this.etat.set('ok');
+            this.snack.open(errorMessage(err, 'Impossible de charger les chapitres'), 'OK', { duration: 5000 });
+          },
+        });
+      },
+      error: (err) => {
+        this.etat.set('introuvable');
+        if ((err as { status?: number })?.status !== 404) {
+          this.snack.open(errorMessage(err, 'Impossible de charger le cours'), 'OK', { duration: 5000 });
+        }
+      },
+    });
+  }
 
   protected ouvrir(i: number): void {
-    this.courant.set(i);
+    if (i >= 0 && i < this.chapitres().length) this.index.set(i);
   }
-  protected terminer(): void {
-    const e = [...this.etat()];
-    e[this.index()] = true;
-    this.faits.set(e);
-    this.snack.open(`Chapitre « ${this.chapitre()?.titre} » terminé`, 'OK', { duration: 3000 });
-    const suivant = e.findIndex((f) => !f);
-    if (suivant >= 0) this.courant.set(suivant);
-    else {
-      // Aperçu : tous les chapitres sont terminés, l'examen final se débloque (à brancher : progression côté cours-service).
-      const c = this.cours();
-      if (c) {
-        c.chapitres.forEach((ch) => (ch.fait = true));
-        c.progression = 100;
-      }
-      this.snack.open('Cours terminé : ton examen final est débloqué', 'OK', { duration: 4000 });
-    }
+
+  /** Le PDF exige le JWT : on le télécharge avec HttpClient, puis on l'ouvre dans un nouvel onglet. */
+  protected ouvrirPdf(): void {
+    this.chargerPdf((blob) => {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    });
+  }
+
+  protected telechargerPdf(): void {
+    const nom = this.cours()?.fichierPdf ?? 'cours.pdf';
+    this.chargerPdf((blob) => {
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement('a');
+      lien.href = url;
+      lien.download = nom;
+      lien.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    });
+  }
+
+  private chargerPdf(utiliser: (blob: Blob) => void): void {
+    const c = this.cours();
+    if (!c) return;
+    this.service.pdf(c.id).subscribe({
+      next: utiliser,
+      error: (err) => this.snack.open(errorMessage(err, 'Impossible de charger le PDF'), 'OK', { duration: 5000 }),
+    });
   }
 }
