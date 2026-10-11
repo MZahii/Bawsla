@@ -8,15 +8,21 @@ import org.springframework.data.repository.query.Param;
 
 import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.Niveau;
+import tn.esprit.bawsla.cours.entity.StatutCours;
 
 public interface CoursRepository extends JpaRepository<Cours, Long> {
 
-    /** Filtres optionnels : un paramètre null est ignoré. */
+    /**
+     * Filtres optionnels (un paramètre null est ignoré) et visibilité : {@code tout} = true pour l'ADMIN ;
+     * sinon seuls les cours {@code publie} et ceux de {@code moi} (identifiant sans correspondance pour un étudiant).
+     */
     @Query("""
             select c from Cours c
             where (:categorie is null or c.categorie = :categorie)
               and (:niveau is null or c.niveau = :niveau)
+              and (:tout = true or c.statut = :publie or c.enseignantId = :moi)
             order by c.dateCreation desc
             """)
-    List<Cours> search(@Param("categorie") String categorie, @Param("niveau") Niveau niveau);
+    List<Cours> search(@Param("categorie") String categorie, @Param("niveau") Niveau niveau,
+                       @Param("tout") boolean tout, @Param("publie") StatutCours publie, @Param("moi") Long moi);
 }

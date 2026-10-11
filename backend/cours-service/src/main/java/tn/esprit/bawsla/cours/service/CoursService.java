@@ -1,35 +1,63 @@
 package tn.esprit.bawsla.cours.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import tn.esprit.bawsla.cours.common.exception.BadRequestException;
 import tn.esprit.bawsla.cours.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.cours.common.security.CurrentUser;
 import tn.esprit.bawsla.cours.dto.CoursRequest;
 import tn.esprit.bawsla.cours.dto.CoursResponse;
 import tn.esprit.bawsla.cours.dto.CoursTexteResponse;
+import tn.esprit.bawsla.cours.dto.PageTexte;
+import tn.esprit.bawsla.cours.dto.StatutRequest;
 import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.Niveau;
+import tn.esprit.bawsla.cours.entity.PageDocument;
+import tn.esprit.bawsla.cours.entity.StatutCours;
+import tn.esprit.bawsla.cours.repository.ChapitreRepository;
 import tn.esprit.bawsla.cours.repository.CoursRepository;
+import tn.esprit.bawsla.cours.repository.PageDocumentRepository;
 
+/**
+ * Cours : lecture selon la visibilité (apprenant : cours publiés ; formateur : publiés et les siens ; ADMIN : tout),
+ * écriture réservée au propriétaire ou à l'ADMIN.
+ */
 @Service
 @Transactional(readOnly = true)
 public class CoursService {
 
     private final CoursRepository coursRepository;
+    private final ChapitreRepository chapitreRepository;
+    private final PageDocumentRepository pageRepository;
+    private final StockageService stockage;
 
-    public CoursService(CoursRepository coursRepository) {
+    public CoursService(CoursRepository coursRepository, ChapitreRepository chapitreRepository,
+                        PageDocumentRepository pageRepository, StockageService stockage) {
         this.coursRepository = coursRepository;
+        this.chapitreRepository = chapitreRepository;
+        this.pageRepository = pageRepository;
+        this.stockage = stockage;
     }
 
-    public List<CoursResponse> findAll(String categorie, Niveau niveau) {
-        return coursRepository.search(categorie, niveau).stream().map(CoursResponse::from).toList();
+    public List<CoursResponse> findAll(String categorie, Niveau niveau, CurrentUser user) {
+        // Sans correspondance possible pour un apprenant : seuls les cours publiés ressortent.
+        Long moi = user.hasAnyRole(CurrentUser.ENSEIGNANT) ? user.id() : -1L;
+        List<Cours> cours = coursRepository.search(categorie, niveau, user.isAdmin(), StatutCours.PUBLIE, moi);
+        Map<Long, int[]> stats = statistiques(cours.stream().map(Cours::getId).toList());
+        return cours.stream().map(c -> reponse(c, stats)).toList();
     }
 
-    public CoursResponse findById(Long id) {
-        return CoursResponse.from(getOrThrow(id));
+    public CoursResponse findById(Long id, CurrentUser user) {
+        return reponse(chargerVisible(id, user));
     }
 
     @Transactional
@@ -38,34 +66,107 @@ public class CoursService {
         Cours cours = new Cours();
         apply(cours, request);
         cours.setEnseignantId(user.id());
-        return CoursResponse.from(coursRepository.save(cours));
+        return reponse(coursRepository.save(cours));
     }
 
     @Transactional
     public CoursResponse update(Long id, CoursRequest request, CurrentUser user) {
-        Cours cours = getOrThrow(id);
-        user.requireOwnerOrAdmin(cours.getEnseignantId());
+        Cours cours = chargerPourEcriture(id, user);
         apply(cours, request);
-        return CoursResponse.from(cours);
+        return reponse(cours);
     }
 
     @Transactional
     public void delete(Long id, CurrentUser user) {
-        Cours cours = getOrThrow(id);
-        user.requireOwnerOrAdmin(cours.getEnseignantId());
+        Cours cours = chargerPourEcriture(id, user);
+        pageRepository.supprimerDuCours(id);
         coursRepository.delete(cours);
+        stockage.supprimerApresValidation(StockageService.Type.IMAGES, cours.getImageFichier());
+        stockage.supprimerApresValidation(StockageService.Type.PDF, cours.getPdfStockage());
     }
 
-    /** STUB : l'extraction du texte PDF sera implémentée par le module Cours. */
-    public CoursTexteResponse getTexte(Long id) {
+    /** Publier, dépublier ou archiver. Publier exige au moins un chapitre. */
+    @Transactional
+    public CoursResponse changerStatut(Long id, StatutRequest request, CurrentUser user) {
+        Cours cours = chargerPourEcriture(id, user);
+        if (request.statut() == StatutCours.PUBLIE && cours.getChapitres().isEmpty()) {
+            throw new BadRequestException("Impossible de publier ce cours : ajoute d'abord au moins un chapitre.");
+        }
+        cours.setStatut(request.statut());
+        return reponse(cours);
+    }
+
+    /** Contrat GET /api/cours/{id}/texte : texte du PDF (emails et téléphones masqués). */
+    public CoursTexteResponse getTexte(Long id, CurrentUser user) {
+        Cours cours = chargerVisible(id, user);
+        if (cours.getPdfStockage() == null) {
+            return CoursTexteResponse.sansPdf(cours.getId());
+        }
+        List<PageTexte> pages = pageRepository.findByCoursIdOrderByNumeroAsc(id).stream()
+                .map((PageDocument p) -> new PageTexte(p.getNumero(), TexteMasker.masquer(p.getTexte())))
+                .toList();
+        boolean scanne = pages.stream().allMatch(p -> p.texte().isBlank());
+        String texte = pages.stream().map(PageTexte::texte).filter(t -> !t.isBlank()).collect(Collectors.joining("\n\n"));
+        return new CoursTexteResponse(cours.getId(), texte, false, pages, scanne);
+    }
+
+    // ------------------------------------------------------------------ partagé avec les autres services du module
+
+    /**
+     * Cours visible par l'appelant, sinon 404 (un cours non publié d'un autre formateur n'existe pas pour lui).
+     * {@code user} peut être null : visiteur sans en-têtes, qui ne voit que les cours publiés.
+     */
+    public Cours chargerVisible(Long id, CurrentUser user) {
         Cours cours = getOrThrow(id);
-        String texte = "[STUB] Texte extrait non disponible. Titre : " + cours.getTitre()
-                + (cours.getDescription() != null ? ". " + cours.getDescription() : "");
-        return new CoursTexteResponse(cours.getId(), texte, true);
+        if (!visible(cours, user)) {
+            throw new ResourceNotFoundException("Cours", id);
+        }
+        return cours;
+    }
+
+    /** Cours que l'appelant a le droit de modifier : son propriétaire ou un ADMIN. */
+    public Cours chargerPourEcriture(Long id, CurrentUser user) {
+        Cours cours = getOrThrow(id);
+        user.requireOwnerOrAdmin(cours.getEnseignantId());
+        return cours;
+    }
+
+    public CoursResponse reponse(Cours cours) {
+        return reponse(cours, statistiques(List.of(cours.getId())));
+    }
+
+    // ------------------------------------------------------------------ interne
+
+    private static boolean visible(Cours cours, CurrentUser user) {
+        if (cours.getStatut() == StatutCours.PUBLIE) {
+            return true;
+        }
+        if (user == null) {
+            return false;
+        }
+        return user.isAdmin()
+                || (user.hasAnyRole(CurrentUser.ENSEIGNANT) && user.id().equals(cours.getEnseignantId()));
     }
 
     private Cours getOrThrow(Long id) {
         return coursRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Cours", id));
+    }
+
+    private CoursResponse reponse(Cours cours, Map<Long, int[]> stats) {
+        int[] s = stats.getOrDefault(cours.getId(), new int[] {0, 0});
+        return CoursResponse.from(cours, s[0], s[1]);
+    }
+
+    /** coursId -> [nombre de chapitres, durée totale en minutes]. */
+    private Map<Long, int[]> statistiques(Collection<Long> ids) {
+        Map<Long, int[]> stats = new HashMap<>();
+        if (ids.isEmpty()) {
+            return stats;
+        }
+        for (Object[] ligne : chapitreRepository.statistiques(ids)) {
+            stats.put((Long) ligne[0], new int[] {((Number) ligne[1]).intValue(), ((Number) ligne[2]).intValue()});
+        }
+        return stats;
     }
 
     private static void apply(Cours cours, CoursRequest r) {
@@ -73,6 +174,10 @@ public class CoursService {
         cours.setDescription(r.description());
         cours.setCategorie(r.categorie());
         cours.setNiveau(r.niveau());
-        cours.setFichierPdf(r.fichierPdf());
+        if (r.prix() != null) {
+            cours.setPrix(r.prix().setScale(2, RoundingMode.HALF_UP));
+        } else if (cours.getPrix() == null) {
+            cours.setPrix(BigDecimal.ZERO.setScale(2));
+        }
     }
 }

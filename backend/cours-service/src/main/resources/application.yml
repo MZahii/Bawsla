@@ -13,6 +13,11 @@ spring:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/bawsla_cours?serverTimezone=UTC
     username: ${MYSQL_USER:bawsla}
     password: ${MYSQL_PASSWORD:bawsla}
+  servlet:
+    multipart:
+      # Marge au-dessus des limites métier (image 2 Mo, PDF 20 Mo) vérifiées dans FichierService.
+      max-file-size: 25MB
+      max-request-size: 26MB
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,6 +25,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+cours:
+  stockage:
+    # Images et PDF des cours (noms UUID). En Docker, monter un volume sur ce dossier.
+    dossier: ${COURS_STOCKAGE_DOSSIER:./uploads/cours}
 
 eureka:
   client:
