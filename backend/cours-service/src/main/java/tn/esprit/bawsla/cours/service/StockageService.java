@@ -28,7 +28,8 @@ public class StockageService {
 
     public enum Type {
         IMAGES("images"),
-        PDF("pdf");
+        PDF("pdf"),
+        AUDIO("audio");
 
         private final String sousDossier;
 
@@ -38,7 +39,7 @@ public class StockageService {
     }
 
     private static final Logger log = LoggerFactory.getLogger(StockageService.class);
-    private static final Pattern NOM_VALIDE = Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|png|pdf)");
+    private static final Pattern NOM_VALIDE = Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|png|pdf|mp3)");
 
     private final Path racine;
 
