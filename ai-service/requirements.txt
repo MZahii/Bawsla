@@ -4,6 +4,8 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 # LLM : Google Gemini (seul core/llm_client.py l'importe)
 google-genai==2.29.0
+# LLM de secours (LLM_SECOURS=openai) et voix OpenAI : seul core/llm_client.py l'importe pour le texte
+openai==3.29.0
 # Synthèse vocale (service en ligne Microsoft, sans clé) : audio des fiches de révision
 edge-tts==7.2.8
 # Voix : fournisseurs de la chaîne de secours (module Cours) et durée des MP3
