@@ -7,16 +7,19 @@ Règles :
 - Aucune donnée personnelle (nom, email, identifiant) dans les messages.
 - La clé API ne sort jamais de ce fichier : ni dans les logs, ni dans les messages d'erreur.
 
-Implémentations : `StubLLMClient` (aucun appel réseau) et `GeminiLLMClient` (LLM_PROVIDER=gemini).
+Implémentations : `StubLLMClient` (aucun appel réseau), `GeminiLLMClient` (LLM_PROVIDER=gemini), `OpenAILLMClient`
+(secours, LLM_SECOURS=openai) et `LLMRoutage` (Gemini d'abord, OpenAI sur quota ou indisponibilité).
 """
 
 import asyncio
+import base64
 import io
 import logging
 import re
 import time
 import wave
 from abc import ABC, abstractmethod
+from contextvars import ContextVar
 from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -52,6 +55,8 @@ class LLMResult(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     stub: bool = False
+    # Fournisseur qui a réellement répondu : "gemini", "openai" (secours) ou "stub".
+    fournisseur: str | None = None
 
 
 class Replique(BaseModel):
@@ -132,6 +137,7 @@ class LLMClient(ABC):
 
 
 class StubLLMClient(LLMClient):
+    nom = "stub"
     """Implémentation factice : aucun appel réseau, réponse clairement marquée [STUB]."""
 
     async def complete(
@@ -146,6 +152,7 @@ class StubLLMClient(LLMClient):
             text=f"[STUB] Réponse factice du LLM pour le module '{module}' ({len(messages)} message(s) reçu(s)).",
             model="stub",
             stub=True,
+            fournisseur="stub",
         )
 
     async def complete_with_image(
@@ -156,6 +163,7 @@ class StubLLMClient(LLMClient):
             text=f"[STUB] Réponse factice du LLM pour le module '{module}' (image de {len(image)} octets).",
             model="stub",
             stub=True,
+            fournisseur="stub",
         )
 
     async def complete_json(self, messages, schema, *, module, temperature=0.0, max_tokens=2048):
@@ -178,6 +186,7 @@ class GeminiLLMClient(LLMClient):
     - Toutes les erreurs du SDK sont converties en `LLMError` ; ni la clé ni le prompt n'apparaissent dans les logs.
     """
 
+    nom = "gemini"
     MAX_TENTATIVES = 3
 
     def __init__(
@@ -354,7 +363,7 @@ class GeminiLLMClient(LLMClient):
             "Gemini: module=%s modele=%s duree=%.1fs jetons_entree=%s jetons_sortie=%s",
             module, self._model, time.monotonic() - debut, entree, sortie,
         )
-        return LLMResult(text=texte, model=self._model, input_tokens=entree, output_tokens=sortie)
+        return LLMResult(text=texte, model=self._model, input_tokens=entree, output_tokens=sortie, fournisseur=self.nom)
 
     async def _appeler(self, contents: list, config: Any, module: str, modele: str | None = None) -> Any:
         """Un appel au SDK, avec délai maximal et nouvelles tentatives sur les erreurs passagères (5xx)."""
@@ -395,6 +404,300 @@ class GeminiLLMClient(LLMClient):
         if code in (500, 502, 503, 504):
             return LLMError("Le fournisseur LLM est surchargé ou indisponible, réessaie dans un instant")
         return RequeteRefuseeError("Requête refusée par le fournisseur LLM")
+
+
+class OpenAILLMClient(LLMClient):
+    """OpenAI via le SDK officiel `openai` (Chat Completions asynchrone). Fournisseur de SECOURS de Gemini.
+
+    - Le modèle vient de `OPENAI_MODEL` ; `OPENAI_REASONING_EFFORT` plafonne la réflexion (comme LLM_THINKING_BUDGET).
+    - `complete_json()` active le mode JSON, valide avec pydantic et relance UNE fois si le JSON est invalide.
+    - Mêmes erreurs que Gemini : tout est converti en `LLMError` (jamais la clé ni le prompt dans les logs).
+    - Un paramètre refusé par le modèle (temperature, reasoning_effort) est retiré une fois, puis on s'en souvient.
+    """
+
+    nom = "openai"
+    MARGE_REFLEXION = 1500  # les jetons de réflexion comptent dans la limite de sortie
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        *,
+        timeout_seconds: float = 30.0,
+        reasoning_effort: str | None = "low",
+        tts_model: str = "gpt-4o-mini-tts",
+        client: Any | None = None,
+    ) -> None:
+        self._model = model
+        self._tts_model = tts_model
+        self._timeout = timeout_seconds
+        self._effort = reasoning_effort or None
+        self._temperature_acceptee = True
+        if client is not None:  # injecté par les tests (SDK simulé)
+            self._client = client
+        else:
+            from openai import AsyncOpenAI
+
+            self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, max_retries=1)
+
+    # ------------------------------------------------------------------ API publique
+
+    async def complete(
+        self, messages: list[LLMMessage], *, module: str, temperature: float = 0.2, max_tokens: int = 1024
+    ) -> LLMResult:
+        return await self._generer(messages, module, temperature, max_tokens, json=False)
+
+    async def complete_with_image(
+        self, messages, image: bytes, mime_type: str, *, module: str, temperature: float = 0.2, max_tokens: int = 1024
+    ) -> LLMResult:
+        _verifier_image(image, mime_type)
+        return await self._generer(messages, module, temperature, max_tokens, json=False, image=(image, mime_type))
+
+    async def complete_json(self, messages, schema, *, module, temperature=0.0, max_tokens=2048):
+        conversation = list(messages)
+        for tentative in (1, 2):
+            result = await self._generer(conversation, module, temperature, max_tokens, json=True)
+            try:
+                return schema.model_validate_json(_strip_code_fence(result.text))
+            except ValidationError as exc:
+                log.warning("OpenAI: JSON invalide (module=%s, tentative=%d/2)", module, tentative)
+                if tentative == 2:
+                    raise LLMInvalidResponseError("Réponse du LLM non conforme au schéma attendu") from exc
+                conversation = [
+                    *messages,
+                    LLMMessage(role="assistant", content=result.text),
+                    LLMMessage(
+                        role="user",
+                        content="Ta réponse précédente n'est pas un JSON valide pour le format demandé. "
+                        "Renvoie UNIQUEMENT le JSON corrigé, sans texte autour.",
+                    ),
+                ]
+        raise LLMInvalidResponseError("Réponse du LLM non conforme au schéma attendu")  # pragma: no cover
+
+    async def synthetiser(self, texte: str, voix: str, langue: str, *, format_audio: str = "mp3") -> AudioResult:
+        """Synthèse vocale (`gpt-4o-mini-tts`). MP3 par défaut ; `langue` n'est pas nécessaire (le modèle la détecte)."""
+        if not texte.strip():
+            raise LLMInvalidResponseError("Aucun texte à mettre en voix")
+        debut = time.monotonic()
+        try:
+            reponse = await asyncio.wait_for(
+                self._client.audio.speech.create(model=self._tts_model, voice=voix, input=texte, response_format=format_audio),
+                timeout=self._timeout,
+            )
+            donnees = await _octets(reponse)
+        except LLMError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise _convertir_openai(exc, "tts") from None
+        if not donnees:
+            raise LLMInvalidResponseError("Réponse vide du fournisseur de synthèse vocale")
+        log.info("OpenAI TTS: modele=%s duree=%.1fs octets=%d", self._tts_model, time.monotonic() - debut, len(donnees))
+        mime = "audio/wav" if format_audio == "wav" else "audio/mpeg"
+        return AudioResult(data=donnees, mime_type=mime, model=self._tts_model)
+
+    async def synthetiser_dialogue(self, repliques, voix_par_locuteur, langue) -> AudioResult:
+        """OpenAI n'a pas de synthèse multi-locuteurs : une requête par réplique (une voix chacune), WAV assemblés."""
+        repliques = [r for r in repliques if r.texte.strip()]
+        locuteurs = list(dict.fromkeys(r.locuteur for r in repliques))
+        if not locuteurs:
+            raise LLMInvalidResponseError("Aucun texte à mettre en voix")
+        if len(locuteurs) > 2:
+            raise LLMInvalidResponseError("La synthèse d'un dialogue accepte 2 locuteurs au plus")
+        manquantes = [nom for nom in locuteurs if nom not in voix_par_locuteur]
+        if manquantes:
+            raise LLMInvalidResponseError(f"Voix manquante pour le locuteur : {', '.join(manquantes)}")
+        morceaux = [
+            (await self.synthetiser(r.texte, voix_par_locuteur[r.locuteur], langue, format_audio="wav")).data for r in repliques
+        ]
+        return AudioResult(data=_assembler_wav(morceaux), mime_type="audio/wav", model=self._tts_model)
+
+    # ------------------------------------------------------------------ interne
+
+    async def _generer(
+        self, messages: list[LLMMessage], module: str, temperature: float, max_tokens: int, *, json: bool,
+        image: tuple[bytes, str] | None = None,
+    ) -> LLMResult:
+        envoyes = _messages_openai(messages, image)
+        if not any(m["role"] == "user" for m in envoyes):
+            raise LLMInvalidResponseError("Aucun message utilisateur à envoyer au LLM")
+        parametres: dict[str, Any] = {
+            "model": self._model,
+            "messages": envoyes,
+            "max_completion_tokens": max_tokens + (self.MARGE_REFLEXION if self._effort else 0),
+        }
+        if json:
+            parametres["response_format"] = {"type": "json_object"}
+        if self._effort:
+            parametres["reasoning_effort"] = self._effort
+        if self._temperature_acceptee:
+            parametres["temperature"] = temperature
+
+        debut = time.monotonic()
+        try:
+            reponse = await self._appeler(parametres, module)
+        except RequeteRefuseeError:
+            # Le modèle refuse peut-être temperature ou reasoning_effort : on réessaie sans, une seule fois.
+            if "temperature" not in parametres and "reasoning_effort" not in parametres:
+                raise
+            log.warning("OpenAI: requête refusée, nouvel essai sans temperature ni reasoning_effort (module=%s)", module)
+            self._temperature_acceptee = False
+            self._effort = None
+            parametres.pop("temperature", None)
+            parametres.pop("reasoning_effort", None)
+            parametres["max_completion_tokens"] = max_tokens
+            reponse = await self._appeler(parametres, module)
+        texte = _texte_openai(reponse)
+        if not texte:
+            raise LLMInvalidResponseError("Réponse vide ou bloquée par le fournisseur")
+        usage = getattr(reponse, "usage", None)
+        entree, sortie = getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None)
+        log.info(
+            "OpenAI: module=%s modele=%s duree=%.1fs jetons_entree=%s jetons_sortie=%s",
+            module, self._model, time.monotonic() - debut, entree, sortie,
+        )
+        return LLMResult(text=texte, model=self._model, input_tokens=entree, output_tokens=sortie, fournisseur=self.nom)
+
+    async def _appeler(self, parametres: dict[str, Any], module: str) -> Any:
+        try:
+            return await asyncio.wait_for(self._client.chat.completions.create(**parametres), timeout=self._timeout)
+        except LLMError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - tout est converti en LLMError
+            raise _convertir_openai(exc, module) from None
+
+
+def _convertir_openai(exc: Exception, module: str) -> LLMError:
+    """Traduit une exception du SDK openai en LLMError (même mapping que Gemini). Le message du SDK n'est jamais recopié."""
+    import openai
+
+    if isinstance(exc, (asyncio.TimeoutError, TimeoutError, openai.APITimeoutError)):
+        log.warning("OpenAI: délai dépassé (module=%s)", module)
+        return LLMTimeoutError("Le fournisseur LLM n'a pas répondu à temps")
+    code = getattr(exc, "status_code", None)
+    log.warning("OpenAI: erreur du fournisseur (module=%s, type=%s, code=%s)", module, type(exc).__name__, code)
+    if isinstance(exc, openai.RateLimitError) or code == 429:  # inclut insufficient_quota
+        return LLMQuotaError("Quota du fournisseur LLM atteint, réessaie plus tard")
+    if isinstance(exc, (openai.AuthenticationError, openai.PermissionDeniedError)) or code in (401, 403):
+        return LLMMissingKeyError("Clé API refusée par le fournisseur LLM")
+    if isinstance(exc, openai.NotFoundError) or code == 404:
+        return LLMMissingKeyError("Modèle LLM introuvable : vérifie OPENAI_MODEL")
+    if isinstance(exc, openai.APIConnectionError) or (code is not None and code >= 500):
+        return LLMError("Le fournisseur LLM est surchargé ou indisponible, réessaie dans un instant")
+    return RequeteRefuseeError("Requête refusée par le fournisseur LLM")
+
+
+def _messages_openai(messages: list[LLMMessage], image: tuple[bytes, str] | None) -> list[dict[str, Any]]:
+    """Messages au format Chat Completions ; l'image (data URL) est jointe au dernier message utilisateur."""
+    dernier_user = max((i for i, m in enumerate(messages) if m.role == "user"), default=None)
+    envoyes: list[dict[str, Any]] = []
+    for i, m in enumerate(messages):
+        if image is not None and i == dernier_user:
+            url = f"data:{image[1]};base64,{base64.b64encode(image[0]).decode('ascii')}"
+            contenu: Any = [{"type": "text", "text": m.content}, {"type": "image_url", "image_url": {"url": url}}]
+        else:
+            contenu = m.content
+        envoyes.append({"role": m.role, "content": contenu})
+    return envoyes
+
+
+def _texte_openai(reponse: Any) -> str:
+    try:
+        return (reponse.choices[0].message.content or "").strip()
+    except Exception:  # noqa: BLE001 - pas de choix, refus, contenu absent
+        return ""
+
+
+async def _octets(reponse: Any) -> bytes:
+    """Octets d'une réponse audio du SDK (`content`, `aread()` ou `read()` selon la version)."""
+    contenu = getattr(reponse, "content", None)
+    if isinstance(contenu, (bytes, bytearray)):
+        return bytes(contenu)
+    if hasattr(reponse, "aread"):
+        return bytes(await reponse.aread())
+    if hasattr(reponse, "read"):
+        lu = reponse.read()
+        return bytes(await lu if asyncio.iscoroutine(lu) else lu)
+    return b""
+
+
+def _assembler_wav(morceaux: list[bytes]) -> bytes:
+    """Concatène des WAV de même format (celui de OpenAI) en un seul."""
+    sortie = io.BytesIO()
+    with wave.open(sortie, "wb") as final:
+        for i, donnees in enumerate(morceaux):
+            with wave.open(io.BytesIO(donnees), "rb") as w:
+                if i == 0:
+                    final.setparams(w.getparams())
+                final.writeframes(w.readframes(w.getnframes()))
+    return sortie.getvalue()
+
+
+# Erreurs qui déclenchent le secours : quota (429), délai dépassé et fournisseur indisponible (5xx, réseau).
+# Une clé refusée, une requête refusée ou une réponse invalide ne sont PAS retentées ailleurs : c'est une erreur de
+# configuration ou de prompt, que le secours ne réglerait pas.
+def _declenche_secours(exc: LLMError) -> bool:
+    return isinstance(exc, (LLMQuotaError, LLMTimeoutError)) or type(exc) is LLMError
+
+
+_fournisseur_utilise: ContextVar[str | None] = ContextVar("bawsla_llm_fournisseur", default=None)
+
+
+def fournisseur_courant() -> str | None:
+    """Fournisseur qui a réellement répondu au DERNIER appel LLM de la requête en cours ("gemini", "openai", "stub"…).
+
+    À lire après `complete*`, pour l'enregistrer (suivi des traitements, journal des prompts).
+    """
+    return _fournisseur_utilise.get()
+
+
+class LLMRoutage(LLMClient):
+    """Appelle le fournisseur principal (Gemini) d'abord ; sur quota (429) ou indisponibilité, bascule sur le secours.
+
+    Le fournisseur réellement utilisé est dans `LLMResult.fournisseur` et dans `fournisseur_courant()`.
+    La synthèse vocale n'est PAS routée : la chaîne vocale du module Cours gère elle-même ses secours (TTS_FOURNISSEURS).
+    """
+
+    def __init__(self, principal: LLMClient, secours: LLMClient) -> None:
+        self.principal = principal
+        self.secours = secours
+
+    async def _router(self, appel: str, *args: Any, **kwargs: Any) -> Any:
+        nom_principal = getattr(self.principal, "nom", None)
+        nom_secours = getattr(self.secours, "nom", None)
+        try:
+            resultat = await getattr(self.principal, appel)(*args, **kwargs)
+            _fournisseur_utilise.set(nom_principal)
+            return _marquer(resultat, nom_principal)
+        except LLMError as exc:
+            if not _declenche_secours(exc):
+                raise
+            log.warning("LLM: %s en échec (%s), bascule sur le fournisseur de secours %s", nom_principal, exc.code, nom_secours)
+        resultat = await getattr(self.secours, appel)(*args, **kwargs)
+        _fournisseur_utilise.set(nom_secours)
+        return _marquer(resultat, nom_secours)
+
+    async def complete(self, messages, *, module, temperature=0.2, max_tokens=1024) -> LLMResult:
+        return await self._router("complete", messages, module=module, temperature=temperature, max_tokens=max_tokens)
+
+    async def complete_with_image(self, messages, image, mime_type, *, module, temperature=0.2, max_tokens=1024) -> LLMResult:
+        return await self._router(
+            "complete_with_image", messages, image, mime_type, module=module, temperature=temperature, max_tokens=max_tokens
+        )
+
+    async def complete_json(self, messages, schema, *, module, temperature=0.0, max_tokens=2048):
+        return await self._router("complete_json", messages, schema, module=module, temperature=temperature, max_tokens=max_tokens)
+
+    async def synthetiser(self, texte: str, voix: str, langue: str) -> AudioResult:
+        return await self.principal.synthetiser(texte, voix, langue)
+
+    async def synthetiser_dialogue(self, repliques, voix_par_locuteur, langue) -> AudioResult:
+        return await self.principal.synthetiser_dialogue(repliques, voix_par_locuteur, langue)
+
+
+def _marquer(resultat: Any, nom: str | None) -> Any:
+    if isinstance(resultat, LLMResult) and resultat.fournisseur is None:
+        resultat.fournisseur = nom
+    return resultat
 
 
 _CODES_LANGUE = {"fr": "fr-FR", "en": "en-US"}
@@ -470,31 +773,65 @@ def _strip_code_fence(text: str) -> str:
     return t.strip()
 
 
+def build_openai_client(settings: Settings) -> OpenAILLMClient | None:
+    """Client OpenAI, ou None si OPENAI_API_KEY ou OPENAI_MODEL manque."""
+    if settings.openai_api_key is None or not settings.openai_api_key.get_secret_value() or not settings.openai_model:
+        return None
+    return OpenAILLMClient(
+        settings.openai_api_key.get_secret_value(),
+        settings.openai_model,
+        timeout_seconds=settings.llm_timeout_seconds,
+        reasoning_effort=settings.openai_reasoning_effort,
+        tts_model=settings.openai_tts_model,
+    )
+
+
 def build_llm_client(settings: Settings) -> LLMClient:
     if settings.llm_provider == "stub":
         return StubLLMClient()
+    if settings.llm_provider == "openai":
+        client = build_openai_client(settings)
+        if client is None:
+            raise LLMMissingKeyError("OPENAI_API_KEY ou OPENAI_MODEL absent pour le fournisseur 'openai'")
+        return client
     if settings.llm_api_key is None or not settings.llm_api_key.get_secret_value():
         raise LLMMissingKeyError(f"LLM_API_KEY absente pour le fournisseur '{settings.llm_provider}'")
     if settings.llm_provider == "gemini":
         if not settings.llm_model:
             raise LLMMissingKeyError("LLM_MODEL absent pour le fournisseur 'gemini'")
-        return GeminiLLMClient(
+        gemini = GeminiLLMClient(
             settings.llm_api_key.get_secret_value(),
             settings.llm_model,
             timeout_seconds=settings.llm_timeout_seconds,
             thinking_budget=settings.llm_thinking_budget,
             tts_model=settings.llm_tts_model,
         )
+        return _avec_secours(gemini, settings)
     raise LLMMissingKeyError(f"Fournisseur LLM '{settings.llm_provider}' non implémenté")
 
 
-_clients: dict[tuple[str, str | None], LLMClient] = {}
+def _avec_secours(principal: LLMClient, settings: Settings) -> LLMClient:
+    """Enveloppe le client principal dans un routeur si LLM_SECOURS est renseigné et utilisable (vide = pas de secours)."""
+    secours = settings.llm_secours.strip().lower()
+    if not secours:
+        return principal
+    if secours != "openai":
+        log.warning("LLM_SECOURS=%r inconnu : aucun secours (valeur acceptée : openai)", secours)
+        return principal
+    client = build_openai_client(settings)
+    if client is None:
+        log.warning("LLM_SECOURS=openai mais OPENAI_API_KEY ou OPENAI_MODEL est absent : aucun secours")
+        return principal
+    return LLMRoutage(principal, client)
+
+
+_clients: dict[tuple[str, str | None, str], LLMClient] = {}
 
 
 def get_llm_client() -> LLMClient:
     """Dépendance FastAPI : `llm: LLMClient = Depends(get_llm_client)`. Un client par fournisseur et modèle."""
     settings = get_settings()
-    cle = (settings.llm_provider, settings.llm_model)
+    cle = (settings.llm_provider, settings.llm_model, settings.llm_secours)
     if cle not in _clients:
         _clients[cle] = build_llm_client(settings)
     return _clients[cle]

@@ -34,7 +34,7 @@ Font partie du **socle** (PR obligatoire) :
 ## Règles de sécurité (non négociables)
 
 - **aucune clé API dans le front ou le code, aucune donnée personnelle envoyée au LLM, tous les appels LLM passent par app/core de ai-service**
-- Les secrets (`JWT_SECRET`, `LLM_API_KEY`, mots de passe) vivent uniquement dans `.env`, qui n'est jamais commité. Seul `.env.example` est versionné, avec des valeurs factices.
+- Les secrets (`JWT_SECRET`, `LLM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, mots de passe) vivent uniquement dans `.env`, qui n'est jamais commité. Seul `.env.example` est versionné, avec des valeurs factices.
 - Le JWT est validé **uniquement par l'api-gateway**. Elle supprime tout en-tête `X-User-*` reçu du client, puis ajoute `X-User-Id` et `X-User-Role` à partir du token. Les services leur font confiance : ils ne doivent donc **jamais** être exposés directement en dehors de la gateway.
 - L'autorisation métier se fait **côté backend** avec `CurrentUser.requireAnyRole(...)` et `requireOwnerOrAdmin(...)`. Les guards Angular ne servent qu'au confort d'affichage.
 - Tout texte destiné au LLM passe d'abord par `Sanitizer` (`app/core/sanitizer.py`), qui masque emails et téléphones et tronque. Ne jamais envoyer nom, prénom, email ou identifiant d'un utilisateur dans un prompt.
@@ -47,7 +47,7 @@ Font partie du **socle** (PR obligatoire) :
 | Front | Angular 21.2 (standalone, signals, zoneless), Angular Material 21.2, SCSS |
 | Back | Java 21, Spring Boot 3.5.16, Spring Cloud 2025.0.3 (Gateway Server WebFlux, Eureka, OpenFeign), Spring Data JPA, Maven 3.9 |
 | Auth | JWT HMAC (jjwt 0.12.7), BCrypt (spring-security-crypto) |
-| IA | Python 3.11+, FastAPI 0.142, Pydantic 2.13, Uvicorn 0.54 (stubs uniquement) |
+| IA | Python 3.11+, FastAPI 0.142, Pydantic 2.13, Uvicorn 0.54 ; LLM Gemini (`google-genai`) avec OpenAI (`openai`) en secours |
 | BD | MySQL 8.4 (Docker), **une base par service** |
 
 ## Ports et bases
@@ -95,7 +95,7 @@ bawsla/
 
 - **Une base par service.** Aucune clé étrangère entre bases : on stocke l'**ID** (`coursId`, `enseignantId`, `auteurId`, `etudiantId`…) et on vérifie l'existence par appel REST (Feign) si nécessaire. Exemple de référence : `quiz-service/client/CoursClient`.
 - Appels entre services : **OpenFeign** avec `@FeignClient(name = "<x>-service")`, résolu par Eureka. `FeignHeadersInterceptor` propage `X-User-*`. Une erreur Feign se traduit en `BadRequestException` (ressource liée absente) ou `ServiceUnavailableException`, jamais en 500 brut.
-- Le front et les services Java appellent l'IA **via la gateway** (`/api/ai/**`). Seul `ai-service/app/core/llm_client.py` parle à un fournisseur LLM.
+- Le front et les services Java appellent l'IA **via la gateway** (`/api/ai/**`). Seul `ai-service/app/core/llm_client.py` parle à un fournisseur LLM : Gemini d'abord (`LLM_PROVIDER=gemini`) ; si `LLM_SECOURS=openai` (vide = pas de secours) et `OPENAI_API_KEY` renseignée, `LLMRoutage` bascule sur OpenAI quand Gemini répond 429 (quota) ou est indisponible. Le fournisseur réellement utilisé est dans `LLMResult.fournisseur` et `fournisseur_courant()` : les modules l'enregistrent (suivi des traitements, journal des prompts). Les erreurs de clé, de requête ou de réponse invalide ne déclenchent pas le secours. La synthèse vocale n'est pas routée : la chaîne `TTS_FOURNISSEURS` du module Cours gère ses propres secours (`openai` y est optionnel).
 - Toute nouvelle route inter-modules est d'abord décrite dans `CONTRATS_API.md` (PR), puis implémentée.
 - `ddl-auto: update` en dev. Pas de données de démo en dur, hormis le compte ADMIN créé au démarrage.
 
