@@ -3,7 +3,7 @@
 - POST /api/ai/cours/resume    : résumé simple (stub historique, voir CONTRATS_API.md)
 - POST /api/ai/cours/fiche     : fiche de révision (résumé, mots-clés, notions avec extrait source, score de fidélité)
 - POST /api/ai/cours/fidelite  : recalcule le score d'une fiche corrigée à la main (sans LLM)
-- POST /api/ai/cours/audio     : audio MP3 d'un texte (edge-tts)
+- POST /api/ai/cours/audio     : audio d'un texte, par la chaîne de fournisseurs vocaux (ElevenLabs, Gemini, gTTS, edge-tts)
 Tous les appels LLM passent par app.core (LLMClient) ; tout texte est nettoyé par le Sanitizer avant.
 """
 
@@ -16,6 +16,7 @@ from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
 from app.modules.cours import audio, fidelite
+from app.modules.cours.tts import ChaineTTS, TtsIndisponibleError, get_chaine_tts
 from app.modules.cours.config import CoursAiSettings, get_cours_ai_settings
 from app.modules.cours.fiche import generer_fiche
 from app.modules.cours.schemas import (
@@ -84,15 +85,20 @@ async def controle_de_fidelite(
     )
 
 
-@router.post("/audio", response_class=Response, responses={200: {"content": {"audio/mpeg": {}}}})
+@router.post("/audio", response_class=Response, responses={200: {"content": {"audio/mpeg": {}, "audio/wav": {}}}})
 async def audio_du_texte(
     body: AudioRequest,
     user: CurrentUser = Depends(get_current_user),
     sanitizer: Sanitizer = Depends(get_sanitizer),
     reglages: CoursAiSettings = Depends(get_cours_ai_settings),
+    chaine: ChaineTTS = Depends(get_chaine_tts),
 ) -> Response:
+    """Audio du texte. Le type MIME est celui du fournisseur utilisé, que l'en-tête X-TTS-Fournisseur indique."""
     texte = audio.preparer(sanitizer.sanitize(body.texte).text, reglages.tts_max_chars)
     if not texte:
         raise audio.TexteVideError("Il n'y a aucun texte à lire")
-    mp3 = await audio.synthetiser(texte, reglages.tts_voice, reglages.tts_timeout_seconds)
-    return Response(content=mp3, media_type="audio/mpeg")
+    try:
+        son = await chaine.synthetiser(texte, body.langue.value)
+    except TtsIndisponibleError:
+        raise audio.TtsError("La synthèse vocale est indisponible pour le moment") from None
+    return Response(content=son.donnees, media_type=son.mime, headers={"X-TTS-Fournisseur": son.fournisseur})

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tn.esprit.bawsla.cours.client.FicheIaDto;
 import tn.esprit.bawsla.cours.client.NotionIaDto;
 import tn.esprit.bawsla.cours.common.exception.ServiceUnavailableException;
+import tn.esprit.bawsla.cours.service.IaGateway.AudioIa;
 import tn.esprit.bawsla.cours.entity.AudioRevision;
 import tn.esprit.bawsla.cours.entity.EtapeIA;
 import tn.esprit.bawsla.cours.entity.FicheRevision;
@@ -109,14 +110,17 @@ public class FicheEnregistrement {
         return ficheRepository.save(fiche).getId();
     }
 
-    /** Stocke le MP3 sous un nom UUID et le rattache à la fiche. */
+    /** Stocke l'audio sous un nom UUID (extension selon son type) et le rattache à la fiche. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void enregistrerAudio(Long coursId, Long ficheId, byte[] mp3) {
+    public void enregistrerAudio(Long coursId, Long ficheId, AudioIa son) {
+        boolean wav = son.mime().contains("wav");
         AudioRevision audio = new AudioRevision();
         audio.setCoursId(coursId);
         audio.setFicheId(ficheId);
-        audio.setFichier(stockage.sauvegarder(StockageService.Type.AUDIO, mp3, "mp3"));
-        audio.setTaille((long) mp3.length);
+        audio.setFichier(stockage.sauvegarder(StockageService.Type.AUDIO, son.octets(), wav ? "wav" : "mp3"));
+        audio.setTaille((long) son.octets().length);
+        audio.setMime(wav ? "audio/wav" : "audio/mpeg");
+        audio.setFournisseur(son.fournisseur());
         audioRepository.save(audio);
     }
 

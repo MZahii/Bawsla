@@ -15,6 +15,7 @@ import tn.esprit.bawsla.cours.config.AsyncConfig;
 import tn.esprit.bawsla.cours.entity.EtapeIA;
 import tn.esprit.bawsla.cours.entity.Niveau;
 import tn.esprit.bawsla.cours.entity.StatutTraitement;
+import tn.esprit.bawsla.cours.service.IaGateway.AudioIa;
 
 /**
  * Traitement IA en arrière-plan : lecture du texte, fiche de révision, puis audio du résumé.
@@ -70,8 +71,8 @@ public class FicheTraitement {
     private void produireAudio(String execution, Long coursId, Long ficheId, String resume, String authorization) {
         enregistrement.passer(execution, coursId, EtapeIA.AUDIO, StatutTraitement.EN_COURS, null);
         try {
-            byte[] mp3 = ia.audio(authorization, new AudioIaRequestDto(resume));
-            enregistrement.enregistrerAudio(coursId, ficheId, mp3);
+            AudioIa son = ia.audio(authorization, new AudioIaRequestDto(resume));
+            enregistrement.enregistrerAudio(coursId, ficheId, son);
             enregistrement.passer(execution, coursId, EtapeIA.AUDIO, StatutTraitement.TERMINE, null);
         } catch (RuntimeException e) {
             // La fiche est déjà enregistrée : l'échec de l'audio ne la remet pas en cause.

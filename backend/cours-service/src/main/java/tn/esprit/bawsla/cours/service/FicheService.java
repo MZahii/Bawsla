@@ -120,7 +120,9 @@ public class FicheService {
         FicheRevision fiche = choisir(coursId, estGestionnaire(user, cours));
         AudioRevision audio = audioRepository.findFirstByFicheIdOrderByIdDesc(fiche.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Audio de la fiche", coursId));
-        return new Fichier(stockage.lire(Type.AUDIO, audio.getFichier()), "audio/mpeg", "fiche-cours-" + coursId + ".mp3");
+        String mime = audio.getMime() == null ? "audio/mpeg" : audio.getMime();
+        String extension = mime.contains("wav") ? ".wav" : ".mp3";
+        return new Fichier(stockage.lire(Type.AUDIO, audio.getFichier()), mime, "fiche-cours-" + coursId + extension);
     }
 
     // ------------------------------------------------------------------ correction et validation
@@ -214,9 +216,9 @@ public class FicheService {
     }
 
     private FicheResponse reponse(FicheRevision fiche, boolean gestionnaire) {
-        boolean aAudio = audioRepository.findFirstByFicheIdOrderByIdDesc(fiche.getId()).isPresent();
+        Optional<AudioRevision> audio = audioRepository.findFirstByFicheIdOrderByIdDesc(fiche.getId());
         boolean valideeDisponible = ficheRepository.findFirstByCoursIdAndStatutOrderByIdDesc(fiche.getCoursId(), StatutFiche.VALIDEE).isPresent();
-        return FicheResponse.from(fiche, aAudio, gestionnaire, valideeDisponible);
+        return FicheResponse.from(fiche, audio.isPresent(), audio.map(AudioRevision::getFournisseur).orElse(null), gestionnaire, valideeDisponible);
     }
 
     private static boolean estGestionnaire(CurrentUser user, Cours cours) {

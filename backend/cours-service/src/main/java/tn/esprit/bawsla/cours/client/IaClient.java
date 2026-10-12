@@ -1,6 +1,7 @@
 package tn.esprit.bawsla.cours.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -23,7 +24,10 @@ public interface IaClient {
     @PostMapping("/api/ai/cours/fidelite")
     ApiResponse<FideliteIaDto> fidelite(@RequestHeader("Authorization") String authorization, @RequestBody FideliteIaRequestDto corps);
 
-    /** MP3 du texte. */
+    /**
+     * Audio du texte, produit par le premier fournisseur vocal disponible de la chaîne (ElevenLabs, Gemini, gTTS, edge-tts).
+     * Le type MIME est dans {@code Content-Type} et le fournisseur dans l'en-tête {@code X-TTS-Fournisseur}.
+     */
     @PostMapping("/api/ai/cours/audio")
-    byte[] audio(@RequestHeader("Authorization") String authorization, @RequestBody AudioIaRequestDto corps);
+    ResponseEntity<byte[]> audio(@RequestHeader("Authorization") String authorization, @RequestBody AudioIaRequestDto corps);
 }

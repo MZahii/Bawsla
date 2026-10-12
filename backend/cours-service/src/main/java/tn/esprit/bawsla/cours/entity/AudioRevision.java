@@ -33,6 +33,14 @@ public class AudioRevision {
 
     private Long taille;
 
+    /** Type MIME du fichier : audio/mpeg (MP3) ou audio/wav. */
+    @Column(length = 40)
+    private String mime = "audio/mpeg";
+
+    /** Fournisseur vocal qui a produit l'audio : elevenlabs, gemini, gtts ou edge. */
+    @Column(length = 30)
+    private String fournisseur;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateGeneration;
 
@@ -54,6 +62,12 @@ public class AudioRevision {
 
     public Long getTaille() { return taille; }
     public void setTaille(Long taille) { this.taille = taille; }
+
+    public String getMime() { return mime; }
+    public void setMime(String mime) { this.mime = mime; }
+
+    public String getFournisseur() { return fournisseur; }
+    public void setFournisseur(String fournisseur) { this.fournisseur = fournisseur; }
 
     public LocalDateTime getDateGeneration() { return dateGeneration; }
 }

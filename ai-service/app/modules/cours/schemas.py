@@ -16,6 +16,13 @@ class ResumeResponse(CamelModel):
     stub: bool = True
 
 
+class Langue(str, Enum):
+    """Langue du script, des sous-titres et de la voix."""
+
+    FR = "fr"
+    EN = "en"
+
+
 class Niveau(str, Enum):
     """Mêmes codes que cours-service (enum Niveau)."""
 
@@ -100,3 +107,4 @@ class FideliteResponse(CamelModel):
 
 class AudioRequest(CamelModel):
     texte: str = Field(min_length=1, max_length=20_000)
+    langue: Langue = Langue.FR

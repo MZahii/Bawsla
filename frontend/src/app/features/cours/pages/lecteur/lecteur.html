@@ -89,9 +89,7 @@
             }
           </bw-ai-box>
           @if (fiche(); as f) {
-            @if (f.aAudio) {
-              <app-fiche-audio class="audio-fiche" [coursId]="c.id" [version]="f.id" />
-            }
+            <app-fiche-audio class="audio-fiche" [coursId]="c.id" [version]="f.id" [serveur]="f.aAudio" [fournisseur]="f.fournisseurAudio" [texte]="f.resume" />
           }
         </section>
 

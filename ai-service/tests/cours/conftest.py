@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
-from app.core.llm_client import LLMClient, LLMMessage, LLMResult, get_llm_client
+from app.core.llm_client import AudioResult, LLMClient, LLMMessage, LLMResult, Replique, get_llm_client
 from app.main import app
 from app.modules.cours.config import get_cours_ai_settings
 
@@ -35,6 +35,12 @@ class FauxLLM(LLMClient):
     async def complete_with_image(self, messages, image, mime_type, *, module, temperature=0.2, max_tokens=1024):
         return LLMResult(text="image", model="faux")
 
+    async def synthetiser(self, texte: str, voix: str, langue: str) -> AudioResult:
+        return AudioResult(data=b"RIFF-faux-wav", mime_type="audio/wav", model="faux-tts")
+
+    async def synthetiser_dialogue(self, repliques: list[Replique], voix_par_locuteur: dict[str, str], langue: str) -> AudioResult:
+        return AudioResult(data=b"RIFF-faux-wav", mime_type="audio/wav", model="faux-tts")
+
     async def complete_json(self, messages: list[LLMMessage], schema, *, module, temperature=0.0, max_tokens=2048):
         self.appels.append({"messages": messages, "schema": schema, "temperature": temperature, "module": module})
         element = self.reponses.pop(0)
@@ -50,6 +56,9 @@ def environnement(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "")
     monkeypatch.setenv("LLM_MODEL", "modele-test")
     monkeypatch.setenv("PROMPT_FICHE_VERSION", "v3")
+    # Chaîne vocale des tests de route : edge-tts seul (simulé). Aucune vraie clé, aucun appel réseau.
+    monkeypatch.setenv("TTS_FOURNISSEURS", "edge")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "")
     for fabrique in (get_settings, get_cours_ai_settings):
         fabrique.cache_clear()
     yield

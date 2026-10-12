@@ -15,14 +15,16 @@ import tn.esprit.bawsla.cours.entity.StatutFiche;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record FicheResponse(Long id, StatutFiche statut, String resume, List<String> motsCles, List<NotionResponse> notions,
-                            Niveau niveau, boolean aAudio, LocalDateTime dateGeneration, LocalDateTime dateValidation,
+                            Niveau niveau, boolean aAudio, String fournisseurAudio, LocalDateTime dateGeneration, LocalDateTime dateValidation,
                             Integer scoreFidelite, List<String> alertes, String versionPrompt, String modele,
                             Boolean modifieeParFormateur, Boolean valideeDisponible) {
 
-    public static FicheResponse from(FicheRevision f, boolean aAudio, boolean gestionnaire, boolean valideeDisponible) {
+    /** {@code fournisseurAudio} (ElevenLabs, Gemini…) est montré à tous : l'interface indique qui a généré la voix. */
+    public static FicheResponse from(FicheRevision f, boolean aAudio, String fournisseurAudio, boolean gestionnaire,
+                                     boolean valideeDisponible) {
         List<NotionResponse> notions = f.getNotions().stream().map(n -> NotionResponse.from(n, gestionnaire)).toList();
         return new FicheResponse(f.getId(), f.getStatut(), f.getResume(), List.copyOf(f.getMotsCles()), notions, f.getNiveau(),
-                aAudio, f.getDateGeneration(), f.getDateValidation(),
+                aAudio, fournisseurAudio, f.getDateGeneration(), f.getDateValidation(),
                 gestionnaire ? f.getScoreFidelite() : null,
                 gestionnaire ? List.copyOf(f.getAlertes()) : null,
                 gestionnaire ? f.getVersionPrompt() : null,

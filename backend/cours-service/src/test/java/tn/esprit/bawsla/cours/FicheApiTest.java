@@ -34,7 +34,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -93,6 +95,8 @@ class FicheApiTest {
         volatile String resume = "Résumé généré";
         volatile RuntimeException panneFiche;
         volatile RuntimeException panneAudio;
+        volatile String mimeAudio = "audio/mpeg";
+        volatile String fournisseurAudio = "elevenlabs";
         volatile RuntimeException panneFidelite;
         volatile CountDownLatch blocageFiche;
 
@@ -102,6 +106,8 @@ class FicheApiTest {
             demandesAudio.clear();
             resume = "Résumé généré";
             panneFiche = panneAudio = panneFidelite = null;
+            mimeAudio = "audio/mpeg";
+            fournisseurAudio = "elevenlabs";
             blocageFiche = null;
         }
 
@@ -132,13 +138,13 @@ class FicheApiTest {
         }
 
         @Override
-        public byte[] audio(String authorization, AudioIaRequestDto corps) {
+        public ResponseEntity<byte[]> audio(String authorization, AudioIaRequestDto corps) {
             autorisations.add(authorization);
             demandesAudio.add(corps);
             if (panneAudio != null) {
                 throw panneAudio;
             }
-            return MP3;
+            return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, mimeAudio).header("X-TTS-Fournisseur", fournisseurAudio).body(MP3);
         }
 
         private static void attendre(CountDownLatch verrou) {
@@ -224,6 +230,7 @@ class FicheApiTest {
                 .andExpect(jsonPath("$.data.versionPrompt").value("v3"))
                 .andExpect(jsonPath("$.data.modele").value("gemini-test"))
                 .andExpect(jsonPath("$.data.aAudio").value(true))
+                .andExpect(jsonPath("$.data.fournisseurAudio").value("elevenlabs"))
                 .andExpect(jsonPath("$.data.valideeDisponible").value(false))
                 .andExpect(jsonPath("$.data.modifieeParFormateur").value(false));
 
@@ -234,6 +241,7 @@ class FicheApiTest {
         assertThat(demande.coursId()).isEqualTo(id);
         assertThat(demande.texte()).contains("Chapitre 1 : Introduction").contains("jointure interne");
         assertThat(ia.demandesAudio.get(0).texte()).isEqualTo("Résumé généré");
+        assertThat(ia.demandesAudio.get(0).langue()).isEqualTo("fr");
     }
 
     @Test
@@ -338,6 +346,36 @@ class FicheApiTest {
         // Le formateur voit toujours tout.
         envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null)
                 .andExpect(jsonPath("$.data.scoreFidelite").value(90)).andExpect(jsonPath("$.data.valideeDisponible").value(true));
+    }
+
+    @Test
+    void lAudioWavDeGeminiEstStockeEtServiAvecSonVraiTypeEtSonFournisseur() throws Exception {
+        long id = coursPublieAvecContenu(FORMATEUR_A);
+        ia.mimeAudio = "audio/wav";
+        ia.fournisseurAudio = "gemini";
+        generer(FORMATEUR_A, id);
+        attendreFinDuTraitement(id);
+        envoyer(patch("/api/cours/" + id + "/fiche/valider"), FORMATEUR_A, "ENSEIGNANT", null).andExpect(status().isOk());
+
+        assertThat(fichiers("audio")).hasSize(1);
+        assertThat(fichiers("audio").get(0).getFileName().toString()).endsWith(".wav");
+        // L'apprenant voit quel fournisseur a généré la voix, et reçoit l'audio avec son vrai type.
+        envoyer(get("/api/cours/" + id + "/fiche"), APPRENANT, "ETUDIANT", null)
+                .andExpect(jsonPath("$.data.aAudio").value(true))
+                .andExpect(jsonPath("$.data.fournisseurAudio").value("gemini"));
+        envoyer(get("/api/cours/" + id + "/audio"), APPRENANT, "ETUDIANT", null)
+                .andExpect(status().isOk()).andExpect(content().contentType("audio/wav"));
+    }
+
+    @Test
+    void sansEnTeteFournisseurOnGardeUnAudioSansMention() throws Exception {
+        long id = coursPublieAvecContenu(FORMATEUR_A);
+        ia.fournisseurAudio = "";
+        generer(FORMATEUR_A, id);
+        attendreFinDuTraitement(id);
+        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null)
+                .andExpect(jsonPath("$.data.aAudio").value(true))
+                .andExpect(jsonPath("$.data.fournisseurAudio").doesNotExist());
     }
 
     @Test

@@ -223,10 +223,9 @@
                   <p class="muted small">Les apprenants voient encore la version validée précédente, jusqu’à ce que tu valides celle-ci.</p>
                 }
               </bw-ai-box>
-              @if (f.aAudio) {
-                <app-fiche-audio class="audio-fiche" [coursId]="existant()!.id" [version]="f.id" />
-              } @else {
-                <p class="muted small">Pas d’audio pour cette version. Il est créé à la validation si besoin.</p>
+              <app-fiche-audio class="audio-fiche" [coursId]="existant()!.id" [version]="f.id" [serveur]="f.aAudio" [fournisseur]="f.fournisseurAudio" [texte]="f.resume" />
+              @if (!f.aAudio) {
+                <p class="muted small">L’audio de cette version est créé à la validation si besoin.</p>
               }
             } @else if (ficheEtat() === 'chargement') {
               <bw-skeleton height="160px" />

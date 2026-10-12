@@ -34,6 +34,7 @@ import tn.esprit.bawsla.cours.common.exception.ServiceUnavailableException;
 import tn.esprit.bawsla.cours.common.exception.UnauthorizedException;
 import tn.esprit.bawsla.cours.entity.Niveau;
 import tn.esprit.bawsla.cours.service.IaGateway;
+import tn.esprit.bawsla.cours.service.IaGateway.AudioIa;
 
 /**
  * Le VRAI client Feign de l'IA contre un faux serveur HTTP local (qui joue la gateway) : décodage de l'enveloppe
@@ -51,6 +52,9 @@ class IaClientTest {
     private static final List<String> AUTORISATIONS = new CopyOnWriteArrayList<>();
     private static final List<String> CORPS_RECUS = new CopyOnWriteArrayList<>();
 
+    /** Valeur de l'en-tête X-TTS-Fournisseur renvoyée par le faux serveur sur la route audio ("" : pas d'en-tête). */
+    private static final java.util.concurrent.atomic.AtomicReference<String> FOURNISSEUR = new java.util.concurrent.atomic.AtomicReference<>("gtts");
+
     @Autowired IaGateway ia;
 
     @DynamicPropertySource
@@ -64,6 +68,7 @@ class IaClientTest {
         REPONSES.clear();
         AUTORISATIONS.clear();
         CORPS_RECUS.clear();
+        FOURNISSEUR.set("gtts");
     }
 
     @AfterAll
@@ -100,9 +105,23 @@ class IaClientTest {
     }
 
     @Test
-    void audioRecuEnOctets() {
+    void audioRecuEnOctetsAvecSonTypeEtSonFournisseur() {
         REPONSES.put("/api/ai/cours/audio", new Object[] {200, "audio/mpeg", MP3});
-        assertThat(ia.audio("Bearer t", new AudioIaRequestDto("Bonjour"))).isEqualTo(MP3);
+        AudioIa son = ia.audio("Bearer t", new AudioIaRequestDto("Bonjour", "en"));
+        assertThat(son.octets()).isEqualTo(MP3);
+        assertThat(son.mime()).isEqualTo("audio/mpeg");
+        assertThat(son.fournisseur()).isEqualTo("gtts");
+        assertThat(CORPS_RECUS.get(0)).contains("\"texte\":\"Bonjour\"").contains("\"langue\":\"en\"");
+    }
+
+    @Test
+    void audioWavEtAbsenceDEnTeteFournisseur() {
+        REPONSES.put("/api/ai/cours/audio", new Object[] {200, "audio/wav", MP3});
+        FOURNISSEUR.set("");
+        AudioIa son = ia.audio("Bearer t", new AudioIaRequestDto("Bonjour"));
+        assertThat(son.mime()).isEqualTo("audio/wav");
+        assertThat(son.fournisseur()).isNull();
+        assertThat(CORPS_RECUS.get(0)).contains("\"langue\":\"fr\""); // français par défaut
     }
 
     @Test
@@ -178,6 +197,9 @@ class IaClientTest {
         byte[] corps = reponse == null ? new byte[0]
                 : reponse[2] instanceof byte[] octets ? octets : ((String) reponse[2]).getBytes(StandardCharsets.UTF_8);
         echange.getResponseHeaders().set("Content-Type", type);
+        if (echange.getRequestURI().getPath().endsWith("/audio") && !FOURNISSEUR.get().isEmpty()) {
+            echange.getResponseHeaders().set("X-TTS-Fournisseur", FOURNISSEUR.get());
+        }
         echange.sendResponseHeaders(statut, corps.length == 0 ? -1 : corps.length);
         if (corps.length > 0) {
             echange.getResponseBody().write(corps);

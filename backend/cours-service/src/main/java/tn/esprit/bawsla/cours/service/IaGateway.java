@@ -4,6 +4,8 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import feign.FeignException;
@@ -27,6 +29,12 @@ public class IaGateway {
 
     private static final Logger log = LoggerFactory.getLogger(IaGateway.class);
 
+    /** Audio reçu de l'IA : octets, type MIME (audio/mpeg ou audio/wav) et nom du fournisseur vocal qui l'a produit. */
+    public record AudioIa(byte[] octets, String mime, String fournisseur) {
+    }
+
+    static final String ENTETE_FOURNISSEUR = "X-TTS-Fournisseur";
+
     private final IaClient client;
 
     public IaGateway(IaClient client) {
@@ -41,12 +49,16 @@ public class IaGateway {
         return donnees(appeler(() -> client.fidelite(exiger(authorization), corps)));
     }
 
-    public byte[] audio(String authorization, AudioIaRequestDto corps) {
-        byte[] mp3 = appeler(() -> client.audio(exiger(authorization), corps));
-        if (mp3 == null || mp3.length == 0) {
+    public AudioIa audio(String authorization, AudioIaRequestDto corps) {
+        ResponseEntity<byte[]> reponse = appeler(() -> client.audio(exiger(authorization), corps));
+        byte[] octets = reponse == null ? null : reponse.getBody();
+        if (octets == null || octets.length == 0) {
             throw new ServiceUnavailableException("La synthèse vocale n'a produit aucun son.");
         }
-        return mp3;
+        MediaType type = reponse.getHeaders().getContentType();
+        String mime = type == null ? "audio/mpeg" : type.getType() + "/" + type.getSubtype();
+        String fournisseur = reponse.getHeaders().getFirst(ENTETE_FOURNISSEUR);
+        return new AudioIa(octets, mime, fournisseur == null || fournisseur.isBlank() ? null : fournisseur.strip());
     }
 
     private static String exiger(String authorization) {

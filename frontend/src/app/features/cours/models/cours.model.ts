@@ -93,6 +93,8 @@ export interface Fiche {
   notions: NotionFiche[];
   niveau: Niveau | null;
   aAudio: boolean;
+  /** Fournisseur vocal de l'audio : elevenlabs, gemini, gtts ou edge (absent s'il n'y a pas d'audio). */
+  fournisseurAudio?: string;
   dateGeneration: string;
   dateValidation?: string;
   scoreFidelite?: number;

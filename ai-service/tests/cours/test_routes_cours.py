@@ -3,7 +3,7 @@
 import pytest
 
 from app.core.errors import LLMInvalidResponseError, LLMQuotaError
-from app.modules.cours import audio as audio_module
+from app.modules.cours.tts import edge as edge_module
 from app.modules.cours.schemas import FicheLLM, Notion, ResumeSeul
 from tests.cours.conftest import COURS, EXTRAIT_INNER, EXTRAIT_LEFT, UTILISATEUR, FauxLLM
 
@@ -186,7 +186,7 @@ class FauxCommunicate:
 @pytest.fixture
 def faux_tts(monkeypatch):
     FauxCommunicate.textes, FauxCommunicate.voix, FauxCommunicate.echec, FauxCommunicate.vide = [], [], None, False
-    monkeypatch.setattr(audio_module.edge_tts, "Communicate", FauxCommunicate)
+    monkeypatch.setattr(edge_module.edge_tts, "Communicate", FauxCommunicate)
     return FauxCommunicate
 
 
