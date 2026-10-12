@@ -4,6 +4,7 @@
 - POST /api/ai/cours/fiche     : fiche de révision (résumé, mots-clés, notions avec extrait source, score de fidélité)
 - POST /api/ai/cours/fidelite  : recalcule le score d'une fiche corrigée à la main (sans LLM)
 - POST /api/ai/cours/explication (+ /traduire, /fidelite, /audio) : l'IA réexplique le cours à l'oral (voir explication/)
+- POST /api/ai/cours/resume-local : résumé automatique local, sans clé API (modèle Hugging Face ou phrases clés, voir local/)
 - POST /api/ai/cours/audio     : audio d'un texte, par la chaîne de fournisseurs vocaux (ElevenLabs, Gemini, gTTS, edge-tts)
 Tous les appels LLM passent par app.core (LLMClient) ; tout texte est nettoyé par le Sanitizer avant.
 """
@@ -21,6 +22,7 @@ from app.modules.cours.tts import ChaineTTS, TtsIndisponibleError, get_chaine_tt
 from app.modules.cours.config import CoursAiSettings, get_cours_ai_settings
 from app.modules.cours.explication.routes import router as explication_router
 from app.modules.cours.fiche import generer_fiche
+from app.modules.cours.local.routes import router as resume_local_router
 from app.modules.cours.schemas import (
     AudioRequest,
     FicheRequest,
@@ -35,6 +37,7 @@ from app.modules.cours.schemas import (
 MODULE = "cours"
 router = APIRouter(prefix="/api/ai/cours", tags=["cours"])
 router.include_router(explication_router)
+router.include_router(resume_local_router)
 
 
 @router.post("/resume", response_model=ApiResponse[ResumeResponse])

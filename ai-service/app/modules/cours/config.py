@@ -48,6 +48,20 @@ class CoursAiSettings(BaseSettings):
     openai_tts_voice_prof: str = "marin"
     openai_tts_voice_etudiant: str = "cedar"
 
+    # ---- Résumé automatique LOCAL (modèles Hugging Face sur CPU, sans clé API). Dépendances : requirements-local.txt.
+    # Interrupteur : false = la route répond 503 « Résumé local indisponible sur ce serveur ».
+    resume_local_actif: bool = False
+    resume_local_modele_fr: str = "moussaKam/barthez-orangesum-abstract"
+    resume_local_modele_en: str = "sshleifer/distilbart-cnn-12-6"
+    # Sous ce score (0-100), le résumé reformulé est jugé peu fidèle et remplacé par le résumé extractif (mode auto).
+    resume_local_seuil: int = 50
+    # Similarité minimale (0-100) pour qu'une phrase du résumé soit « justifiée » par une phrase du cours.
+    resume_local_seuil_phrase: int = 55
+    # Un modèle inactif depuis ce nombre de secondes est déchargé de la mémoire (0 = jamais).
+    resume_local_liberer_apres_secondes: int = 600
+    # Nombre maximal de morceaux de cours résumés (au-delà : alerte « cours tronqué »).
+    resume_local_morceaux_max: int = 12
+
     def noms_fournisseurs(self) -> list[str]:
         """Noms de la chaîne dans l'ordre configuré, sans doublon ni espace."""
         return list(dict.fromkeys(n.strip().lower() for n in self.tts_fournisseurs.split(",") if n.strip()))

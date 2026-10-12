@@ -81,3 +81,19 @@ def avec_llm():
         return faux
 
     return brancher
+
+
+# ---- Tests lents (vrais modèles Hugging Face) : exclus par défaut, activés avec RUN_SLOW=1 (pytest.ini est du socle).
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: test lent (vrais modèles, téléchargements) ; exécuté seulement avec RUN_SLOW=1")
+
+
+def pytest_collection_modifyitems(config, items):
+    import os
+
+    if os.environ.get("RUN_SLOW") == "1":
+        return
+    saut = pytest.mark.skip(reason="test lent : lance-le avec RUN_SLOW=1")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(saut)

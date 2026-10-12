@@ -1,0 +1,16 @@
+# Dépendances OPTIONNELLES du résumé automatique local (module Cours). Sans elles, le reste de l'ai-service fonctionne
+# normalement : le mode « phrases clés » (extractif) marche toujours, seul le mode « reformulé » donne 503.
+#
+# Installation (depuis ai-service/, avec le venv du projet) :
+#   .venv/Scripts/python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu -r app/modules/cours/requirements-local.txt
+#
+# L'index PyTorch CPU (ci-dessus) évite les 2 Go de bibliothèques CUDA. Versions testées ensemble, avec Python 3.12.
+torch==2.14.1
+transformers==4.57.6
+sentencepiece==0.2.2
+protobuf==7.36.2
+huggingface_hub==0.36.2
+# transformers 5.x casse le tokenizer de BARThez (TypeError : 'dict' object is not an instance of 'Sequence') : rester sur < 5.
+
+# Test lent uniquement (RUN_SLOW=1) : lecture du PDF de diaporama.
+pypdf==6.20.1
