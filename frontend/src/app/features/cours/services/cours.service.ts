@@ -97,9 +97,12 @@ export class CoursService {
     return this.http.get<ApiResponse<Traitement>>(`${this.url}/${coursId}/traitement`).pipe(map((r) => r.data));
   }
 
-  /** Formateur : la fiche la plus récente. Apprenant : la dernière fiche validée (404 s'il n'y en a pas). */
-  fiche(coursId: number): Observable<Fiche> {
-    return this.http.get<ApiResponse<Fiche>>(`${this.url}/${coursId}/fiche`).pipe(map((r) => r.data));
+  /**
+   * Formateur : la fiche la plus récente. Apprenant : la dernière fiche validée.
+   * `null` quand il n'y en a pas (le serveur répond 200 sans `data`) : ce n'est pas une erreur.
+   */
+  fiche(coursId: number): Observable<Fiche | null> {
+    return this.http.get<ApiResponse<Fiche | null>>(`${this.url}/${coursId}/fiche`).pipe(map((r) => r.data ?? null));
   }
 
   /** Enregistre la fiche corrigée ; le backend recalcule le score de fidélité. */

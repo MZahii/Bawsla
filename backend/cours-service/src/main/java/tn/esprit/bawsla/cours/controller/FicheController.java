@@ -51,7 +51,10 @@ public class FicheController {
         return ApiResponse.ok(ficheService.traitement(coursId, user));
     }
 
-    /** Apprenant : dernière fiche VALIDEE. Formateur propriétaire et ADMIN : fiche la plus récente. */
+    /**
+     * Apprenant : dernière fiche VALIDEE. Formateur propriétaire et ADMIN : fiche la plus récente.
+     * Sans fiche à montrer : 200 sans {@code data} (et non 404, qui reste réservé à un cours introuvable).
+     */
     @GetMapping("/fiche")
     public ApiResponse<FicheResponse> fiche(@PathVariable Long coursId, CurrentUser user) {
         return ApiResponse.ok(ficheService.fiche(coursId, user));

@@ -479,18 +479,12 @@ export class StudioEditeur implements OnInit {
     this.ficheEtat.set('chargement');
     this.service.fiche(cours.id).subscribe({
       next: (f) => {
-        this.fiche.set(f);
+        this.fiche.set(f); // null : pas encore de fiche, état vide normal
         this.ficheEtat.set('ok');
       },
       error: (err) => {
-        // 404 : le cours n'a pas encore de fiche, ce n'est pas une erreur.
-        if ((err as { status?: number })?.status === 404) {
-          this.fiche.set(null);
-          this.ficheEtat.set('ok');
-        } else {
-          this.ficheEtat.set('erreur');
-          this.snack.open(errorMessage(err, 'Impossible de charger la fiche'), 'OK', { duration: 5000 });
-        }
+        this.ficheEtat.set('erreur');
+        this.snack.open(errorMessage(err, 'Impossible de charger la fiche'), 'OK', { duration: 5000 });
       },
     });
   }

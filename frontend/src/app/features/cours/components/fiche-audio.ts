@@ -1,5 +1,6 @@
-import { Component, OnDestroy, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Subscription } from 'rxjs';
 
 import { BwButton } from '../../../shared';
 import { CoursService } from '../services/cours.service';
@@ -15,8 +16,13 @@ const NOMS_FOURNISSEURS: Record<string, string> = {
 
 /**
  * Lecteur audio du résumé d'un cours. L'audio exige le JWT : on le télécharge avec HttpClient puis on le donne
- * à <audio> sous forme d'URL locale (blob:). Il se recharge quand `version` change (nouvelle fiche, nouvel audio).
- * Sans audio serveur, un bouton lit le texte avec la voix du navigateur (Web Speech API).
+ * à <audio> sous forme d'URL locale (blob:).
+ *
+ * - L'audio n'est demandé que si la fiche indique qu'il existe (`serveur`), et une seule fois par audio :
+ *   la clé (cours, fiche, existence, fournisseur) ne change pas => aucune nouvelle requête.
+ * - Un changement d'audio annule la requête en cours et libère l'ancienne URL.
+ * - En cas d'erreur (404, 503…), on n'insiste pas : « audio indisponible » et, si possible, la voix du navigateur.
+ *
  * <app-fiche-audio [coursId]="id" [version]="fiche.id" [serveur]="fiche.aAudio" [fournisseur]="fiche.fournisseurAudio" [texte]="fiche.resume" />
  */
 @Component({
@@ -33,16 +39,20 @@ const NOMS_FOURNISSEURS: Record<string, string> = {
       }
     } @else if (etat() === 'chargement') {
       <p class="muted small" role="status">Chargement de l’audio…</p>
-    } @else if (voix.disponible && texte()) {
-      <div class="navigateur">
-        <button type="button" bwButton="secondaire" (click)="basculerVoix()" [attr.aria-pressed]="voix.enLecture()">
-          <mat-icon aria-hidden="true">{{ voix.enLecture() ? 'stop_circle' : 'record_voice_over' }}</mat-icon>
-          {{ voix.enLecture() ? 'Arrêter la lecture' : 'Écouter avec la voix du navigateur' }}
-        </button>
-        <p class="muted small">Il n’y a pas encore d’audio pour ce résumé : ton navigateur le lit avec sa propre voix.</p>
-      </div>
     } @else {
-      <p class="muted small" role="status"><mat-icon aria-hidden="true">headset_off</mat-icon> L’audio de ce résumé n’est pas disponible.</p>
+      <p class="muted small" role="status">
+        <mat-icon aria-hidden="true">headset_off</mat-icon>
+        {{ etat() === 'erreur' ? 'L’audio est indisponible pour le moment.' : 'Il n’y a pas encore d’audio pour ce résumé.' }}
+      </p>
+      @if (voix.disponible && texte()) {
+        <div class="navigateur">
+          <button type="button" bwButton="secondaire" (click)="basculerVoix()" [attr.aria-pressed]="voix.enLecture()">
+            <mat-icon aria-hidden="true">{{ voix.enLecture() ? 'stop_circle' : 'record_voice_over' }}</mat-icon>
+            {{ voix.enLecture() ? 'Arrêter la lecture' : 'Écouter avec la voix du navigateur' }}
+          </button>
+          <p class="muted small">Ton navigateur lit alors le résumé avec sa propre voix.</p>
+        </div>
+      }
     }
   `,
   styles: `
@@ -50,7 +60,7 @@ const NOMS_FOURNISSEURS: Record<string, string> = {
     .lecteur { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); mat-icon { flex: none; color: var(--color-gold-700); } }
     audio { flex: 1; min-width: 0; height: 40px; }
     .mention { margin: var(--space-1) 0 0 var(--space-4); }
-    .navigateur { display: grid; justify-items: start; gap: var(--space-2); p { margin: 0; } }
+    .navigateur { display: grid; justify-items: start; gap: var(--space-2); margin-top: var(--space-2); p { margin: 0; } }
     p { display: flex; align-items: center; gap: var(--space-2); margin: 0; mat-icon { font-size: 20px; width: 20px; height: 20px; } }
   `,
 })
@@ -59,7 +69,7 @@ export class FicheAudio implements OnDestroy {
   protected readonly voix = inject(VoixNavigateur);
 
   readonly coursId = input.required<number>();
-  /** Change quand l'audio a pu changer (identifiant de la fiche affichée). */
+  /** Identifiant de la fiche affichée : une autre fiche peut avoir un autre audio. */
   readonly version = input<number | null>(null);
   /** Le serveur a-t-il un audio pour cette version ? false : on ne le demande pas et on propose la voix du navigateur. */
   readonly serveur = input(true);
@@ -70,22 +80,24 @@ export class FicheAudio implements OnDestroy {
   readonly langue = input<LangueVoix>('fr');
 
   protected readonly url = signal<string | null>(null);
-  protected readonly etat = signal<'chargement' | 'ok' | 'absent'>('chargement');
+  protected readonly etat = signal<'chargement' | 'ok' | 'absent' | 'erreur'>('absent');
   protected readonly nomFournisseur = computed(() => {
     const f = this.fournisseur();
     return f ? (NOMS_FOURNISSEURS[f] ?? f) : null;
   });
 
+  /** Audio déjà chargé (ou en cours de chargement), identifié par sa clé. Jamais lu dans l'effet. */
+  private cleChargee: string | null = null;
+  private requete?: Subscription;
+
   constructor() {
     effect(() => {
+      // L'effet ne dépend QUE de ces entrées. Tout ce que fait le chargement (écrire url, etat, annuler la requête…)
+      // est exécuté hors suivi : sinon l'effet relirait les signaux qu'il vient d'écrire et boucle à l'infini.
       const id = this.coursId();
-      this.version();
-      if (this.serveur()) {
-        this.charger(id);
-      } else {
-        this.liberer();
-        this.etat.set('absent');
-      }
+      const aAudio = this.serveur();
+      const cle = `${id}|${this.version() ?? ''}|${aAudio}|${this.fournisseur() ?? ''}`;
+      untracked(() => this.synchroniser(cle, id, aAudio));
     });
   }
 
@@ -94,26 +106,36 @@ export class FicheAudio implements OnDestroy {
     else this.voix.lire(this.texte(), this.langue());
   }
 
-  private charger(id: number): void {
-    this.liberer();
+  private synchroniser(cle: string, id: number, aAudio: boolean): void {
+    if (cle === this.cleChargee) return; // même audio : pas de nouvelle requête
+    this.cleChargee = cle;
+    this.annuler();
+    if (!aAudio) {
+      this.etat.set('absent');
+      return;
+    }
     this.etat.set('chargement');
-    this.service.audio(id).subscribe({
+    this.requete = this.service.audio(id).subscribe({
       next: (blob) => {
         this.url.set(URL.createObjectURL(blob));
         this.etat.set('ok');
       },
-      error: () => this.etat.set('absent'),
+      // Pas de nouvel essai automatique : l'utilisateur garde la voix du navigateur.
+      error: () => this.etat.set('erreur'),
     });
   }
 
-  private liberer(): void {
+  /** Annule la requête en cours et libère l'URL du blob précédent. */
+  private annuler(): void {
+    this.requete?.unsubscribe();
+    this.requete = undefined;
     const actuelle = this.url();
     if (actuelle) URL.revokeObjectURL(actuelle);
     this.url.set(null);
   }
 
   ngOnDestroy(): void {
-    this.liberer();
+    this.annuler();
     this.voix.arreter();
   }
 }

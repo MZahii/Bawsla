@@ -107,12 +107,14 @@ public class FicheService {
 
     // ------------------------------------------------------------------ lecture
 
-    /** Formateur et ADMIN : la fiche la plus récente. Apprenant : la plus récente VALIDEE (404 s'il n'y en a pas). */
+    /**
+     * Formateur et ADMIN : la fiche la plus récente. Apprenant : la plus récente VALIDEE.
+     * Renvoie null quand il n'y en a pas : ce n'est pas une erreur, le cours n'a simplement pas (encore) de fiche à montrer.
+     */
     public FicheResponse fiche(Long coursId, CurrentUser user) {
         Cours cours = coursService.chargerVisible(coursId, user);
         boolean gestionnaire = estGestionnaire(user, cours);
-        FicheRevision fiche = choisir(coursId, gestionnaire);
-        return reponse(fiche, gestionnaire);
+        return trouver(coursId, gestionnaire).map(fiche -> reponse(fiche, gestionnaire)).orElse(null);
     }
 
     public Fichier audio(Long coursId, CurrentUser user) {
@@ -208,11 +210,14 @@ public class FicheService {
 
     // ------------------------------------------------------------------ interne
 
-    private FicheRevision choisir(Long coursId, boolean gestionnaire) {
-        Optional<FicheRevision> fiche = gestionnaire
+    private Optional<FicheRevision> trouver(Long coursId, boolean gestionnaire) {
+        return gestionnaire
                 ? ficheRepository.findFirstByCoursIdOrderByIdDesc(coursId)
                 : ficheRepository.findFirstByCoursIdAndStatutOrderByIdDesc(coursId, StatutFiche.VALIDEE);
-        return fiche.orElseThrow(() -> new ResourceNotFoundException("Fiche du cours", coursId));
+    }
+
+    private FicheRevision choisir(Long coursId, boolean gestionnaire) {
+        return trouver(coursId, gestionnaire).orElseThrow(() -> new ResourceNotFoundException("Fiche du cours", coursId));
     }
 
     private FicheResponse reponse(FicheRevision fiche, boolean gestionnaire) {

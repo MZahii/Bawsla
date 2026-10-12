@@ -85,7 +85,7 @@ export class Lecteur implements OnInit {
     });
   }
 
-  /** L'apprenant ne reçoit que la fiche validée ; 404 = pas encore de résumé (ce n'est pas une erreur). */
+  /** L'apprenant ne reçoit que la fiche validée ; `null` = pas encore de résumé (ce n'est pas une erreur). */
   private chargerFiche(coursId: number): void {
     this.service.fiche(coursId).subscribe({
       next: (f) => this.fiche.set(f),

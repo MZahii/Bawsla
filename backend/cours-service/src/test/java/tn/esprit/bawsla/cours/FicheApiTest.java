@@ -319,9 +319,10 @@ class FicheApiTest {
         generer(FORMATEUR_A, id);
         attendreFinDuTraitement(id);
 
-        envoyer(get("/api/cours/" + id + "/fiche"), APPRENANT, "ETUDIANT", null).andExpect(status().isNotFound());
+        // Pas encore de fiche validée : 200 sans data (pas une erreur). L'audio, lui, reste introuvable.
+        envoyer(get("/api/cours/" + id + "/fiche"), APPRENANT, "ETUDIANT", null).andExpect(status().isOk()).andExpect(jsonPath("$.data").doesNotExist());
         envoyer(get("/api/cours/" + id + "/audio"), APPRENANT, "ETUDIANT", null).andExpect(status().isNotFound());
-        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_B, "ENSEIGNANT", null).andExpect(status().isNotFound());
+        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_B, "ENSEIGNANT", null).andExpect(status().isOk()).andExpect(jsonPath("$.data").doesNotExist());
 
         envoyer(patch("/api/cours/" + id + "/fiche/valider"), FORMATEUR_A, "ENSEIGNANT", null)
                 .andExpect(status().isOk())
@@ -379,10 +380,18 @@ class FicheApiTest {
     }
 
     @Test
+    void coursIntrouvableOuNonVisibleResteUn404MemePourLaFiche() throws Exception {
+        long brouillon = creerCours(FORMATEUR_A, "Brouillon sans fiche");
+        envoyer(get("/api/cours/" + brouillon + "/fiche"), APPRENANT, "ETUDIANT", null).andExpect(status().isNotFound());
+        envoyer(get("/api/cours/999999/fiche"), FORMATEUR_A, "ENSEIGNANT", null).andExpect(status().isNotFound());
+    }
+
+    @Test
     void validerSansFicheEtLireSansFiche() throws Exception {
         long id = coursPublieAvecContenu(FORMATEUR_A);
         envoyer(patch("/api/cours/" + id + "/fiche/valider"), FORMATEUR_A, "ENSEIGNANT", null).andExpect(status().isNotFound());
-        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null).andExpect(status().isNotFound());
+        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true)).andExpect(jsonPath("$.data").doesNotExist());
         envoyer(get("/api/cours/" + id + "/traitement"), FORMATEUR_A, "ENSEIGNANT", null)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.etapes.length()").value(0));
     }
@@ -491,7 +500,8 @@ class FicheApiTest {
                 .andExpect(jsonPath("$.data.etapes[1].statut").value("ECHEC"))
                 .andExpect(jsonPath("$.data.etapes[1].erreur").value(containsString("quota")))
                 .andExpect(jsonPath("$.data.etapes[2].statut").value("ANNULE"));
-        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null).andExpect(status().isNotFound());
+        envoyer(get("/api/cours/" + id + "/fiche"), FORMATEUR_A, "ENSEIGNANT", null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").doesNotExist());
         assertThat(ia.demandesAudio).isEmpty();
     }
 
