@@ -8,7 +8,8 @@ Règles :
 - La clé API ne sort jamais de ce fichier : ni dans les logs, ni dans les messages d'erreur.
 
 Implémentations : `StubLLMClient` (aucun appel réseau), `GeminiLLMClient` (LLM_PROVIDER=gemini), `OpenAILLMClient`
-(secours, LLM_SECOURS=openai) et `LLMRoutage` (Gemini d'abord, OpenAI sur quota ou indisponibilité).
+(secours, LLM_SECOURS=openai ou groq : Groq est compatible OpenAI, même client avec une autre base_url) et `LLMRoutage`
+(Gemini d'abord, le secours sur quota ou indisponibilité).
 """
 
 import asyncio
@@ -31,6 +32,7 @@ from app.core.errors import (
     LLMMissingKeyError,
     LLMQuotaError,
     LLMTimeoutError,
+    LLMTropLongError,
 )
 
 T = TypeVar("T", bound=BaseModel)
@@ -55,7 +57,7 @@ class LLMResult(BaseModel):
     input_tokens: int | None = None
     output_tokens: int | None = None
     stub: bool = False
-    # Fournisseur qui a réellement répondu : "gemini", "openai" (secours) ou "stub".
+    # Fournisseur qui a réellement répondu : "gemini", "openai" ou "groq" (secours), ou "stub".
     fournisseur: str | None = None
 
 
@@ -409,6 +411,9 @@ class GeminiLLMClient(LLMClient):
 class OpenAILLMClient(LLMClient):
     """OpenAI via le SDK officiel `openai` (Chat Completions asynchrone). Fournisseur de SECOURS de Gemini.
 
+    Groq expose une API compatible OpenAI : le MÊME client sert pour Groq, avec `base_url`, `nom="groq"` et,
+    si le fournisseur limite les jetons par minute, `limite_tokens_minute` (une requête plus grosse n'est pas envoyée).
+
     - Le modèle vient de `OPENAI_MODEL` ; `OPENAI_REASONING_EFFORT` plafonne la réflexion (comme LLM_THINKING_BUDGET).
     - `complete_json()` active le mode JSON, valide avec pydantic et relance UNE fois si le JSON est invalide.
     - Mêmes erreurs que Gemini : tout est converti en `LLMError` (jamais la clé ni le prompt dans les logs).
@@ -427,7 +432,13 @@ class OpenAILLMClient(LLMClient):
         reasoning_effort: str | None = "low",
         tts_model: str = "gpt-4o-mini-tts",
         client: Any | None = None,
+        nom: str = "openai",
+        base_url: str | None = None,
+        max_retries: int = 1,
+        limite_tokens_minute: int | None = None,
     ) -> None:
+        self.nom = nom
+        self._limite_tpm = limite_tokens_minute
         self._model = model
         self._tts_model = tts_model
         self._timeout = timeout_seconds
@@ -438,7 +449,7 @@ class OpenAILLMClient(LLMClient):
         else:
             from openai import AsyncOpenAI
 
-            self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, max_retries=1)
+            self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_seconds, max_retries=max_retries, base_url=base_url)
 
     # ------------------------------------------------------------------ API publique
 
@@ -460,7 +471,7 @@ class OpenAILLMClient(LLMClient):
             try:
                 return schema.model_validate_json(_strip_code_fence(result.text))
             except ValidationError as exc:
-                log.warning("OpenAI: JSON invalide (module=%s, tentative=%d/2)", module, tentative)
+                log.warning("%s: JSON invalide (module=%s, tentative=%d/2)", self.nom, module, tentative)
                 if tentative == 2:
                     raise LLMInvalidResponseError("Réponse du LLM non conforme au schéma attendu") from exc
                 conversation = [
@@ -488,10 +499,10 @@ class OpenAILLMClient(LLMClient):
         except LLMError:
             raise
         except Exception as exc:  # noqa: BLE001
-            raise _convertir_openai(exc, "tts") from None
+            raise _convertir_openai(exc, "tts", self.nom) from None
         if not donnees:
             raise LLMInvalidResponseError("Réponse vide du fournisseur de synthèse vocale")
-        log.info("OpenAI TTS: modele=%s duree=%.1fs octets=%d", self._tts_model, time.monotonic() - debut, len(donnees))
+        log.info("%s TTS: modele=%s duree=%.1fs octets=%d", self.nom, self._tts_model, time.monotonic() - debut, len(donnees))
         mime = "audio/wav" if format_audio == "wav" else "audio/mpeg"
         return AudioResult(data=donnees, mime_type=mime, model=self._tts_model)
 
@@ -527,6 +538,8 @@ class OpenAILLMClient(LLMClient):
         }
         if json:
             parametres["response_format"] = {"type": "json_object"}
+            _exiger_mot_json(envoyes)  # le mode JSON de Groq/OpenAI exige le mot « JSON » dans les messages
+        self._verifier_taille(envoyes, parametres["max_completion_tokens"])
         if self._effort:
             parametres["reasoning_effort"] = self._effort
         if self._temperature_acceptee:
@@ -539,7 +552,7 @@ class OpenAILLMClient(LLMClient):
             # Le modèle refuse peut-être temperature ou reasoning_effort : on réessaie sans, une seule fois.
             if "temperature" not in parametres and "reasoning_effort" not in parametres:
                 raise
-            log.warning("OpenAI: requête refusée, nouvel essai sans temperature ni reasoning_effort (module=%s)", module)
+            log.warning("%s: requête refusée, nouvel essai sans temperature ni reasoning_effort (module=%s)", self.nom, module)
             self._temperature_acceptee = False
             self._effort = None
             parametres.pop("temperature", None)
@@ -552,10 +565,19 @@ class OpenAILLMClient(LLMClient):
         usage = getattr(reponse, "usage", None)
         entree, sortie = getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None)
         log.info(
-            "OpenAI: module=%s modele=%s duree=%.1fs jetons_entree=%s jetons_sortie=%s",
-            module, self._model, time.monotonic() - debut, entree, sortie,
+            "%s: module=%s modele=%s duree=%.1fs jetons_entree=%s jetons_sortie=%s",
+            self.nom, module, self._model, time.monotonic() - debut, entree, sortie,
         )
         return LLMResult(text=texte, model=self._model, input_tokens=entree, output_tokens=sortie, fournisseur=self.nom)
+
+    def _verifier_taille(self, envoyes: list[dict[str, Any]], tokens_sortie: int) -> None:
+        """Refuse d'envoyer une requête plus grosse que la limite de jetons par minute du fournisseur (aucun appel, aucune relance)."""
+        if not self._limite_tpm:
+            return
+        estimes = _estimer_tokens(envoyes) + tokens_sortie
+        if estimes > self._limite_tpm:
+            log.warning("%s: requête d'environ %d jetons > limite de %d par minute, non envoyée", self.nom, estimes, self._limite_tpm)
+            raise LLMTropLongError(MESSAGE_TROP_LONG)
 
     async def _appeler(self, parametres: dict[str, Any], module: str) -> Any:
         try:
@@ -563,18 +585,45 @@ class OpenAILLMClient(LLMClient):
         except LLMError:
             raise
         except Exception as exc:  # noqa: BLE001 - tout est converti en LLMError
-            raise _convertir_openai(exc, module) from None
+            raise _convertir_openai(exc, module, self.nom, avec_limite=bool(self._limite_tpm)) from None
 
 
-def _convertir_openai(exc: Exception, module: str) -> LLMError:
+MESSAGE_TROP_LONG = "Cours trop long pour le fournisseur de secours"
+
+
+def _estimer_tokens(messages: list[dict[str, Any]]) -> int:
+    """Estimation prudente (1 jeton pour 3,5 caractères) du texte envoyé ; les images ne sont pas comptées."""
+    caracteres = 0
+    for m in messages:
+        contenu = m["content"]
+        caracteres += len(contenu) if isinstance(contenu, str) else sum(len(p.get("text", "")) for p in contenu)
+    return int(caracteres / 3.5) + 1
+
+
+def _exiger_mot_json(messages: list[dict[str, Any]]) -> None:
+    """Le mode JSON refuse une requête où le mot « JSON » n'apparaît pas : on l'ajoute au dernier message utilisateur au besoin."""
+    for m in messages:
+        texte = m["content"] if isinstance(m["content"], str) else " ".join(p.get("text", "") for p in m["content"])
+        if "json" in texte.lower():
+            return
+    for m in reversed(messages):
+        if m["role"] == "user" and isinstance(m["content"], str):
+            m["content"] += "\n\nRéponds uniquement avec un objet JSON valide."
+            return
+
+
+def _convertir_openai(exc: Exception, module: str, nom: str = "openai", *, avec_limite: bool = False) -> LLMError:
     """Traduit une exception du SDK openai en LLMError (même mapping que Gemini). Le message du SDK n'est jamais recopié."""
     import openai
 
     if isinstance(exc, (asyncio.TimeoutError, TimeoutError, openai.APITimeoutError)):
-        log.warning("OpenAI: délai dépassé (module=%s)", module)
+        log.warning("%s: délai dépassé (module=%s)", nom, module)
         return LLMTimeoutError("Le fournisseur LLM n'a pas répondu à temps")
     code = getattr(exc, "status_code", None)
-    log.warning("OpenAI: erreur du fournisseur (module=%s, type=%s, code=%s)", module, type(exc).__name__, code)
+    log.warning("%s: erreur du fournisseur (module=%s, type=%s, code=%s)", nom, module, type(exc).__name__, code)
+    # Groq : requête plus grosse que la limite de jetons par minute (413, ou 429 « request too large ») : aucune relance utile.
+    if avec_limite and (code == 413 or (code == 429 and _requete_trop_grosse(exc))):
+        return LLMTropLongError(MESSAGE_TROP_LONG)
     if isinstance(exc, openai.RateLimitError) or code == 429:  # inclut insufficient_quota
         return LLMQuotaError("Quota du fournisseur LLM atteint, réessaie plus tard")
     if isinstance(exc, (openai.AuthenticationError, openai.PermissionDeniedError)) or code in (401, 403):
@@ -584,6 +633,12 @@ def _convertir_openai(exc: Exception, module: str) -> LLMError:
     if isinstance(exc, openai.APIConnectionError) or (code is not None and code >= 500):
         return LLMError("Le fournisseur LLM est surchargé ou indisponible, réessaie dans un instant")
     return RequeteRefuseeError("Requête refusée par le fournisseur LLM")
+
+
+def _requete_trop_grosse(exc: Exception) -> bool:
+    """Vrai si le fournisseur dit que la requête dépasse la limite de jetons par minute (lecture du message, jamais recopié)."""
+    message = str(getattr(exc, "message", "") or exc).lower()
+    return "request too large" in message or "too large" in message
 
 
 def _messages_openai(messages: list[LLMMessage], image: tuple[bytes, str] | None) -> list[dict[str, Any]]:
@@ -786,6 +841,22 @@ def build_openai_client(settings: Settings) -> OpenAILLMClient | None:
     )
 
 
+def build_groq_client(settings: Settings) -> OpenAILLMClient | None:
+    """Client Groq (même classe que OpenAI, autre base_url), ou None si GROQ_API_KEY ou GROQ_MODEL manque."""
+    if settings.groq_api_key is None or not settings.groq_api_key.get_secret_value() or not settings.groq_model:
+        return None
+    return OpenAILLMClient(
+        settings.groq_api_key.get_secret_value(),
+        settings.groq_model,
+        timeout_seconds=settings.llm_timeout_seconds,
+        reasoning_effort=settings.groq_reasoning_effort,
+        nom="groq",
+        base_url=settings.groq_base_url,
+        max_retries=0,  # pas de relances automatiques : un quota atteint ne se règle pas en réessayant
+        limite_tokens_minute=settings.groq_tokens_par_minute,
+    )
+
+
 def build_llm_client(settings: Settings) -> LLMClient:
     if settings.llm_provider == "stub":
         return StubLLMClient()
@@ -815,12 +886,13 @@ def _avec_secours(principal: LLMClient, settings: Settings) -> LLMClient:
     secours = settings.llm_secours.strip().lower()
     if not secours:
         return principal
-    if secours != "openai":
-        log.warning("LLM_SECOURS=%r inconnu : aucun secours (valeur acceptée : openai)", secours)
+    if secours not in ("openai", "groq"):
+        log.warning("LLM_SECOURS=%r inconnu : aucun secours (valeurs acceptées : openai, groq)", secours)
         return principal
-    client = build_openai_client(settings)
+    client = build_openai_client(settings) if secours == "openai" else build_groq_client(settings)
     if client is None:
-        log.warning("LLM_SECOURS=openai mais OPENAI_API_KEY ou OPENAI_MODEL est absent : aucun secours")
+        cle = "OPENAI_API_KEY ou OPENAI_MODEL" if secours == "openai" else "GROQ_API_KEY ou GROQ_MODEL"
+        log.warning("LLM_SECOURS=%s mais %s est absent : aucun secours", secours, cle)
         return principal
     return LLMRoutage(principal, client)
 
