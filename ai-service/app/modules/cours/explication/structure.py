@@ -10,7 +10,9 @@ MOTS_MIN, MOTS_MAX = 380, 850
 RANG = {TypeSegment.EXPLICATION: 0, TypeSegment.ANALOGIE: 1, TypeSegment.EXEMPLE: 2, TypeSegment.DEMONSTRATION: 3}
 
 
-def verifier_structure(segments: list[SegmentLLM], mode: Mode) -> list[str]:
+def verifier_structure(
+    segments: list[SegmentLLM], mode: Mode, mots: tuple[int, int] = (MOTS_MIN, MOTS_MAX), vise: tuple[int, int] = (450, 750)
+) -> list[str]:
     """Liste des écarts à la structure (vide si tout est conforme). Sert aussi de consignes de correction au LLM."""
     problemes: list[str] = []
     if segments[0].type != TypeSegment.INTRO:
@@ -53,9 +55,9 @@ def verifier_structure(segments: list[SegmentLLM], mode: Mode) -> list[str]:
         if any(s.type != TypeSegment.QUESTION for s in etudiant):
             problemes.append("l'étudiant ne dit que des segments de type « question »")
 
-    mots = compter_mots(segments)
-    if mots < MOTS_MIN:
-        problemes.append(f"le script est trop court ({mots} mots) : vise entre 450 et 750 mots")
-    elif mots > MOTS_MAX:
-        problemes.append(f"le script est trop long ({mots} mots) : vise entre 450 et 750 mots")
+    nb_mots = compter_mots(segments)
+    if nb_mots < mots[0]:
+        problemes.append(f"le script est trop court ({nb_mots} mots) : vise entre {vise[0]} et {vise[1]} mots")
+    elif nb_mots > mots[1]:
+        problemes.append(f"le script est trop long ({nb_mots} mots) : vise entre {vise[0]} et {vise[1]} mots")
     return problemes

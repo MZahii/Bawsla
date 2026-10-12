@@ -8,7 +8,8 @@ from app.modules.cours.fournisseur import fournisseur_utilise
 from app.core.errors import LLMInvalidResponseError
 from app.core.schemas import CamelModel
 from app.modules.cours import fidelite
-from app.modules.cours.explication.generation import MAX_TOKENS, MODULE, construire_segments, nettoyer_pages, verifier_segments
+from app.core.llm_client import estimer_tokens
+from app.modules.cours.explication.generation import MODULE, construire_segments, nettoyer_pages, verifier_segments
 from app.modules.cours.explication.schemas import ExplicationResponse, TraductionRequest
 from app.core.sanitizer import Sanitizer
 from app.modules.cours.prompts import TRADUCTION
@@ -63,7 +64,9 @@ async def traduire_explication(llm: LLMClient, sanitizer: Sanitizer, requete: Tr
             ),
         ),
     ]
-    traduit = await llm.complete_json(messages, TraductionLLM, module=MODULE, temperature=0.2, max_tokens=MAX_TOKENS)
+    # La traduction a la taille du script : sortie = entrée x 1,5 (marge) + 200, plafonnée à 8 000 (pas de valeur fixe énorme).
+    max_tokens = min(8000, int(estimer_tokens(entree) * 1.5) + 200)
+    traduit = await llm.complete_json(messages, TraductionLLM, module=MODULE, temperature=0.2, max_tokens=max_tokens)
     ecarts = _ecarts(attendus, traduit.segments)
     if ecarts:
         log.info("Traduction : segments non conformes (%s), nouvelle tentative", "; ".join(ecarts))
@@ -75,7 +78,7 @@ async def traduire_explication(llm: LLMClient, sanitizer: Sanitizer, requete: Tr
                 + ". Renvoie la traduction COMPLÈTE avec les mêmes numéros « ordre », une seule fois chacun.",
             ),
         ]
-        traduit = await llm.complete_json(messages, TraductionLLM, module=MODULE, temperature=0.2, max_tokens=MAX_TOKENS)
+        traduit = await llm.complete_json(messages, TraductionLLM, module=MODULE, temperature=0.2, max_tokens=max_tokens)
         ecarts = _ecarts(attendus, traduit.segments)
         if ecarts:
             raise LLMInvalidResponseError("La traduction ne respecte pas le découpage du script : " + "; ".join(ecarts))
