@@ -174,3 +174,24 @@ async def test_429_request_too_large_devient_cours_trop_long_mais_un_vrai_429_re
     with pytest.raises(LLMQuotaError):
         await secours.complete(MESSAGES, module="cours")
     assert len(faux.appels) == 2  # une requête par appel, aucune relance
+
+
+# ---------------------------------------------------------------- budget de jetons exposé aux modules
+
+
+def test_estimation_des_jetons_et_reserve_de_sortie():
+    from app.core.llm_client import estimer_tokens
+
+    assert estimer_tokens("x" * 3500) == 1001  # 1 jeton pour 3,5 caractères, arrondi par excès
+    client = build_llm_client(reglages())
+    assert client.secours.limite_tokens_minute == 8000
+    assert client.secours.reserve_sortie(1000) == 1400  # marge de réflexion de Groq : 400 jetons
+    openai_client = build_llm_client(reglages(llm_secours="openai")).secours
+    assert openai_client.reserve_sortie(1000) == 2500 and openai_client.limite_tokens_minute is None
+
+
+async def test_le_journal_detaille_la_requete_refusee(caplog):
+    secours, _ = groq([])
+    with pytest.raises(LLMTropLongError):
+        await secours.complete([LLMMessage(role="user", content="mot " * 5_000)], module="cours", max_tokens=1000)
+    assert "jetons du prompt=" in caplog.text and "max_tokens=" in caplog.text and "total=" in caplog.text

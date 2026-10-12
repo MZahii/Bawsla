@@ -436,8 +436,10 @@ class OpenAILLMClient(LLMClient):
         base_url: str | None = None,
         max_retries: int = 1,
         limite_tokens_minute: int | None = None,
+        marge_reflexion: int | None = None,
     ) -> None:
         self.nom = nom
+        self._marge = self.MARGE_REFLEXION if marge_reflexion is None else marge_reflexion
         self._limite_tpm = limite_tokens_minute
         self._model = model
         self._tts_model = tts_model
@@ -534,7 +536,7 @@ class OpenAILLMClient(LLMClient):
         parametres: dict[str, Any] = {
             "model": self._model,
             "messages": envoyes,
-            "max_completion_tokens": max_tokens + (self.MARGE_REFLEXION if self._effort else 0),
+            "max_completion_tokens": self.reserve_sortie(max_tokens),
         }
         if json:
             parametres["response_format"] = {"type": "json_object"}
@@ -570,13 +572,26 @@ class OpenAILLMClient(LLMClient):
         )
         return LLMResult(text=texte, model=self._model, input_tokens=entree, output_tokens=sortie, fournisseur=self.nom)
 
+    @property
+    def limite_tokens_minute(self) -> int | None:
+        """Jetons par minute que le fournisseur accepte (None : pas de limite connue)."""
+        return self._limite_tpm
+
+    def reserve_sortie(self, max_tokens: int) -> int:
+        """Jetons de sortie réellement demandés au fournisseur : la sortie voulue plus la marge de réflexion."""
+        return max_tokens + (self._marge if self._effort else 0)
+
     def _verifier_taille(self, envoyes: list[dict[str, Any]], tokens_sortie: int) -> None:
         """Refuse d'envoyer une requête plus grosse que la limite de jetons par minute du fournisseur (aucun appel, aucune relance)."""
         if not self._limite_tpm:
             return
-        estimes = _estimer_tokens(envoyes) + tokens_sortie
+        prompt = _estimer_tokens(envoyes)
+        estimes = prompt + tokens_sortie
         if estimes > self._limite_tpm:
-            log.warning("%s: requête d'environ %d jetons > limite de %d par minute, non envoyée", self.nom, estimes, self._limite_tpm)
+            log.warning(
+                "%s: requête non envoyée (jetons du prompt=%d, max_tokens=%d, total=%d > limite de %d par minute)",
+                self.nom, prompt, tokens_sortie, estimes, self._limite_tpm,
+            )
             raise LLMTropLongError(MESSAGE_TROP_LONG)
 
     async def _appeler(self, parametres: dict[str, Any], module: str) -> Any:
@@ -591,13 +606,21 @@ class OpenAILLMClient(LLMClient):
 MESSAGE_TROP_LONG = "Cours trop long pour le fournisseur de secours"
 
 
+CARACTERES_PAR_JETON = 3.5
+
+
+def estimer_tokens(texte: str) -> int:
+    """Estimation prudente du nombre de jetons d'un texte (1 jeton pour 3,5 caractères), sans appel réseau."""
+    return int(len(texte) / CARACTERES_PAR_JETON) + 1
+
+
 def _estimer_tokens(messages: list[dict[str, Any]]) -> int:
     """Estimation prudente (1 jeton pour 3,5 caractères) du texte envoyé ; les images ne sont pas comptées."""
     caracteres = 0
     for m in messages:
         contenu = m["content"]
         caracteres += len(contenu) if isinstance(contenu, str) else sum(len(p.get("text", "")) for p in contenu)
-    return int(caracteres / 3.5) + 1
+    return int(caracteres / CARACTERES_PAR_JETON) + 1
 
 
 def _exiger_mot_json(messages: list[dict[str, Any]]) -> None:
@@ -854,6 +877,7 @@ def build_groq_client(settings: Settings) -> OpenAILLMClient | None:
         base_url=settings.groq_base_url,
         max_retries=0,  # pas de relances automatiques : un quota atteint ne se règle pas en réessayant
         limite_tokens_minute=settings.groq_tokens_par_minute,
+        marge_reflexion=settings.groq_marge_reflexion,
     )
 
 
