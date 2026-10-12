@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     openai_reasoning_effort: str | None = "low"
     openai_tts_model: str = "gpt-4o-mini-tts"
 
+    # Groq (LLM_SECOURS=groq) : API compatible OpenAI, donc le même client avec une autre base_url.
+    # URL et modèle : console.groq.com/docs/openai et /docs/models. gpt-oss-120b accepte le mode JSON et le français.
+    groq_api_key: SecretStr | None = None
+    groq_model: str | None = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_reasoning_effort: str | None = "low"
+    # Jetons par minute autorisés (offre gratuite : 8 000 pour gpt-oss-120b, console.groq.com/docs/rate-limits).
+    # Une requête plus grosse n'est PAS envoyée : erreur claire « Cours trop long pour le fournisseur de secours ».
+    groq_tokens_par_minute: int = 8000
+
     # Taille max d'un texte envoyé au LLM après nettoyage (caractères).
     sanitizer_max_chars: int = 20_000
 
