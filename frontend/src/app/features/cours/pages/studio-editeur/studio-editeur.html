@@ -240,6 +240,12 @@
             }
           }
         </div>
+        @if (existant(); as cours) {
+          <div class="explication-bloc">
+            <p class="lbl">Explication orale par l’IA</p>
+            <app-explication-studio [coursId]="cours.id" />
+          </div>
+        }
       </div>
       <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
     </mat-step>

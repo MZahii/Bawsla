@@ -127,6 +127,7 @@ public class FicheEnregistrement {
     /** Au démarrage : un traitement resté « en cours » a été interrompu par l'arrêt du service. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int marquerInterrompus() {
+        traitementRepository.rattacherALaFiche();
         List<TraitementIA> actifs = traitementRepository.findByStatutIn(
                 List.of(StatutTraitement.EN_ATTENTE, StatutTraitement.EN_COURS));
         for (TraitementIA t : actifs) {

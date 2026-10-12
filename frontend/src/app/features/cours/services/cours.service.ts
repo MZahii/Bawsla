@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Chapitre, ChapitreRequest, Cours, CoursRequest, CoursTexte, Fiche, FicheRequest, Niveau, StatutCours, Traitement } from '../models/cours.model';
+import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, LangueExplication, ModeExplication, Niveau, StatutCours, Traitement } from '../models/cours.model';
 
 /** Appels vers cours-service (via la gateway) : cours, chapitres, statut, fichiers et texte du PDF. */
 @Injectable({ providedIn: 'root' })
@@ -117,6 +117,49 @@ export class CoursService {
   /** MP3 du résumé. Il exige le JWT : on le récupère en blob (voir FicheAudio). */
   audio(coursId: number): Observable<Blob> {
     return this.http.get(`${this.url}/${coursId}/audio`, { responseType: 'blob' });
+  }
+
+  // ------------------------------------------------------------------ explication orale par l'IA
+
+  private urlExplication(coursId: number, route: string, langue: LangueExplication, mode: ModeExplication): string {
+    return `${this.url}/${coursId}/explication${route}?langue=${langue}&mode=${mode}`;
+  }
+
+  /** Lance le script en arrière-plan (ou la traduction pour `en`) ; suivre avec traitementExplication(). */
+  genererExplication(coursId: number, langue: LangueExplication, mode: ModeExplication, duree: number): Observable<Traitement> {
+    return this.http.post<ApiResponse<Traitement>>(`${this.urlExplication(coursId, '/generer', langue, mode)}&duree=${duree}`, {}).pipe(map((r) => r.data));
+  }
+
+  /** « Écouter un aperçu » : met la version la plus récente en voix, à la demande du formateur. */
+  apercuExplication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Traitement> {
+    return this.http.post<ApiResponse<Traitement>>(this.urlExplication(coursId, '/apercu', langue, mode), {}).pipe(map((r) => r.data));
+  }
+
+  traitementExplication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Traitement> {
+    return this.http.get<ApiResponse<Traitement>>(this.urlExplication(coursId, '/traitement', langue, mode)).pipe(map((r) => r.data));
+  }
+
+  /** Formateur : version la plus récente. Apprenant : dernière version validée. `null` : rien à montrer. */
+  explication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Explication | null> {
+    return this.http.get<ApiResponse<Explication | null>>(this.urlExplication(coursId, '', langue, mode)).pipe(map((r) => r.data ?? null));
+  }
+
+  /** Combinaisons langue x mode disponibles (validées pour l'apprenant). */
+  explicationsDisponibles(coursId: number): Observable<DisponibiliteExplication[]> {
+    return this.http.get<ApiResponse<DisponibiliteExplication[]>>(`${this.url}/${coursId}/explication/disponibles`).pipe(map((r) => r.data ?? []));
+  }
+
+  corrigerExplication(coursId: number, langue: LangueExplication, mode: ModeExplication, body: CorrectionExplicationRequest): Observable<Explication> {
+    return this.http.put<ApiResponse<Explication>>(this.urlExplication(coursId, '', langue, mode), body).pipe(map((r) => r.data));
+  }
+
+  validerExplication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Explication> {
+    return this.http.patch<ApiResponse<Explication>>(this.urlExplication(coursId, '/valider', langue, mode), {}).pipe(map((r) => r.data));
+  }
+
+  /** Audio de l'explication : il exige le JWT, donc blob (voir ExplicationLecteurAudio). */
+  audioExplication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Blob> {
+    return this.http.get(this.urlExplication(coursId, '/audio', langue, mode), { responseType: 'blob' });
   }
 }
 

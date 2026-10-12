@@ -55,12 +55,16 @@ class IaClientTest {
     /** Valeur de l'en-tête X-TTS-Fournisseur renvoyée par le faux serveur sur la route audio ("" : pas d'en-tête). */
     private static final java.util.concurrent.atomic.AtomicReference<String> FOURNISSEUR = new java.util.concurrent.atomic.AtomicReference<>("gtts");
 
+    /** Chemins pour lesquels le faux serveur attend 3 s avant de répondre. */
+    private static final List<String> LENT = new CopyOnWriteArrayList<>();
+
     @Autowired IaGateway ia;
 
     @DynamicPropertySource
     static void proprietes(DynamicPropertyRegistry registry) {
         registry.add("cours.ia.gateway-url", () -> "http://localhost:" + SERVEUR.getAddress().getPort());
         registry.add("cours.stockage.dossier", () -> System.getProperty("java.io.tmpdir") + "/bawsla-ia-client-test");
+        registry.add("cours.ia.delai-controle-secondes", () -> "1");
     }
 
     @BeforeEach
@@ -68,6 +72,7 @@ class IaClientTest {
         REPONSES.clear();
         AUTORISATIONS.clear();
         CORPS_RECUS.clear();
+        LENT.clear();
         FOURNISSEUR.set("gtts");
     }
 
@@ -167,6 +172,49 @@ class IaClientTest {
     }
 
     @Test
+    void audioExplicationDe8MoEnBase64EstDecodeSansLimiteDeTaille() {
+        // ~8 Mo d'audio => ~11 Mo de base64 dans une seule chaîne JSON.
+        byte[] audio = new byte[8 * 1024 * 1024];
+        java.util.Arrays.fill(audio, (byte) 7);
+        REPONSES.put("/api/ai/cours/explication/audio", new Object[] {200, "application/json", enveloppeAudio(audio)});
+
+        var reponse = ia.audioExplication("Bearer t", new tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto(List.of(), "fr", "monologue"));
+
+        assertThat(java.util.Base64.getDecoder().decode(reponse.audioBase64())).hasSize(audio.length);
+        assertThat(reponse.minutageEstime()).isTrue();
+        assertThat(reponse.segments()).hasSize(1);
+    }
+
+    @Test
+    void audioExplicationAuDelaDeLaLimiteJacksonParDefautEstAccepte() {
+        // 18 Mo d'audio => 24 millions de caractères : au-dessus des 20 M de Jackson par défaut (relevée à 64 M par JacksonConfig).
+        byte[] audio = new byte[18 * 1024 * 1024];
+        REPONSES.put("/api/ai/cours/explication/audio", new Object[] {200, "application/json", enveloppeAudio(audio)});
+        var reponse = ia.audioExplication("Bearer t", new tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto(List.of(), "fr", "monologue"));
+        assertThat(reponse.audioBase64().length()).isGreaterThan(20_000_000);
+    }
+
+    @Test
+    void chaqueAppelDeLExplicationADonSproprDelaiDeLecture() {
+        // Le contrôle de fidélité n'a que 1 s dans ce test ; le faux serveur met 3 s à répondre.
+        REPONSES.put("/api/ai/cours/fidelite", new Object[] {200, "application/json", "{\"success\":true,\"data\":{\"scoreFidelite\":1}}"});
+        REPONSES.put("/api/ai/cours/explication/fidelite", new Object[] {200, "application/json", "{\"success\":true,\"data\":{\"scoreFidelite\":1}}"});
+        LENT.add("/api/ai/cours/explication/fidelite");
+        var demande = new tn.esprit.bawsla.cours.client.FideliteExplicationIaRequestDto(List.of(), List.of(), List.of());
+        assertThatThrownBy(() -> ia.fideliteExplication("Bearer t", demande)).isInstanceOf(ServiceUnavailableException.class);
+        // Et le délai court de ce seul appel n'affecte pas les autres : la fiche (délai par défaut) répond bien.
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {200, "application/json",
+                "{\"success\":true,\"data\":{\"resume\":\"R\",\"motsCles\":[],\"notions\":[],\"niveau\":\"DEBUTANT\",\"scoreFidelite\":1}}"});
+        assertThat(ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.DEBUTANT)).resume()).isEqualTo("R");
+    }
+
+    private static String enveloppeAudio(byte[] audio) {
+        return "{\"success\":true,\"data\":{\"fournisseur\":\"gemini\",\"mime\":\"audio/mpeg\",\"audioBase64\":\""
+                + java.util.Base64.getEncoder().encodeToString(audio)
+                + "\",\"dureeMs\":1000,\"minutageEstime\":true,\"segments\":[{\"ordre\":1,\"debutMs\":0,\"finMs\":900}]}}";
+    }
+
+    @Test
     void sansAuthorizationOnNAppellePasLIA() {
         assertThatThrownBy(() -> ia.fiche(" ", new FicheIaRequestDto(1L, "x", Niveau.AVANCE))).isInstanceOf(UnauthorizedException.class);
         assertThat(AUTORISATIONS).isEmpty();
@@ -191,6 +239,13 @@ class IaClientTest {
             AUTORISATIONS.add(autorisation);
         }
         CORPS_RECUS.add(new String(echange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        if (LENT.contains(echange.getRequestURI().getPath())) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         Object[] reponse = REPONSES.get(echange.getRequestURI().getPath());
         int statut = reponse == null ? 404 : (int) reponse[0];
         String type = reponse == null ? "application/json" : (String) reponse[1];

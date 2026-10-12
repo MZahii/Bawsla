@@ -22,6 +22,7 @@ import { CATEGORIES, NIVEAUX, formatDuree, formatTaille } from '../../models/cou
 import { Chapitre, ChapitreRequest, Cours, CoursRequest, EtapeIA, Fiche, FicheRequest, Niveau, StatutTraitement, Traitement } from '../../models/cours.model';
 import { FicheAudio } from '../../components/fiche-audio';
 import { FicheContenu } from '../../components/fiche-contenu';
+import { ExplicationStudio } from '../../components/explication-studio';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
 
@@ -58,7 +59,7 @@ interface BrouillonFiche {
   selector: 'app-studio-editeur',
   imports: [
     RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, Badge, BwButton, FicheAudio, FicheContenu,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, Badge, BwButton, FicheAudio, FicheContenu, ExplicationStudio,
     Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
   templateUrl: './studio-editeur.html',

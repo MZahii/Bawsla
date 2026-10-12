@@ -99,7 +99,7 @@ public class FicheService {
     /** Suivi du dernier lancement (formateur ou ADMIN). */
     public TraitementResponse traitement(Long coursId, CurrentUser user) {
         coursService.chargerPourEcriture(coursId, user);
-        return traitementRepository.findFirstByCoursIdOrderByIdDesc(coursId)
+        return traitementRepository.findFirstByCoursIdAndPorteeOrderByIdDesc(coursId, TraitementIA.PORTEE_FICHE)
                 .map(dernier -> TraitementResponse.from(dernier.getExecution(),
                         traitementRepository.findByCoursIdAndExecutionOrderByIdAsc(coursId, dernier.getExecution())))
                 .orElseGet(TraitementResponse::aucun);
@@ -272,7 +272,7 @@ public class FicheService {
     }
 
     private boolean traitementActif(Long coursId) {
-        return traitementRepository.findFirstByCoursIdOrderByIdDesc(coursId).map(dernier -> {
+        return traitementRepository.findFirstByCoursIdAndPorteeOrderByIdDesc(coursId, TraitementIA.PORTEE_FICHE).map(dernier -> {
             boolean recent = dernier.getDateCreation().isAfter(LocalDateTime.now().minusMinutes(DELAI_MAX_MINUTES));
             return recent && traitementRepository.findByCoursIdAndExecutionOrderByIdAsc(coursId, dernier.getExecution())
                     .stream().anyMatch(t -> t.getStatut().actif());

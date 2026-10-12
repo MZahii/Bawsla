@@ -36,3 +36,5 @@
 .notion-edit { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); legend { padding: 0 var(--space-2); font-weight: 600; font-size: 14px; } }
 .actions-correction { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 .audio-fiche { margin-top: var(--space-3); }
+
+.explication-bloc { grid-column: 1 / -1; }

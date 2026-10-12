@@ -85,78 +85,7 @@ class FicheApiTest {
     private static final String JETON = "Bearer jeton-de-test";
     private static final String CONTENU = "Une jointure interne ne garde que les lignes qui ont une correspondance dans les deux tables. "
             + "Contactez le formateur à prof@exemple.tn pour toute question.";
-    private static final byte[] MP3 = "ID3-mp3-de-test".getBytes(StandardCharsets.UTF_8);
-
-    /** IA simulée : réponses fixes, appels enregistrés, pannes et blocage programmables. */
-    static class FauxIa implements IaClient {
-        final List<String> autorisations = new CopyOnWriteArrayList<>();
-        final List<FicheIaRequestDto> demandesFiche = new CopyOnWriteArrayList<>();
-        final List<AudioIaRequestDto> demandesAudio = new CopyOnWriteArrayList<>();
-        volatile String resume = "Résumé généré";
-        volatile RuntimeException panneFiche;
-        volatile RuntimeException panneAudio;
-        volatile String mimeAudio = "audio/mpeg";
-        volatile String fournisseurAudio = "elevenlabs";
-        volatile RuntimeException panneFidelite;
-        volatile CountDownLatch blocageFiche;
-
-        void reinitialiser() {
-            autorisations.clear();
-            demandesFiche.clear();
-            demandesAudio.clear();
-            resume = "Résumé généré";
-            panneFiche = panneAudio = panneFidelite = null;
-            mimeAudio = "audio/mpeg";
-            fournisseurAudio = "elevenlabs";
-            blocageFiche = null;
-        }
-
-        @Override
-        public ApiResponse<FicheIaDto> fiche(String authorization, FicheIaRequestDto corps) {
-            autorisations.add(authorization);
-            demandesFiche.add(corps);
-            attendre(blocageFiche);
-            if (panneFiche != null) {
-                throw panneFiche;
-            }
-            FicheIaDto fiche = new FicheIaDto(resume, List.of("jointure", "LEFT JOIN"),
-                    List.of(new NotionIaDto("INNER JOIN", "Ne garde que les correspondances.", "ne garde que les lignes", true),
-                            new NotionIaDto("Notion douteuse", "Inventée.", "phrase absente du cours", false)),
-                    corps.niveau(), 90, List.of("Notion « Notion douteuse » : extrait introuvable."), "v3", "gemini-test");
-            return ApiResponse.ok(fiche);
-        }
-
-        @Override
-        public ApiResponse<FideliteIaDto> fidelite(String authorization, FideliteIaRequestDto corps) {
-            autorisations.add(authorization);
-            if (panneFidelite != null) {
-                throw panneFidelite;
-            }
-            List<NotionJustifieeDto> notions = corps.fiche().notions().stream()
-                    .map(n -> new NotionJustifieeDto(n.titre(), !n.titre().contains("suspecte"))).toList();
-            return ApiResponse.ok(new FideliteIaDto(77, List.of("Alerte recalculée"), notions));
-        }
-
-        @Override
-        public ResponseEntity<byte[]> audio(String authorization, AudioIaRequestDto corps) {
-            autorisations.add(authorization);
-            demandesAudio.add(corps);
-            if (panneAudio != null) {
-                throw panneAudio;
-            }
-            return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, mimeAudio).header("X-TTS-Fournisseur", fournisseurAudio).body(MP3);
-        }
-
-        private static void attendre(CountDownLatch verrou) {
-            if (verrou != null) {
-                try {
-                    verrou.await(10, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
-    }
+    private static final byte[] MP3 = FauxIa.MP3;
 
     @TestConfiguration
     static class IaDeTest {

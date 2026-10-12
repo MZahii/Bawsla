@@ -112,7 +112,7 @@ export interface FicheRequest {
   notions: { titre: string; definition: string; extraitSource: string }[];
 }
 
-export type EtapeIA = 'TEXTE' | 'FICHE' | 'AUDIO';
+export type EtapeIA = 'TEXTE' | 'FICHE' | 'SCRIPT' | 'TRADUCTION' | 'AUDIO';
 export type StatutTraitement = 'EN_ATTENTE' | 'EN_COURS' | 'TERMINE' | 'ECHEC' | 'ANNULE';
 
 export interface EtapeTraitement {
@@ -128,4 +128,67 @@ export interface Traitement {
   execution: string | null;
   enCours: boolean;
   etapes: EtapeTraitement[];
+}
+
+// ------------------------------------------------------------------ explication orale par l'IA
+
+export type LangueExplication = 'fr' | 'en';
+export type ModeExplication = 'monologue' | 'dialogue';
+export type TypeSegment = 'intro' | 'explication' | 'analogie' | 'exemple' | 'demonstration' | 'question' | 'recap';
+
+/** Miroir de SegmentExplicationResponse. L'extrait source et `justifiee` ne sont renvoyés qu'au formateur et à l'ADMIN. */
+export interface SegmentExplication {
+  id: number;
+  ordre: number;
+  type: TypeSegment;
+  locuteur: 'prof' | 'etudiant';
+  texte: string;
+  notion?: string;
+  page?: number;
+  analogie: boolean;
+  debutMs?: number;
+  finMs?: number;
+  extraitSource?: string;
+  justifiee?: boolean;
+}
+
+/** Miroir de ExplicationResponse. Les champs de contrôle (score, alertes, modèle…) sont réservés au formateur. */
+export interface Explication {
+  id: number;
+  langue: LangueExplication;
+  mode: ModeExplication;
+  statut: StatutFiche;
+  segments: SegmentExplication[];
+  aAudio: boolean;
+  fournisseurAudio?: string;
+  dureeMs?: number;
+  minutageEstime: boolean;
+  dateGeneration: string;
+  dateValidation?: string;
+  scoreFidelite?: number;
+  alertes?: string[];
+  versionPrompt?: string;
+  modele?: string;
+  nbMots?: number;
+  dureeEstimeeSecondes?: number;
+  modifieeParFormateur?: boolean;
+  notionsChoisiesParIa?: boolean;
+  aRetraduire?: boolean;
+  /** L'audio correspond au script actuel. */
+  audioAJour?: boolean;
+  /** Le formateur a un aperçu (même ancien) : condition pour valider. */
+  aPuEcouter?: boolean;
+  valideeDisponible?: boolean;
+}
+
+export interface DisponibiliteExplication {
+  langue: LangueExplication;
+  mode: ModeExplication;
+  statut: StatutFiche;
+  aAudio: boolean;
+  dureeMs?: number;
+}
+
+export interface CorrectionExplicationRequest {
+  segments: { ordre: number; texte: string; extraitSource?: string }[];
 }

@@ -16,13 +16,16 @@ from elevenlabs.core.api_error import ApiError
 from pydantic import SecretStr
 
 from app.core.errors import LLMQuotaError
-from app.core.llm_client import AudioResult, StubLLMClient
+from app.core.llm_client import AudioResult, RequeteRefuseeError, StubLLMClient
 from app.modules.cours.config import CoursAiSettings
 from app.modules.cours.tts import (
     AudioSynthese,
     ChaineTTS,
     ErreurFournisseurTTS,
+    ETUDIANT,
+    PROFESSEUR,
     FournisseurTTS,
+    SegmentVoix,
     TtsIndisponibleError,
     audio_utils,
     construire_chaine,
@@ -238,6 +241,28 @@ async def test_gemini_erreur_du_llm_devient_une_erreur_de_fournisseur():
     with pytest.raises(ErreurFournisseurTTS) as info:
         await gemini.synthetiser("Bonjour.")
     assert "LLMQuotaError" in str(info.value)
+
+
+class _LLMDialogueRefuse(FauxLLM):
+    def __init__(self):
+        super().__init__()
+        self.appels_dialogue = 0
+
+    async def synthetiser_dialogue(self, repliques, voix_par_locuteur, langue):
+        self.appels_dialogue += 1
+        raise RequeteRefuseeError("Requête refusée par le fournisseur LLM")
+
+
+async def test_gemini_dialogue_refuse_une_fois_puis_ignore_sans_gaspiller_de_quota(monkeypatch):
+    from app.modules.cours.tts import gemini as module_gemini
+
+    monkeypatch.setattr(module_gemini, "_dialogue_refuse", False)
+    llm = _LLMDialogueRefuse()
+    segments = [SegmentVoix(1, PROFESSEUR, "Bonjour."), SegmentVoix(2, ETUDIANT, "Question ?")]
+    for _ in range(2):
+        with pytest.raises(ErreurFournisseurTTS):
+            await GeminiTTS(llm, "Kore", "Puck").synthetiser_script(segments, "fr")
+    assert llm.appels_dialogue == 1  # le second dialogue n'appelle plus Gemini
 
 
 # ---------------------------------------------------------------- gTTS

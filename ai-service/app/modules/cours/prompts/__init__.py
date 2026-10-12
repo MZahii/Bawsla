@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from string import Template
 
-from app.modules.cours.prompts import fiche_v1, fiche_v2, fiche_v3, synthese_v1
+from app.modules.cours.prompts import explication_v1, fiche_v1, fiche_v2, fiche_v3, synthese_v1, traduction_v1
 
 log = logging.getLogger("bawsla.cours.prompts")
 
@@ -28,6 +28,9 @@ class Prompt:
 
 _FICHES = {m.VERSION: Prompt(m.VERSION, m.SYSTEME, m.UTILISATEUR) for m in (fiche_v1, fiche_v2, fiche_v3)}
 SYNTHESE = Prompt(synthese_v1.VERSION, synthese_v1.SYSTEME, synthese_v1.UTILISATEUR)
+# Explication orale : réexplique le cours (pas un résumé). Les versions suivantes s'ajoutent ici (v4 : diapositives, phase 3).
+EXPLICATION = Prompt(explication_v1.VERSION, explication_v1.SYSTEME, explication_v1.UTILISATEUR)
+TRADUCTION = Prompt(traduction_v1.VERSION, traduction_v1.SYSTEME, traduction_v1.UTILISATEUR)
 
 
 def versions_disponibles() -> list[str]:

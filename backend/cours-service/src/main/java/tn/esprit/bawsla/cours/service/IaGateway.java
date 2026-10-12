@@ -1,15 +1,25 @@
 package tn.esprit.bawsla.cours.service;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import feign.FeignException;
+import feign.Request;
+import tn.esprit.bawsla.cours.client.AudioExplicationIaDto;
+import tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto;
 import tn.esprit.bawsla.cours.client.AudioIaRequestDto;
+import tn.esprit.bawsla.cours.client.ExplicationIaDto;
+import tn.esprit.bawsla.cours.client.ExplicationIaRequestDto;
+import tn.esprit.bawsla.cours.client.FideliteExplicationIaDto;
+import tn.esprit.bawsla.cours.client.FideliteExplicationIaRequestDto;
+import tn.esprit.bawsla.cours.client.TraductionIaRequestDto;
 import tn.esprit.bawsla.cours.client.FicheIaDto;
 import tn.esprit.bawsla.cours.client.FicheIaRequestDto;
 import tn.esprit.bawsla.cours.client.FideliteIaDto;
@@ -36,9 +46,27 @@ public class IaGateway {
     static final String ENTETE_FOURNISSEUR = "X-TTS-Fournisseur";
 
     private final IaClient client;
+    private final Request.Options delaiScript;
+    private final Request.Options delaiAudio;
+    private final Request.Options delaiControle;
 
-    public IaGateway(IaClient client) {
+    /**
+     * Délais de lecture PAR APPEL (le client Feign garde son délai par défaut pour les autres appels).
+     * Script et traduction : ai-service accorde 150 s au LLM et peut relancer une fois (2 x 150 s), d'où 330 s.
+     * Audio : plusieurs appels de synthèse vocale, parfois avec repli sur un autre fournisseur. Contrôle de fidélité : sans LLM.
+     */
+    public IaGateway(IaClient client,
+                     @Value("${cours.ia.delai-script-secondes:330}") int delaiScriptSecondes,
+                     @Value("${cours.ia.delai-audio-secondes:420}") int delaiAudioSecondes,
+                     @Value("${cours.ia.delai-controle-secondes:30}") int delaiControleSecondes) {
         this.client = client;
+        this.delaiScript = delai(delaiScriptSecondes);
+        this.delaiAudio = delai(delaiAudioSecondes);
+        this.delaiControle = delai(delaiControleSecondes);
+    }
+
+    private static Request.Options delai(int lectureSecondes) {
+        return new Request.Options(5, TimeUnit.SECONDS, lectureSecondes, TimeUnit.SECONDS, true);
     }
 
     public FicheIaDto fiche(String authorization, FicheIaRequestDto corps) {
@@ -59,6 +87,28 @@ public class IaGateway {
         String mime = type == null ? "audio/mpeg" : type.getType() + "/" + type.getSubtype();
         String fournisseur = reponse.getHeaders().getFirst(ENTETE_FOURNISSEUR);
         return new AudioIa(octets, mime, fournisseur == null || fournisseur.isBlank() ? null : fournisseur.strip());
+    }
+
+    // ---- explication orale
+
+    public ExplicationIaDto explication(String authorization, ExplicationIaRequestDto corps) {
+        return donnees(appeler(() -> client.explication(exiger(authorization), corps, delaiScript)));
+    }
+
+    public ExplicationIaDto traduireExplication(String authorization, TraductionIaRequestDto corps) {
+        return donnees(appeler(() -> client.traduireExplication(exiger(authorization), corps, delaiScript)));
+    }
+
+    public FideliteExplicationIaDto fideliteExplication(String authorization, FideliteExplicationIaRequestDto corps) {
+        return donnees(appeler(() -> client.fideliteExplication(exiger(authorization), corps, delaiControle)));
+    }
+
+    public AudioExplicationIaDto audioExplication(String authorization, AudioExplicationIaRequestDto corps) {
+        AudioExplicationIaDto audio = donnees(appeler(() -> client.audioExplication(exiger(authorization), corps, delaiAudio)));
+        if (audio.audioBase64() == null || audio.audioBase64().isBlank()) {
+            throw new ServiceUnavailableException("La synthèse vocale n'a produit aucun son.");
+        }
+        return audio;
     }
 
     private static String exiger(String authorization) {

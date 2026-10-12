@@ -15,12 +15,24 @@ class CoursAiSettings(BaseSettings):
     fiche_morceau_chars: int = 12_000
     fiche_morceaux_max: int = 6
 
+    # ---- Explication orale (script d'une vidéo de cours)
+    # Le script prend souvent plus de 60 s : le client LLM dédié à cet appel a son propre délai (LLM_TIMEOUT_SECONDS ne change pas).
+    explication_timeout_seconds: float = 150.0
+    # Texte du cours envoyé au LLM (caractères) : au-delà, on garde en priorité les pages qui parlent des notions du plan.
+    explication_texte_max_chars: int = 60_000
+    # En dessous, le cours est jugé vide (PDF scanné, chapitres sans contenu) : erreur claire, aucun appel au LLM.
+    explication_texte_min_chars: int = 200
+    # Pause entre deux segments dans l'audio assemblé.
+    explication_pause_ms: int = 350
+
     # ---- Synthèse vocale : chaîne de secours, essayée dans l'ordre. Noms : elevenlabs, gemini, gtts, edge.
     # Un fournisseur sans clé (ou non configuré) est ignoré ; en cas d'échec on passe au suivant.
     tts_fournisseurs: str = "elevenlabs,gemini,gtts,edge"
     tts_max_chars: int = 5_000
     # Délai maximal pour UN fournisseur (au-delà, on passe au suivant).
     tts_timeout_seconds: float = 60.0
+    # Délai maximal pour mettre en voix UN script complet avec UN fournisseur (un appel par segment pour la plupart).
+    tts_script_timeout_seconds: float = 180.0
 
     # ElevenLabs : la même voix sert pour le français et l'anglais (modèle multilingue).
     elevenlabs_api_key: SecretStr | None = None

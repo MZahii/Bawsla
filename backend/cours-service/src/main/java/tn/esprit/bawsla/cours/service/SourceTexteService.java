@@ -1,11 +1,14 @@
 package tn.esprit.bawsla.cours.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import tn.esprit.bawsla.cours.client.PageIaDto;
 import tn.esprit.bawsla.cours.common.exception.BadRequestException;
 import tn.esprit.bawsla.cours.entity.Chapitre;
 import tn.esprit.bawsla.cours.entity.Cours;
@@ -24,10 +27,17 @@ public class SourceTexteService {
     /** Limite acceptée par ai-service. */
     static final int MAXIMUM = 300_000;
 
-    private final PageDocumentRepository pageRepository;
+    /** Pages (ou chapitres) du cours avec leur numéro. {@code chapitres} : le texte vient des chapitres, pas d'un PDF. */
+    public record PagesSource(List<PageIaDto> pages, boolean chapitres) {
+    }
 
-    public SourceTexteService(PageDocumentRepository pageRepository) {
+    private final PageDocumentRepository pageRepository;
+    private final int minimumExplication;
+
+    public SourceTexteService(PageDocumentRepository pageRepository,
+                              @Value("${cours.explication.texte-min-caracteres:200}") int minimumExplication) {
         this.pageRepository = pageRepository;
+        this.minimumExplication = minimumExplication;
     }
 
     /** @throws BadRequestException si le cours n'a ni PDF avec du texte, ni chapitre avec du contenu */
@@ -52,6 +62,45 @@ public class SourceTexteService {
         }
         throw new BadRequestException("Impossible de générer le résumé : ajoute un PDF contenant du texte "
                 + "(pas un scan) ou du contenu dans les chapitres du cours.");
+    }
+
+    /**
+     * Texte du cours page par page, pour l'explication orale (emails et téléphones masqués). Pages du PDF si elles contiennent du texte,
+     * sinon un « page » par chapitre qui a du contenu. La limite de caractères envoyés à l'IA est appliquée côté ai-service,
+     * qui garde en priorité les pages des notions du plan.
+     *
+     * @throws BadRequestException si le total est sous le minimum (cours vide, PDF scanné) : aucun appel à l'IA n'est alors fait
+     */
+    public PagesSource pagesPour(Cours cours) {
+        boolean pdfSansTexte = false;
+        if (cours.getPdfStockage() != null) {
+            List<PageIaDto> pages = pageRepository.findByCoursIdOrderByNumeroAsc(cours.getId()).stream()
+                    .map(p -> new PageIaDto(p.getNumero(), TexteMasker.masquer(p.getTexte()).strip()))
+                    .filter(p -> !p.texte().isBlank())
+                    .toList();
+            if (total(pages) >= minimumExplication) {
+                return new PagesSource(pages, false);
+            }
+            pdfSansTexte = true; // un PDF d'images : l'extraction ne trouve (presque) rien
+        }
+        List<PageIaDto> chapitres = new ArrayList<>();
+        for (Chapitre c : cours.getChapitres()) {
+            if (c.getContenu() != null && !c.getContenu().isBlank()) {
+                chapitres.add(new PageIaDto(c.getOrdre(), "Chapitre " + c.getOrdre() + " : " + c.getTitre() + "\n"
+                        + TexteMasker.masquer(c.getContenu()).strip()));
+            }
+        }
+        if (total(chapitres) >= minimumExplication) {
+            return new PagesSource(chapitres, true);
+        }
+        throw new BadRequestException(pdfSansTexte
+                ? "Ce PDF semble scanné : il ne contient pas assez de texte pour que l'IA puisse expliquer le cours. "
+                        + "Envoie un PDF avec du texte sélectionnable ou ajoute du contenu dans les chapitres."
+                : "Ce cours n'a pas assez de texte à expliquer : ajoute un PDF contenant du texte ou du contenu dans les chapitres.");
+    }
+
+    private static int total(List<PageIaDto> pages) {
+        return pages.stream().mapToInt(p -> p.texte().length()).sum();
     }
 
     private static String limiter(String texte) {

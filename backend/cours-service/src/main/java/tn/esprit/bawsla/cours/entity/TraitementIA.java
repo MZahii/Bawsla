@@ -21,6 +21,12 @@ import jakarta.persistence.Table;
 @Table(name = "traitement_ia", indexes = @Index(name = "idx_traitement_cours", columnList = "coursId"))
 public class TraitementIA {
 
+    public static final String PORTEE_FICHE = "FICHE";
+
+    public static String porteeExplication(LangueExplication langue, ModeExplication mode) {
+        return "EXPLICATION:" + langue.code() + ":" + mode.name();
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,6 +36,10 @@ public class TraitementIA {
 
     @Column(nullable = false, length = 36)
     private String execution;
+
+    /** Ce que le traitement produit : "FICHE" ou "EXPLICATION:fr:MONOLOGUE" (langue et mode). Plusieurs suivis par cours. */
+    @Column(length = 40)
+    private String portee = PORTEE_FICHE;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -58,7 +68,12 @@ public class TraitementIA {
     }
 
     public static TraitementIA enAttente(Long coursId, String execution, EtapeIA etape) {
+        return enAttente(coursId, execution, etape, PORTEE_FICHE);
+    }
+
+    public static TraitementIA enAttente(Long coursId, String execution, EtapeIA etape, String portee) {
         TraitementIA t = new TraitementIA();
+        t.portee = portee;
         t.coursId = coursId;
         t.execution = execution;
         t.etape = etape;
@@ -68,6 +83,7 @@ public class TraitementIA {
     public Long getId() { return id; }
     public Long getCoursId() { return coursId; }
     public String getExecution() { return execution; }
+    public String getPortee() { return portee; }
     public EtapeIA getEtape() { return etape; }
 
     public StatutTraitement getStatut() { return statut; }
