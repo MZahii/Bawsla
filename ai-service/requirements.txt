@@ -6,6 +6,12 @@ pydantic-settings==2.15.0
 google-genai==2.29.0
 # Synthèse vocale (service en ligne Microsoft, sans clé) : audio des fiches de révision
 edge-tts==7.2.8
+# Voix : fournisseurs de la chaîne de secours (module Cours) et durée des MP3
+elevenlabs==2.71.0
+gTTS==2.5.4
+mutagen==1.48.1
+# ffmpeg embarqué (conversion WAV vers MP3 ; montage vidéo des capsules) : aucune installation système
+imageio-ffmpeg==0.6.0
 # Comparaison approximative de textes : contrôle de fidélité des fiches (sans LLM)
 rapidfuzz==3.14.6
 # Les libs ML (scikit-learn, sentence-transformers…) seront ajoutées par PR, avec version fixée,

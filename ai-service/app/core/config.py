@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Réflexion du modèle (Gemini) : nombre de jetons de « réflexion » autorisés. Bas par défaut : on veut des
     # réponses rapides et peu coûteuses. 0 désactive la réflexion si le modèle l'accepte ; vide = réglage du fournisseur.
     llm_thinking_budget: int | None = 128
+    # Modèle de synthèse vocale (Gemini TTS) : LLM_TTS_MODEL. Le fournisseur « gemini » de la chaîne vocale en dépend.
+    llm_tts_model: str | None = "gemini-3.8-flash-tts"
 
     # Taille max d'un texte envoyé au LLM après nettoyage (caractères).
     sanitizer_max_chars: int = 20_000
