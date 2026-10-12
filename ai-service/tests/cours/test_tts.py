@@ -189,6 +189,11 @@ async def test_openai_tts_voix_par_locuteur_et_erreur_convertie():
     assert not OpenAITTS(None, "marin", "cedar").disponible()
 
 
+def test_pas_de_voix_groq_la_chaine_ne_change_pas():
+    # Groq n'a pas de synthèse vocale : le nom est inconnu de la chaîne et ignoré.
+    assert construire_chaine(reglages(tts_fournisseurs="groq,gtts"), FauxLLM()).noms == ["gtts"]
+
+
 def test_valeurs_par_defaut_de_la_chaine(monkeypatch):
     monkeypatch.delenv("TTS_FOURNISSEURS")
     assert reglages().noms_fournisseurs() == ["elevenlabs", "gemini", "gtts", "edge"]
