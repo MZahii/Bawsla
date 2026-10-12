@@ -12,6 +12,7 @@ import { formatTaille } from '../../models/cours.constantes';
 import { FicheAudio } from '../../components/fiche-audio';
 import { FicheContenu } from '../../components/fiche-contenu';
 import { ExplicationLecteur } from '../../components/explication-lecteur';
+import { ResumeLocalLecteur } from '../../components/resume-local-lecteur';
 import { Chapitre, Cours, Fiche } from '../../models/cours.model';
 import { CoursService } from '../../services/cours.service';
 import { analyserLienVideo } from '../../services/video-lien';
@@ -26,7 +27,7 @@ type Etat = 'chargement' | 'ok' | 'introuvable';
  */
 @Component({
   selector: 'app-lecteur',
-  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton, FicheAudio, FicheContenu, ExplicationLecteur],
+  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton, FicheAudio, FicheContenu, ExplicationLecteur, ResumeLocalLecteur],
   templateUrl: './lecteur.html',
   styleUrl: './lecteur.scss',
 })

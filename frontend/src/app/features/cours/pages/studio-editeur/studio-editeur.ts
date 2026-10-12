@@ -23,6 +23,7 @@ import { Chapitre, ChapitreRequest, Cours, CoursRequest, EtapeIA, Fiche, FicheRe
 import { FicheAudio } from '../../components/fiche-audio';
 import { FicheContenu } from '../../components/fiche-contenu';
 import { ExplicationStudio } from '../../components/explication-studio';
+import { ResumeLocalStudio } from '../../components/resume-local-studio';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
 
@@ -59,7 +60,7 @@ interface BrouillonFiche {
   selector: 'app-studio-editeur',
   imports: [
     RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, Badge, BwButton, FicheAudio, FicheContenu, ExplicationStudio,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, Badge, BwButton, FicheAudio, FicheContenu, ExplicationStudio, ResumeLocalStudio,
     Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
   templateUrl: './studio-editeur.html',

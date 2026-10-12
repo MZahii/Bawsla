@@ -242,6 +242,10 @@
         </div>
         @if (existant(); as cours) {
           <div class="explication-bloc">
+            <p class="lbl">Résumé automatique (modèle local, sans IA générative)</p>
+            <app-resume-local-studio [coursId]="cours.id" />
+          </div>
+          <div class="explication-bloc">
             <p class="lbl">Explication orale par l’IA</p>
             <app-explication-studio [coursId]="cours.id" />
           </div>

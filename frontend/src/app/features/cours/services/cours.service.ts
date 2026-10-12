@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, LangueExplication, ModeExplication, Niveau, StatutCours, Traitement } from '../models/cours.model';
+import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, LangueExplication, LongueurResume, ModeExplication, ModeResume, Niveau, ResumeLocal, StatutCours, Traitement } from '../models/cours.model';
 
 /** Appels vers cours-service (via la gateway) : cours, chapitres, statut, fichiers et texte du PDF. */
 @Injectable({ providedIn: 'root' })
@@ -160,6 +160,31 @@ export class CoursService {
   /** Audio de l'explication : il exige le JWT, donc blob (voir ExplicationLecteurAudio). */
   audioExplication(coursId: number, langue: LangueExplication, mode: ModeExplication): Observable<Blob> {
     return this.http.get(this.urlExplication(coursId, '/audio', langue, mode), { responseType: 'blob' });
+  }
+
+  // ------------------------------------------------------------------ résumé automatique local (sans clé API)
+
+  /** Lance le résumé local en arrière-plan ; le premier lancement charge (et télécharge) le modèle. Suivre avec traitementResumeLocal(). */
+  genererResumeLocal(coursId: number, longueur: LongueurResume, mode: ModeResume): Observable<Traitement> {
+    return this.http.post<ApiResponse<Traitement>>(`${this.url}/${coursId}/resume-local/generer?longueur=${longueur}&mode=${mode}`, {}).pipe(map((r) => r.data));
+  }
+
+  traitementResumeLocal(coursId: number): Observable<Traitement> {
+    return this.http.get<ApiResponse<Traitement>>(`${this.url}/${coursId}/resume-local/traitement`).pipe(map((r) => r.data));
+  }
+
+  /** Formateur : le plus récent. Apprenant : le dernier validé. `null` : rien à montrer. */
+  resumeLocal(coursId: number): Observable<ResumeLocal | null> {
+    return this.http.get<ApiResponse<ResumeLocal | null>>(`${this.url}/${coursId}/resume-local`).pipe(map((r) => r.data ?? null));
+  }
+
+  validerResumeLocal(coursId: number): Observable<ResumeLocal> {
+    return this.http.patch<ApiResponse<ResumeLocal>>(`${this.url}/${coursId}/resume-local/valider`, {}).pipe(map((r) => r.data));
+  }
+
+  /** Audio du résumé local : il exige le JWT, donc blob (voir ResumeLocalAudio). */
+  audioResumeLocal(coursId: number): Observable<Blob> {
+    return this.http.get(`${this.url}/${coursId}/resume-local/audio`, { responseType: 'blob' });
   }
 }
 

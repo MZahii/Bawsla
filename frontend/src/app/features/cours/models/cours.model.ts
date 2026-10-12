@@ -112,7 +112,7 @@ export interface FicheRequest {
   notions: { titre: string; definition: string; extraitSource: string }[];
 }
 
-export type EtapeIA = 'TEXTE' | 'FICHE' | 'SCRIPT' | 'TRADUCTION' | 'AUDIO';
+export type EtapeIA = 'TEXTE' | 'FICHE' | 'SCRIPT' | 'TRADUCTION' | 'RESUME' | 'AUDIO';
 export type StatutTraitement = 'EN_ATTENTE' | 'EN_COURS' | 'TERMINE' | 'ECHEC' | 'ANNULE';
 
 export interface EtapeTraitement {
@@ -191,4 +191,43 @@ export interface DisponibiliteExplication {
 
 export interface CorrectionExplicationRequest {
   segments: { ordre: number; texte: string; extraitSource?: string }[];
+}
+
+// ------------------------------------------------------------------ résumé automatique LOCAL (modèle Hugging Face, sans IA générative)
+
+export type LongueurResume = 'courte' | 'moyenne' | 'longue';
+export type ModeResume = 'auto' | 'abstractif' | 'extractif';
+export type StatutResumeLocal = 'GENERE' | 'VALIDE';
+
+/** Miroir de ResumeLocalResponse.Phrase. L'extrait source et `justifiee` ne sont renvoyés qu'au formateur et à l'ADMIN. */
+export interface PhraseResumeLocal {
+  ordre: number;
+  texte: string;
+  page?: number;
+  extraitSource?: string;
+  justifiee?: boolean;
+}
+
+/** Miroir de ResumeLocalResponse. Modèle, score, alertes et durée de calcul sont réservés au formateur et à l'ADMIN. */
+export interface ResumeLocal {
+  id: number;
+  statut: StatutResumeLocal;
+  /** Langue détectée du cours : fr ou en. */
+  langue: 'fr' | 'en';
+  /** abstractif (reformulé) ou extractif (phrases clés du cours). */
+  modeUtilise: 'abstractif' | 'extractif';
+  texte: string;
+  phrases: PhraseResumeLocal[];
+  aAudio: boolean;
+  dureeAudio?: number;
+  fournisseurAudio?: string;
+  dateCreation: string;
+  dateValidation?: string;
+  modele?: string;
+  scoreFidelite?: number;
+  /** Score du reformulé même s'il a été remplacé par les phrases clés. */
+  scoreReformule?: number;
+  alertes?: string[];
+  dureeCalculMs?: number;
+  valideeDisponible?: boolean;
 }
