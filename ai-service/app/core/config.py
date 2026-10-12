@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     # Jetons par minute autorisés (offre gratuite : 8 000 pour gpt-oss-120b, console.groq.com/docs/rate-limits).
     # Une requête plus grosse n'est PAS envoyée : erreur claire « Cours trop long pour le fournisseur de secours ».
     groq_tokens_par_minute: int = 8000
+    # Jetons de réflexion réservés en plus de la sortie demandée (ils comptent dans la limite par minute).
+    groq_marge_reflexion: int = 400
 
     # Taille max d'un texte envoyé au LLM après nettoyage (caractères).
     sanitizer_max_chars: int = 20_000
