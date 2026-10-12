@@ -19,6 +19,7 @@ from app.core.errors import (
 from app.core.llm_client import (
     GeminiLLMClient,
     LLMMessage,
+    RequeteRefuseeError,
     StubLLMClient,
     build_llm_client,
 )
@@ -187,7 +188,7 @@ async def test_requete_refusee_400():
     llm, _ = gemini(erreur_api(400, "INVALID_ARGUMENT", "Thinking level not supported"))
     with pytest.raises(LLMError) as info:
         await llm.complete(MESSAGES, module="cours")
-    assert type(info.value) is LLMError
+    assert isinstance(info.value, RequeteRefuseeError)
 
 
 async def test_delai_depasse():
