@@ -5,7 +5,8 @@ import logging
 
 from fastapi import Depends
 
-from app.core.llm_client import LLMClient, get_llm_client
+from app.core.config import get_settings
+from app.core.llm_client import LLMClient, build_openai_client, get_llm_client
 from app.modules.cours.config import CoursAiSettings, get_cours_ai_settings
 from app.modules.cours.tts.base import (
     PROFESSEUR,
@@ -20,6 +21,7 @@ from app.modules.cours.tts.edge import EdgeTTSFournisseur
 from app.modules.cours.tts.elevenlabs import ElevenLabsTTS
 from app.modules.cours.tts.gemini import GeminiTTS
 from app.modules.cours.tts.gtts_fournisseur import GTTSFournisseur
+from app.modules.cours.tts.openai_fournisseur import OpenAITTS
 
 log = logging.getLogger("bawsla.cours.tts")
 
@@ -84,6 +86,9 @@ def construire_chaine(reglages: CoursAiSettings, llm: LLMClient) -> ChaineTTS:
             reglages.elevenlabs_api_key, reglages.elevenlabs_voice_prof, reglages.elevenlabs_voice_etudiant, reglages.elevenlabs_model
         ),
         "gemini": lambda: GeminiTTS(llm, reglages.gemini_tts_voice_prof, reglages.gemini_tts_voice_etudiant),
+        "openai": lambda: OpenAITTS(
+            build_openai_client(get_settings()), reglages.openai_tts_voice_prof, reglages.openai_tts_voice_etudiant
+        ),
         "gtts": GTTSFournisseur,
         "edge": EdgeTTSFournisseur,
     }

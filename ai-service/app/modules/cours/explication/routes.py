@@ -5,7 +5,7 @@ import base64
 from fastapi import APIRouter, Depends
 
 from app.core.config import Settings, get_settings
-from app.core.llm_client import GeminiLLMClient, LLMClient, build_llm_client, get_llm_client
+from app.core.llm_client import GeminiLLMClient, LLMClient, LLMRoutage, build_llm_client, get_llm_client
 from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
@@ -46,11 +46,12 @@ def get_llm_explication(
 
     Le client commun (LLM_TIMEOUT_SECONDS) reste inchangé pour tous les autres appels. Ce client est construit avec la
     fabrique du socle (`build_llm_client`) : aucun code de core/ n'est modifié et tout passe toujours par lui.
-    Un client qui n'est pas le vrai client Gemini (stub, simulé dans les tests) est renvoyé tel quel.
+    Le routage Gemini -> OpenAI (LLM_SECOURS) est reconstruit de la même façon, avec le même délai pour les deux fournisseurs.
+    Un client qui n'est ni Gemini ni ce routage (stub, simulé dans les tests) est renvoyé tel quel.
     """
-    if type(llm) is not GeminiLLMClient:
+    if type(llm) not in (GeminiLLMClient, LLMRoutage):
         return llm
-    cle = (settings.llm_model, reglages.explication_timeout_seconds)
+    cle = (settings.llm_model, settings.llm_secours, reglages.explication_timeout_seconds)
     if cle not in _clients_longs:
         _clients_longs[cle] = build_llm_client(settings.model_copy(update={"llm_timeout_seconds": reglages.explication_timeout_seconds}))
     return _clients_longs[cle]

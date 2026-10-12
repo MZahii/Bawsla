@@ -136,6 +136,8 @@ class ExplicationResponse(CamelModel):
     alertes: list[str]
     version_prompt: str
     modele: str
+    #: Fournisseur LLM qui a réellement répondu ("gemini", ou "openai" si le secours a pris le relais).
+    fournisseur: str | None = None
     nb_mots: int
     duree_estimee_secondes: int
     #: true : le plan n'a pas été donné (pas de fiche validée), l'IA a choisi les notions.

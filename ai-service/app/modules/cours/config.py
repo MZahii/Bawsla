@@ -25,7 +25,7 @@ class CoursAiSettings(BaseSettings):
     # Pause entre deux segments dans l'audio assemblé.
     explication_pause_ms: int = 350
 
-    # ---- Synthèse vocale : chaîne de secours, essayée dans l'ordre. Noms : elevenlabs, gemini, gtts, edge.
+    # ---- Synthèse vocale : chaîne de secours, essayée dans l'ordre. Noms : elevenlabs, gemini, openai (optionnel), gtts, edge.
     # Un fournisseur sans clé (ou non configuré) est ignoré ; en cas d'échec on passe au suivant.
     tts_fournisseurs: str = "elevenlabs,gemini,gtts,edge"
     tts_max_chars: int = 5_000
@@ -43,6 +43,10 @@ class CoursAiSettings(BaseSettings):
     # Voix prédéfinies de Gemini TTS (professeur, étudiant des dialogues).
     gemini_tts_voice_prof: str = "Kore"
     gemini_tts_voice_etudiant: str = "Puck"
+
+    # Voix OpenAI TTS (professeur, étudiant des dialogues) ; le modèle vient de OPENAI_TTS_MODEL (socle).
+    openai_tts_voice_prof: str = "marin"
+    openai_tts_voice_etudiant: str = "cedar"
 
     def noms_fournisseurs(self) -> list[str]:
         """Noms de la chaîne dans l'ordre configuré, sans doublon ni espace."""

@@ -149,6 +149,46 @@ def test_gemini_est_ignore_quand_le_fournisseur_llm_est_stub():
     assert construire_chaine(reglages(**base), FauxLLM()).noms == ["gemini", "gtts"]
 
 
+def test_openai_est_optionnel_et_exige_une_cle(monkeypatch):
+    from pydantic import SecretStr
+
+    from app.core import config
+
+    monkeypatch.setattr(config, "get_settings", lambda: config.Settings(_env_file=None, openai_api_key=SecretStr("sk-factice"), openai_model="gpt-test"))
+    monkeypatch.setattr("app.modules.cours.tts.chaine.get_settings", config.get_settings)
+    # Pas cité dans TTS_FOURNISSEURS : jamais utilisé.
+    assert construire_chaine(reglages(tts_fournisseurs="gtts"), FauxLLM()).noms == ["gtts"]
+    # Cité et clé présente : actif, à sa place dans l'ordre.
+    assert construire_chaine(reglages(tts_fournisseurs="gemini,openai,gtts"), FauxLLM()).noms == ["gemini", "openai", "gtts"]
+    # Cité mais sans clé : ignoré.
+    monkeypatch.setattr("app.modules.cours.tts.chaine.get_settings", lambda: config.Settings(_env_file=None))
+    assert construire_chaine(reglages(tts_fournisseurs="openai,gtts"), FauxLLM()).noms == ["gtts"]
+
+
+async def test_openai_tts_voix_par_locuteur_et_erreur_convertie():
+    from app.core.errors import LLMQuotaError
+    from app.modules.cours.tts.openai_fournisseur import OpenAITTS
+
+    class _Client:
+        def __init__(self, erreur=None):
+            self.erreur, self.appels = erreur, []
+
+        async def synthetiser(self, texte, voix, langue):
+            self.appels.append((texte, voix, langue))
+            if self.erreur:
+                raise self.erreur
+            return AudioResult(data=b"ID3-openai", mime_type="audio/mpeg", model="gpt-4o-mini-tts")
+
+    client = _Client()
+    son = await OpenAITTS(client, "marin", "cedar").synthetiser("Bonjour.", "fr", ETUDIANT)
+    assert (son.donnees, son.mime, son.fournisseur) == (b"ID3-openai", "audio/mpeg", "openai")
+    assert client.appels == [("Bonjour.", "cedar", "fr")]
+    with pytest.raises(ErreurFournisseurTTS) as info:
+        await OpenAITTS(_Client(LLMQuotaError("Quota")), "marin", "cedar").synthetiser("Bonjour.")
+    assert "LLMQuotaError" in str(info.value)
+    assert not OpenAITTS(None, "marin", "cedar").disponible()
+
+
 def test_valeurs_par_defaut_de_la_chaine(monkeypatch):
     monkeypatch.delenv("TTS_FOURNISSEURS")
     assert reglages().noms_fournisseurs() == ["elevenlabs", "gemini", "gtts", "edge"]

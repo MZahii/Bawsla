@@ -4,6 +4,7 @@ import logging
 
 from app.core.errors import LLMError
 from app.core.llm_client import LLMClient, LLMMessage
+from app.modules.cours.fournisseur import fournisseur_utilise
 from app.core.sanitizer import Sanitizer
 from app.modules.cours import fidelite
 from app.modules.cours.config import CoursAiSettings
@@ -148,6 +149,7 @@ def construire_reponse(
     return ExplicationResponse(
         langue=requete.langue, mode=requete.mode, segments=construire_segments(numerotes, controle),
         score_fidelite=controle.score, alertes=[*alertes, *controle.alertes], version_prompt=EXPLICATION.version, modele=modele,
+        fournisseur=fournisseur_utilise(),
         nb_mots=fidelite.compter_mots(numerotes), duree_estimee_secondes=fidelite.duree_estimee_secondes(numerotes),
         notions_choisies_par_ia=not notions,
     )

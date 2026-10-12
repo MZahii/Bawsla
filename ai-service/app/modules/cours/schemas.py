@@ -75,6 +75,8 @@ class FicheResponse(CamelModel):
     alertes: list[str]
     version_prompt: str
     modele: str
+    #: Fournisseur LLM qui a réellement répondu ("gemini", ou "openai" si le secours a pris le relais).
+    fournisseur: str | None = None
 
 
 # ---------------------------------------------------------------- fidélité (sans LLM)

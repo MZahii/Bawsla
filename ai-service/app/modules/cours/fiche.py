@@ -3,6 +3,7 @@
 import logging
 
 from app.core.llm_client import LLMClient, LLMMessage
+from app.modules.cours.fournisseur import fournisseur_utilise
 from app.core.sanitizer import Sanitizer
 from app.modules.cours import fidelite
 from app.modules.cours.config import CoursAiSettings
@@ -76,6 +77,7 @@ async def generer_fiche(
         alertes=[*alertes, *controle.alertes],
         version_prompt=prompt.version,
         modele=modele,
+        fournisseur=fournisseur_utilise(),
     )
 
 

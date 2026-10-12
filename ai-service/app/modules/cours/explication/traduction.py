@@ -4,6 +4,7 @@ import json
 import logging
 
 from app.core.llm_client import LLMClient, LLMMessage
+from app.modules.cours.fournisseur import fournisseur_utilise
 from app.core.errors import LLMInvalidResponseError
 from app.core.schemas import CamelModel
 from app.modules.cours import fidelite
@@ -91,6 +92,7 @@ async def traduire_explication(llm: LLMClient, sanitizer: Sanitizer, requete: Tr
     return ExplicationResponse(
         langue=requete.langue_cible, mode=requete.mode, segments=construire_segments(traduits, controle),
         score_fidelite=controle.score, alertes=[*alertes, *controle.alertes], version_prompt=TRADUCTION.version, modele=modele,
+        fournisseur=fournisseur_utilise(),
         nb_mots=fidelite.compter_mots(traduits), duree_estimee_secondes=fidelite.duree_estimee_secondes(traduits),
         notions_choisies_par_ia=not notions,
     )

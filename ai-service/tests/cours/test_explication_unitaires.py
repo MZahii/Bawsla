@@ -166,6 +166,24 @@ def test_client_dedie_avec_son_propre_delai_sans_toucher_au_client_commun():
     assert get_llm_explication(commun, settings, reglages) is dedie  # un seul client dédié, réutilisé
 
 
+def test_client_dedie_conserve_le_secours_openai():
+    from app.core.llm_client import LLMRoutage, OpenAILLMClient
+
+    reglages = CoursAiSettings(_env_file=None, explication_timeout_seconds=150)
+    settings = Settings(
+        _env_file=None, llm_provider="gemini", llm_api_key="cle-de-test", llm_model="gemini-test", llm_timeout_seconds=60,
+        llm_secours="openai", openai_api_key="sk-factice", openai_model="gpt-test",
+    )
+    commun = LLMRoutage(GeminiLLMClient("cle-de-test", "gemini-test", timeout_seconds=60, client=SimpleNamespace()),
+                        OpenAILLMClient("sk-factice", "gpt-test", timeout_seconds=60, client=SimpleNamespace()))
+
+    dedie = get_llm_explication(commun, settings, reglages)
+
+    assert isinstance(dedie, LLMRoutage) and dedie is not commun
+    assert dedie.principal._timeout == 150 and dedie.secours._timeout == 150  # délai propre aux deux fournisseurs
+    assert commun.principal._timeout == 60 and settings.llm_timeout_seconds == 60
+
+
 def test_client_non_gemini_renvoye_tel_quel():
     faux = FauxLLM()
     assert get_llm_explication(faux, Settings(_env_file=None), CoursAiSettings(_env_file=None)) is faux
@@ -315,3 +333,16 @@ def test_assemblage_d_un_seul_morceau_et_donnees_invalides():
     assert un and abs(audio_utils.duree_ms(un, "audio/mpeg") - 1000) < 100
     assert audio_utils.assembler_mp3([], 350) is None
     assert audio_utils.assembler_mp3([b"ceci n'est pas un mp3"], 350) is None
+
+
+def test_fournisseur_enregistre_dans_les_reponses(monkeypatch):
+    from app.core import llm_client
+    from app.modules.cours import fournisseur
+
+    monkeypatch.setattr(fournisseur, "get_settings", lambda: Settings(_env_file=None, llm_provider="gemini"))
+    assert fournisseur.fournisseur_utilise() == "gemini"  # pas de secours en jeu : le fournisseur configuré
+    jeton = llm_client._fournisseur_utilise.set("openai")  # le routage a basculé sur OpenAI
+    try:
+        assert fournisseur.fournisseur_utilise() == "openai"
+    finally:
+        llm_client._fournisseur_utilise.reset(jeton)
