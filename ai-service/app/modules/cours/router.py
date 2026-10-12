@@ -18,7 +18,7 @@ from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
 from app.modules.cours import audio, fidelite
-from app.modules.cours.tts import ChaineTTS, TtsIndisponibleError, get_chaine_tts
+from app.modules.cours.tts import ChaineTTS, TtsIndisponibleError, audio_utils, get_chaine_tts
 from app.modules.cours.config import CoursAiSettings, get_cours_ai_settings
 from app.modules.cours.explication.routes import router as explication_router
 from app.modules.cours.fiche import generer_fiche
@@ -107,4 +107,8 @@ async def audio_du_texte(
         son = await chaine.synthetiser(texte, body.langue.value)
     except TtsIndisponibleError:
         raise audio.TtsError("La synthèse vocale est indisponible pour le moment") from None
-    return Response(content=son.donnees, media_type=son.mime, headers={"X-TTS-Fournisseur": son.fournisseur})
+    entetes = {"X-TTS-Fournisseur": son.fournisseur}
+    duree = audio_utils.duree_ms(son.donnees, son.mime)
+    if duree:
+        entetes["X-TTS-Duree-Ms"] = str(duree)  # durée réelle de l'audio, pour l'afficher sans le décoder
+    return Response(content=son.donnees, media_type=son.mime, headers=entetes)
