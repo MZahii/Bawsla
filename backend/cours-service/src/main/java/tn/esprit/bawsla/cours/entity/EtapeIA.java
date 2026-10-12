@@ -9,5 +9,7 @@ public enum EtapeIA {
     FICHE,
     SCRIPT,
     TRADUCTION,
+    /** Résumé automatique local (modèle Hugging Face ou phrases clés), après TEXTE puis avant AUDIO. */
+    RESUME,
     AUDIO
 }

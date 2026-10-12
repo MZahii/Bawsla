@@ -26,6 +26,8 @@ import tn.esprit.bawsla.cours.client.FideliteIaDto.NotionJustifieeDto;
 import tn.esprit.bawsla.cours.client.FideliteIaRequestDto;
 import tn.esprit.bawsla.cours.client.IaClient;
 import tn.esprit.bawsla.cours.client.MinutageIaDto;
+import tn.esprit.bawsla.cours.client.ResumeLocalIaDto;
+import tn.esprit.bawsla.cours.client.ResumeLocalIaRequestDto;
 import tn.esprit.bawsla.cours.client.NotionIaDto;
 import tn.esprit.bawsla.cours.client.SegmentIaDto;
 import tn.esprit.bawsla.cours.client.TraductionIaRequestDto;
@@ -69,6 +71,13 @@ public class FauxIa implements IaClient {
     public volatile String fournisseurExplication = "gemini";
     public volatile boolean minutageEstime = true;
 
+    // ---- résumé automatique local
+    public final List<ResumeLocalIaRequestDto> demandesResumeLocal = new CopyOnWriteArrayList<>();
+    public volatile String langueResume = "en";
+    public volatile String modeResume = "abstractif";
+    public volatile RuntimeException panneResumeLocal;
+    public volatile CountDownLatch blocageResumeLocal;
+
     public void reinitialiser() {
         autorisations.clear();
         demandesFiche.clear();
@@ -89,6 +98,12 @@ public class FauxIa implements IaClient {
         blocageScript = blocageAudioExplication = null;
         fournisseurExplication = "gemini";
         minutageEstime = true;
+
+        demandesResumeLocal.clear();
+        langueResume = "en";
+        modeResume = "abstractif";
+        panneResumeLocal = null;
+        blocageResumeLocal = null;
     }
 
     // ------------------------------------------------------------------ fiche
@@ -126,7 +141,8 @@ public class FauxIa implements IaClient {
         if (panneAudio != null) {
             throw panneAudio;
         }
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, mimeAudio).header("X-TTS-Fournisseur", fournisseurAudio).body(MP3);
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, mimeAudio).header("X-TTS-Fournisseur", fournisseurAudio)
+                .header("X-TTS-Duree-Ms", "12500").body(MP3);
     }
 
     // ------------------------------------------------------------------ explication orale
@@ -203,6 +219,25 @@ public class FauxIa implements IaClient {
         }
         return ApiResponse.ok(new AudioExplicationIaDto(fournisseurExplication, "audio/mpeg",
                 Base64.getEncoder().encodeToString(MP3_EXPLICATION), corps.segments().size() * 10_000L, minutageEstime, minutage));
+    }
+
+    @Override
+    public ApiResponse<ResumeLocalIaDto> resumeLocal(String authorization, ResumeLocalIaRequestDto corps, Request.Options delais) {
+        autorisations.add(authorization);
+        demandesResumeLocal.add(corps);
+        this.delais.add("resume=" + delais.readTimeoutMillis());
+        attendre(blocageResumeLocal);
+        if (panneResumeLocal != null) {
+            throw panneResumeLocal;
+        }
+        boolean extractif = "extractif".equals(modeResume);
+        List<ResumeLocalIaDto.PhraseIaDto> phrases = List.of(
+                new ResumeLocalIaDto.PhraseIaDto("The observer pattern defines a one-to-many dependency.", "Observer: one-to-many dependency between objects", 39, true),
+                new ResumeLocalIaDto.PhraseIaDto("Strategy lets algorithms vary.", "Strategy lets the algorithm vary independently", 33, extractif));
+        return ApiResponse.ok(new ResumeLocalIaDto(langueResume, extractif ? "extractif-textrank" : "sshleifer/distilbart-cnn-12-6", modeResume,
+                "The observer pattern defines a one-to-many dependency. Strategy lets algorithms vary.", phrases, 72, extractif ? 31 : null,
+                extractif ? List.of("Résumé reformulé peu fidèle : remplacé par les phrases clés du cours") : List.of("1 phrase(s) du résumé ne ressemblent à aucune phrase du cours."),
+                4200L));
     }
 
     private static SegmentIaDto segment(int ordre, String type, String locuteur, String texte, String notion, String extrait, Integer page) {

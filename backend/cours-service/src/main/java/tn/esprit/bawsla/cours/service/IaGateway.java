@@ -15,6 +15,8 @@ import feign.Request;
 import tn.esprit.bawsla.cours.client.AudioExplicationIaDto;
 import tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto;
 import tn.esprit.bawsla.cours.client.AudioIaRequestDto;
+import tn.esprit.bawsla.cours.client.ResumeLocalIaDto;
+import tn.esprit.bawsla.cours.client.ResumeLocalIaRequestDto;
 import tn.esprit.bawsla.cours.client.ExplicationIaDto;
 import tn.esprit.bawsla.cours.client.ExplicationIaRequestDto;
 import tn.esprit.bawsla.cours.client.FideliteExplicationIaDto;
@@ -40,15 +42,17 @@ public class IaGateway {
     private static final Logger log = LoggerFactory.getLogger(IaGateway.class);
 
     /** Audio reçu de l'IA : octets, type MIME (audio/mpeg ou audio/wav) et nom du fournisseur vocal qui l'a produit. */
-    public record AudioIa(byte[] octets, String mime, String fournisseur) {
+    public record AudioIa(byte[] octets, String mime, String fournisseur, Long dureeMs) {
     }
 
     static final String ENTETE_FOURNISSEUR = "X-TTS-Fournisseur";
+    static final String ENTETE_DUREE = "X-TTS-Duree-Ms";
 
     private final IaClient client;
     private final Request.Options delaiScript;
     private final Request.Options delaiAudio;
     private final Request.Options delaiControle;
+    private final Request.Options delaiResume;
 
     /**
      * Délais de lecture PAR APPEL (le client Feign garde son délai par défaut pour les autres appels).
@@ -58,11 +62,13 @@ public class IaGateway {
     public IaGateway(IaClient client,
                      @Value("${cours.ia.delai-script-secondes:330}") int delaiScriptSecondes,
                      @Value("${cours.ia.delai-audio-secondes:420}") int delaiAudioSecondes,
-                     @Value("${cours.ia.delai-controle-secondes:30}") int delaiControleSecondes) {
+                     @Value("${cours.ia.delai-controle-secondes:30}") int delaiControleSecondes,
+                     @Value("${cours.ia.delai-resume-secondes:300}") int delaiResumeSecondes) {
         this.client = client;
         this.delaiScript = delai(delaiScriptSecondes);
         this.delaiAudio = delai(delaiAudioSecondes);
         this.delaiControle = delai(delaiControleSecondes);
+        this.delaiResume = delai(delaiResumeSecondes);
     }
 
     private static Request.Options delai(int lectureSecondes) {
@@ -86,7 +92,8 @@ public class IaGateway {
         MediaType type = reponse.getHeaders().getContentType();
         String mime = type == null ? "audio/mpeg" : type.getType() + "/" + type.getSubtype();
         String fournisseur = reponse.getHeaders().getFirst(ENTETE_FOURNISSEUR);
-        return new AudioIa(octets, mime, fournisseur == null || fournisseur.isBlank() ? null : fournisseur.strip());
+        return new AudioIa(octets, mime, fournisseur == null || fournisseur.isBlank() ? null : fournisseur.strip(),
+                dureeEntete(reponse.getHeaders().getFirst(ENTETE_DUREE)));
     }
 
     // ---- explication orale
@@ -109,6 +116,19 @@ public class IaGateway {
             throw new ServiceUnavailableException("La synthèse vocale n'a produit aucun son.");
         }
         return audio;
+    }
+
+    /** Résumé automatique local : le premier appel charge le modèle (parfois le télécharge), d'où un délai de lecture de 300 s. */
+    public ResumeLocalIaDto resumeLocal(String authorization, ResumeLocalIaRequestDto corps) {
+        return donnees(appeler(() -> client.resumeLocal(exiger(authorization), corps, delaiResume)));
+    }
+
+    private static Long dureeEntete(String valeur) {
+        try {
+            return valeur == null ? null : Long.valueOf(valeur.strip());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String exiger(String authorization) {

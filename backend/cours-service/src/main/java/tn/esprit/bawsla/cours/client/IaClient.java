@@ -44,6 +44,11 @@ public interface IaClient {
     ApiResponse<AudioExplicationIaDto> audioExplication(@RequestHeader("Authorization") String authorization,
                                                         @RequestBody AudioExplicationIaRequestDto corps, Request.Options delais);
 
+    /** Résumé automatique local (modèle Hugging Face ou phrases clés) ; le premier appel charge le modèle, d'où le délai propre. */
+    @PostMapping("/api/ai/cours/resume-local")
+    ApiResponse<ResumeLocalIaDto> resumeLocal(@RequestHeader("Authorization") String authorization,
+                                              @RequestBody ResumeLocalIaRequestDto corps, Request.Options delais);
+
     /**
      * Audio du texte, produit par le premier fournisseur vocal disponible de la chaîne (ElevenLabs, Gemini, gTTS, edge-tts).
      * Le type MIME est dans {@code Content-Type} et le fournisseur dans l'en-tête {@code X-TTS-Fournisseur}.

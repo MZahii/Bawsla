@@ -22,6 +22,7 @@ import tn.esprit.bawsla.cours.dto.StatutRequest;
 import tn.esprit.bawsla.cours.entity.AudioRevision;
 import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.ExplicationAudio;
+import tn.esprit.bawsla.cours.entity.ResumeLocal;
 import tn.esprit.bawsla.cours.entity.Niveau;
 import tn.esprit.bawsla.cours.entity.PageDocument;
 import tn.esprit.bawsla.cours.entity.StatutCours;
@@ -29,6 +30,7 @@ import tn.esprit.bawsla.cours.repository.AudioRevisionRepository;
 import tn.esprit.bawsla.cours.repository.ChapitreRepository;
 import tn.esprit.bawsla.cours.repository.CoursRepository;
 import tn.esprit.bawsla.cours.repository.ExplicationAudioRepository;
+import tn.esprit.bawsla.cours.repository.ResumeLocalRepository;
 import tn.esprit.bawsla.cours.repository.FicheRevisionRepository;
 import tn.esprit.bawsla.cours.repository.PageDocumentRepository;
 import tn.esprit.bawsla.cours.repository.TraitementIARepository;
@@ -49,11 +51,13 @@ public class CoursService {
     private final AudioRevisionRepository audioRepository;
     private final TraitementIARepository traitementRepository;
     private final ExplicationAudioRepository explicationRepository;
+    private final ResumeLocalRepository resumeLocalRepository;
 
     public CoursService(CoursRepository coursRepository, ChapitreRepository chapitreRepository,
                         PageDocumentRepository pageRepository, StockageService stockage,
                         FicheRevisionRepository ficheRepository, AudioRevisionRepository audioRepository,
-                        TraitementIARepository traitementRepository, ExplicationAudioRepository explicationRepository) {
+                        TraitementIARepository traitementRepository, ExplicationAudioRepository explicationRepository,
+                        ResumeLocalRepository resumeLocalRepository) {
         this.coursRepository = coursRepository;
         this.chapitreRepository = chapitreRepository;
         this.pageRepository = pageRepository;
@@ -62,6 +66,7 @@ public class CoursService {
         this.audioRepository = audioRepository;
         this.traitementRepository = traitementRepository;
         this.explicationRepository = explicationRepository;
+        this.resumeLocalRepository = resumeLocalRepository;
     }
 
     public List<CoursResponse> findAll(String categorie, Niveau niveau, CurrentUser user) {
@@ -106,6 +111,11 @@ public class CoursService {
             stockage.supprimerApresValidation(StockageService.Type.AUDIO, e.getAudioFichier());
         }
         explicationRepository.deleteAll(explications);
+        List<ResumeLocal> resumes = resumeLocalRepository.findByCoursId(id);
+        for (ResumeLocal r : resumes) {
+            stockage.supprimerApresValidation(StockageService.Type.AUDIO, r.getCheminAudio());
+        }
+        resumeLocalRepository.deleteAll(resumes);
         traitementRepository.deleteAll(traitementRepository.findByCoursId(id));
         coursRepository.delete(cours);
         stockage.supprimerApresValidation(StockageService.Type.IMAGES, cours.getImageFichier());

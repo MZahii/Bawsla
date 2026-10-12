@@ -22,6 +22,7 @@ import jakarta.persistence.Table;
 public class TraitementIA {
 
     public static final String PORTEE_FICHE = "FICHE";
+    public static final String PORTEE_RESUME_LOCAL = "RESUME_LOCAL";
 
     public static String porteeExplication(LangueExplication langue, ModeExplication mode) {
         return "EXPLICATION:" + langue.code() + ":" + mode.name();
