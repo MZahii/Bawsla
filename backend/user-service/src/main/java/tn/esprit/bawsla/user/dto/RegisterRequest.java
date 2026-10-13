@@ -12,8 +12,8 @@ public record RegisterRequest(
         @NotBlank(message = "Le prénom est obligatoire") @Size(max = 100) String prenom,
         @NotBlank(message = "L'email est obligatoire") @Email(message = "Email invalide") @Size(max = 150) String email,
         @NotBlank(message = "Le mot de passe est obligatoire")
-        @Size(min = 8, max = 72, message = "Entre 8 et 72 caractères")
-        @Pattern(regexp = "^(?=.*\\p{L})(?=.*\\d).*$", message = "Au moins une lettre et un chiffre")
+        @Size(min = MotDePasse.MIN, max = MotDePasse.MAX, message = MotDePasse.TAILLE_MESSAGE)
+        @Pattern(regexp = MotDePasse.REGEX, message = MotDePasse.REGEX_MESSAGE)
         String motDePasse,
         Role role) {
 }

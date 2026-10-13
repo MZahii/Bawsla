@@ -104,6 +104,10 @@ public class User {
 
     public void enregistrerConnexion(LocalDateTime maintenant) {
         derniereConnexion = maintenant;
+        deverrouiller();
+    }
+
+    public void deverrouiller() {
         tentativesEchouees = 0;
         verrouilleJusqua = null;
     }
