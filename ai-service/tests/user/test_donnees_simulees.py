@@ -26,6 +26,7 @@ def test_taille_et_colonnes():
     attendues = {
         "nbCoursSuivis", "nbCoursTermines", "progressionMoyenne", "tempsPasseMinutes", "nbQuiz", "noteMoyenne",
         "tauxReussite", "nbNotionsRatees", "nbErreurs", "joursActifs30j", "joursDepuisDerniereConnexion", "echec",
+        "domaines",
     }
     assert attendues <= set(apprenants.columns)
     assert {"apprenant", "coursId", "progression", "tempsPasseMinutes", "termine", "note"} <= set(inscriptions.columns)
@@ -49,6 +50,10 @@ def test_valeurs_dans_les_bornes():
     par_apprenant = inscriptions.groupby("apprenant").size()
     assert (par_apprenant.reindex(apprenants["apprenant"]).values == apprenants["nbCoursSuivis"].values).all()
     assert inscriptions["coursId"].isin([c[0] for c in ds.CATALOGUE]).all()
+    # Domaines déclarés : 1 ou 2 catégories existantes.
+    domaines = apprenants["domaines"].str.split("|")
+    assert domaines.map(len).between(1, 2).all()
+    assert domaines.map(lambda d: set(d) <= set(ds.CATEGORIES)).all()
 
 
 def test_les_profils_caches_sont_distincts_et_realistes():

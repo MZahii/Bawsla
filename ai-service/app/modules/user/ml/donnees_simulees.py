@@ -6,7 +6,7 @@ vraies données les remplacent sans changer les modèles :
 - quiz-service, contrat 3 `notions-ratees` : nbErreurs, tauxReussite (par notion), agrégés ici par apprenant ;
 - quiz-service, contrat à proposer `resultats` : note des quiz (0 à 1) ;
 - cours-service, contrat à proposer `inscriptions` : cours suivis, progression, temps passé, cours terminés ;
-- user-service (déjà disponible) : profil du questionnaire d'accueil, dernière connexion, ancienneté.
+- user-service (déjà disponible) : profil et domaines du questionnaire d'accueil, dernière connexion, ancienneté.
 
 Méthode : chaque apprenant est tiré d'un des 4 profils cachés ci-dessous (« débutant en difficulté », « régulier »,
 « avancé », « décrocheur »), avec du bruit. Le K-Means devra retrouver ces groupes sans les connaître.
@@ -129,6 +129,8 @@ def generer(nb: int = NB_APPRENANTS, graine: int = GRAINE) -> tuple[pd.DataFrame
         lignes.append({
             "apprenant": aid,
             "profilAccueil": str(rng.choice(PROFILS_ACCUEIL)),
+            # Domaines déclarés au questionnaire d'accueil (user-service, parcours.domaines), séparés par « | ».
+            "domaines": "|".join(sorted(domaines)),
             "ancienneteJours": int(rng.integers(7, 365)),
             "nbCoursSuivis": nb_cours,
             "nbCoursTermines": termines,

@@ -22,7 +22,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [x] 2.2 Générateur de jeu de données simulé : 200 apprenants, 4 profils cachés, 15 cours, 630 inscriptions, graine 42
 - [x] 2.3 K-Means : k = 3 (meilleure silhouette entre 3 et 6), groupes Régulier / Débutant en difficulté / Décrocheur, ARI 0,42
 - [x] 2.4 Random Forest risque d'échec : test accuracy 0,825, rappel 0,69, F1 0,76, AUC 0,81 ; comparé à 2 références ; raisons lisibles
-- [ ] 2.5 Filtrage collaboratif + démarrage à froid, précision@k
+- [x] 2.5 Filtrage collaboratif hybride (collaboratif 0,5 + popularité 0,2 + domaines 0,3) : réussite@3 0,64 contre 0,31 ; notions ratées ; démarrage à froid
 - [ ] 2.6 Endpoints `profil`, `risque`, `recommandations`, `metriques`, `entrainer` + contrats (PR)
 - [ ] 2.7 Page admin « IA » branchée sur les métriques
 

@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 08 — 2026-10-13 — IA : filtrage collaboratif, recommandation de cours (étape C3)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : recommandation du sujet : « les étudiants au profil proche du tien ont suivi tel cours », avec en entrée supplémentaire les notions ratées (module Quiz)
+- **Contexte fourni** : jeu de données simulé (630 inscriptions), contrat 3 `notions-ratees` (champ `coursId`), parcours de l'apprenant (domaines, user-service)
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start C3? »)
+- **Résultat** :
+  - Expériences : on cache un cours par apprenant (175 apprenants, 3 tirages) et on mesure s'il est retrouvé dans les n recommandations. Filtrage collaboratif seul (utilisateur ou cours, valeurs ou binaire, k voisins de 5 à 40) ≈ popularité (≈ 0,31 à 3, ≈ 0,55 à 5) : matrice très creuse (3 cours sur 15 par apprenant).
+  - Ajout des domaines déclarés (colonne `domaines` exportée par le générateur, comme `parcours.domaines` de user-service) : hybride collaboratif 0,5 + popularité 0,2 + domaines 0,3 : réussite@3 0,644, réussite@5 0,752, couverture du catalogue 100 % (popularité : 0,314 / 0,568 / 44 %).
+  - `ml/recommandation.py` : similarité cosinus, 20 voisins, jamais un cours déjà suivi, raison pour chaque cours (voisins, domaine, popularité), bonus « pour revoir les bases » pour un cours plus facile de la même catégorie qu'un cours où des notions ont été ratées, démarrage à froid par domaines et niveaux accessibles, filtre par catalogue (cours publiés).
+  - 11 tests pytest (`tests/user/test_recommandation.py`) + vérification de la colonne `domaines`.
+- **Vérification** : `pytest` (142/142) ; exemples : apprenant connu, nouvel apprenant, apprenant en difficulté en Spring Boot.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : le filtrage collaboratif seul, pas meilleur que la popularité sur ces données ; la popularité seule, qui propose les mêmes cours à tous (44 % du catalogue).
+  - Gardé : un hybride où le collaboratif garde le plus gros poids, pour rester un filtrage collaboratif comme le demande le sujet.
+  - Modifié : un nouvel apprenant intéressé par « Data » se voyait proposer « Machine Learning appliqué » (avancé) dès le premier jour ; pénalité de niveau au démarrage à froid.
+  - Limite à dire dans le rapport : le gain des domaines est en partie dû à la simulation, où les cours sont choisis selon les domaines ; sur de vraies données, il faudra le mesurer de nouveau.
+- **Captures** : _(à ajouter : tableau de comparaison et exemples de recommandations)_
+- **Leçon** : sur une matrice très creuse, le filtrage collaboratif seul ne bat pas une référence simple ; il faut toujours comparer à la popularité avant de conclure.
+
 ### 07 — 2026-10-13 — IA : Random Forest, risque d'échec (étape C2)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
