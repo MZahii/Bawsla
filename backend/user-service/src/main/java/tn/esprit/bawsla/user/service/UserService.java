@@ -12,6 +12,8 @@ import tn.esprit.bawsla.user.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
+import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
 import tn.esprit.bawsla.user.entity.Role;
@@ -32,6 +34,32 @@ public class UserService {
 
     public UserDto me(CurrentUser current) {
         return UserDto.from(getOrThrow(current.id()));
+    }
+
+    @Transactional
+    public UserDto modifierMonProfil(CurrentUser current, ProfilRequest request) {
+        User user = getOrThrow(current.id());
+        user.setNom(request.nom().trim());
+        user.setPrenom(request.prenom().trim());
+        String bio = request.bio() == null ? "" : request.bio().trim();
+        user.setBio(bio.isEmpty() ? null : bio);
+        return UserDto.from(user);
+    }
+
+    /**
+     * Mauvais mot de passe actuel : 400 et non 401, car le front déconnecte l'utilisateur sur tout 401
+     * hors /auth (session expirée), ce qui n'a pas lieu d'être ici.
+     */
+    @Transactional
+    public void changerMonMotDePasse(CurrentUser current, ChangementMotDePasseRequest request) {
+        User user = getOrThrow(current.id());
+        if (!passwordEncoder.matches(request.ancienMotDePasse(), user.getMotDePasse())) {
+            throw new BadRequestException("Mot de passe actuel incorrect");
+        }
+        if (passwordEncoder.matches(request.nouveauMotDePasse(), user.getMotDePasse())) {
+            throw new BadRequestException("Le nouveau mot de passe doit être différent de l'actuel");
+        }
+        user.setMotDePasse(passwordEncoder.encode(request.nouveauMotDePasse()));
     }
 
     public UserPublicDto findPublicById(Long id) {

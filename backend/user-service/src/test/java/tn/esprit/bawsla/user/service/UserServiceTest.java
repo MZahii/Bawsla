@@ -25,6 +25,8 @@ import tn.esprit.bawsla.user.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
+import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.entity.Role;
 import tn.esprit.bawsla.user.entity.User;
@@ -169,6 +171,64 @@ class UserServiceTest {
 
         assertThat(service().changerStatut(ADMIN, 2L, false).actif()).isFalse();
         verify(userRepository, never()).countByRoleAndActifTrue(any());
+    }
+
+    // ---------- Mon profil ----------
+
+    @Test
+    void modifierMonProfil_neTouchePasALEmailNiAuRole() {
+        User u = compte(5, Role.ETUDIANT, true);
+        existe(u);
+
+        UserDto dto = service().modifierMonProfil(APPRENANT, new ProfilRequest(" Trabelsi ", " Lina ", "  J'apprends Spring.  "));
+
+        assertThat(dto.nom()).isEqualTo("Trabelsi");
+        assertThat(dto.prenom()).isEqualTo("Lina");
+        assertThat(dto.bio()).isEqualTo("J'apprends Spring.");
+        assertThat(dto.email()).isEqualTo("u5@example.com");
+        assertThat(dto.role()).isEqualTo(Role.ETUDIANT);
+    }
+
+    @Test
+    void modifierMonProfil_bioVideDevientNull() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setBio("ancienne");
+        existe(u);
+
+        assertThat(service().modifierMonProfil(APPRENANT, new ProfilRequest("A", "B", "   ")).bio()).isNull();
+    }
+
+    @Test
+    void changerMonMotDePasse_exigeLAncien() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setMotDePasse(encoder.encode("Password1"));
+        existe(u);
+
+        assertThatThrownBy(() -> service().changerMonMotDePasse(APPRENANT, new ChangementMotDePasseRequest("faux", "Nouveau123")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Mot de passe actuel incorrect");
+        assertThat(encoder.matches("Password1", u.getMotDePasse())).isTrue();
+    }
+
+    @Test
+    void changerMonMotDePasse_refuseLeMemeMotDePasse() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setMotDePasse(encoder.encode("Password1"));
+        existe(u);
+
+        assertThatThrownBy(() -> service().changerMonMotDePasse(APPRENANT, new ChangementMotDePasseRequest("Password1", "Password1")))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void changerMonMotDePasse_ok() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setMotDePasse(encoder.encode("Password1"));
+        existe(u);
+
+        service().changerMonMotDePasse(APPRENANT, new ChangementMotDePasseRequest("Password1", "Nouveau123"));
+
+        assertThat(encoder.matches("Nouveau123", u.getMotDePasse())).isTrue();
     }
 
     // ---------- Mot de passe ----------

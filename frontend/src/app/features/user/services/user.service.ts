@@ -4,13 +4,31 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Utilisateur, UtilisateurCreation, UtilisateurModification } from '../models/utilisateur.model';
+import { ProfilModification, Utilisateur, UtilisateurCreation, UtilisateurModification } from '../models/utilisateur.model';
 
-/** Gestion des comptes par l'ADMIN (le backend renvoie 403 pour les autres rôles). */
+/** Appels du module User : son propre compte (/me) et gestion des comptes par l'ADMIN. */
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly http = inject(HttpClient);
   private readonly url = `${API_BASE_URL}/users`;
+
+  // ---------- Mon compte ----------
+
+  moi(): Observable<Utilisateur> {
+    return this.http.get<ApiResponse<Utilisateur>>(`${this.url}/me`).pipe(map((r) => r.data));
+  }
+
+  modifierMonProfil(body: ProfilModification): Observable<Utilisateur> {
+    return this.http.put<ApiResponse<Utilisateur>>(`${this.url}/me`, body).pipe(map((r) => r.data));
+  }
+
+  changerMonMotDePasse(ancienMotDePasse: string, nouveauMotDePasse: string): Observable<void> {
+    return this.http
+      .put<ApiResponse<null>>(`${this.url}/me/mot-de-passe`, { ancienMotDePasse, nouveauMotDePasse })
+      .pipe(map(() => undefined));
+  }
+
+  // ---------- Administration (le backend renvoie 403 aux autres rôles) ----------
 
   /** Tous les comptes, les plus récents d'abord. */
   findAll(): Observable<Utilisateur[]> {

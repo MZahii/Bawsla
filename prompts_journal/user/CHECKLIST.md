@@ -11,7 +11,8 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 ## 1. Web — comptes et administration
 - [x] Inscription / connexion : mot de passe renforcé, verrouillage brute force, dernière connexion, 19 tests
 - [x] 1.1 Gestion des utilisateurs (admin) : liste réelle + filtres, création, modification (rôle compris), activer/désactiver (aussi en lot), réinitialiser le mot de passe ; `admin-users` branchée
-- [ ] 1.2 Mon profil : modifier nom/prénom/bio, changer le mot de passe (backend ; page `pages/profile` = socle → PR)
+- [x] 1.2 Mon compte : modifier nom/prénom/présentation, changer son mot de passe ; page `features/user/pages/mon-compte` (routes `app.routes.ts` : commit socle à faire relire dans la PR)
+- [ ] 1.6 Parcours de l'apprenant (questionnaire d'accueil) stocké côté serveur au lieu du navigateur : utile au ML (profil, objectif, domaines, temps)
 - [ ] 1.3 Avatar (upload)
 - [ ] 1.4 Supprimer mon compte (désactivation)
 - [ ] 1.5 Demandes formateur : envoi (expertise, bio, lien), liste admin, accepter / refuser ; brancher `admin-formateurs` ; contrat dans `CONTRATS_API.md` (PR)

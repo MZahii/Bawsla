@@ -39,6 +39,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    /** Présentation libre, affichée sur le profil. */
+    @Column(length = 500)
+    private String bio;
+
     @Column(nullable = false)
     private boolean actif = true;
 
@@ -77,6 +81,9 @@ public class User {
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public boolean isActif() { return actif; }
     public void setActif(boolean actif) { this.actif = actif; }

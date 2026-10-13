@@ -7,6 +7,29 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 03 — 2026-10-13 — Mon compte : profil et mot de passe (checklist 1.2)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : que chaque utilisateur modifie ses informations et son mot de passe, sur une page du module User
+- **Contexte fourni** : la page `pages/profile` (socle, données de démo), `app.routes.ts`, CHECKLIST.md
+- **Prompt** :
+  > A
+  (réponse au choix proposé par l'IA : A = nouvelle page dans `features/user` + petite PR sur `app.routes.ts`, B = modifier directement `pages/profile` par PR)
+- **Résultat** :
+  - Backend : champ `bio` (500 car.) ; `PUT /api/users/me` (nom, prénom, présentation ; email et rôle ignorés) ; `PUT /api/users/me/mot-de-passe` (ancien exigé, nouveau différent et conforme aux règles).
+  - Mauvais mot de passe actuel → 400 et non 401, car le front déconnecte sur tout 401 hors `/auth`.
+  - Front : page `features/user/pages/mon-compte` (chargement, erreur, informations, parcours, sécurité, thème), en-tête mis à jour après enregistrement (`refreshMe`).
+  - Socle : `app.routes.ts`, 2 lignes (`/app/profil` et `/studio/profil` pointent vers la nouvelle page), dans un commit séparé à faire relire dans la PR.
+  - 5 tests de plus dans `UserServiceTest` (36 au total).
+- **Vérification** : `mvnw test` (36/36) ; 11 appels curl (modification, email/rôle ignorés, champs vides, bio trop longue, mauvais ancien mot de passe, même mot de passe, mot de passe faible, succès, ancien refusé et nouveau accepté à la connexion, sans token) ; navigateur headless (apprenant : modification + mot de passe, reste sur la page après une erreur ; formateur : onglet dédié) + capture.
+- **Gardé / modifié / rejeté** :
+  - Modifié : « Membre depuis » affichait le mois en anglais (pas de `LOCALE_ID` français) → `Intl.DateTimeFormat('fr-FR')`.
+  - Retiré de la page (données inventées ou non enregistrées) : statistiques fictives de la carte de gauche, sessions ouvertes, onglet Notifications, langue et réglages non sauvegardés, dépôt de photo (arrive en 1.3), faux profil de formateur (arrive en 1.5).
+  - Gardé : le parcours de l'apprenant, enregistré sur l'appareil comme avant (ajouté à la checklist en 1.6 pour le stocker côté serveur).
+  - `pages/profile` n'est pas supprimée (socle) : à retirer dans la PR si l'équipe valide.
+- **Captures** : `captures/2026-10-13_03_mon-compte.png` (navigateur headless, compte de test supprimé ensuite)
+- **Leçon** : vérifier comment le front réagit aux codes d'erreur (ici le 401 qui déconnecte) avant de choisir le code renvoyé par le backend.
+
 ### 02 — 2026-10-13 — Gestion des utilisateurs par l'admin (checklist 1.1)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

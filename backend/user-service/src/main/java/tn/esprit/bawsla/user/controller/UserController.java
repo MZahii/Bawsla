@@ -18,7 +18,9 @@ import tn.esprit.bawsla.user.common.ApiResponse;
 import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
+import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
 import tn.esprit.bawsla.user.dto.MotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.StatutRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
@@ -37,6 +39,18 @@ public class UserController {
     @GetMapping("/me")
     public ApiResponse<UserDto> me(CurrentUser user) {
         return ApiResponse.ok(userService.me(user));
+    }
+
+    @PutMapping("/me")
+    public ApiResponse<UserDto> modifierMonProfil(@Valid @RequestBody ProfilRequest request, CurrentUser user) {
+        return ApiResponse.ok(userService.modifierMonProfil(user, request), "Profil enregistré");
+    }
+
+    @PutMapping("/me/mot-de-passe")
+    public ApiResponse<Void> changerMonMotDePasse(@Valid @RequestBody ChangementMotDePasseRequest request,
+                                                  CurrentUser user) {
+        userService.changerMonMotDePasse(user, request);
+        return ApiResponse.ok(null, "Mot de passe modifié");
     }
 
     /** ADMIN uniquement. */
