@@ -1,6 +1,7 @@
 """Schémas du module Quiz (IA). JSON en camelCase (CamelModel), Python en snake_case.
 
-- Schémas de l'API : GenererQuizRequest / GenererQuizResponse (voir CONTRATS_API.md, contrat 5).
+- Schémas de l'API : GenererQuizRequest / GenererQuizResponse et RemedierRequest / RemedierResponse
+  (voir CONTRATS_API.md, contrat 5).
 - Schémas internes (suffixe Llm) : forme du JSON attendu du LLM, validée par complete_json.
   Ils sont volontairement souples (listes de taille libre) : la validation stricte se fait question
   par question, pour rejeter une seule question mal formée sans perdre tout le lot.
@@ -9,7 +10,7 @@
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BeforeValidator, Field, field_validator
+from pydantic import BeforeValidator, ConfigDict, Field, field_validator, model_validator
 
 from app.core.schemas import CamelModel
 
@@ -101,12 +102,67 @@ class GenererQuizResponse(CamelModel):
     alertes: list[str] = Field(default_factory=list)
 
 
+class RemedierRequest(CamelModel):
+    """Une mauvaise réponse à expliquer. Aucun identifiant, nom ni email d'apprenant : tout champ inattendu
+    est refusé (400)."""
+
+    model_config = ConfigDict(extra="forbid")  # s'ajoute à la configuration camelCase de CamelModel
+
+    notion: str = Field(min_length=1, max_length=150, description="Compétence visée par la question")
+    niveau_bloom: NiveauBloom
+    enonce: str = Field(min_length=1, max_length=1000)
+    choix_donne: str = Field(min_length=1, max_length=300)
+    bonne_reponse: str = Field(min_length=1, max_length=300)
+    erreur_associee: Annotated[str, BeforeValidator(lambda v: "" if v is None else v)] = Field(default="", max_length=300)
+    explication: Annotated[str, BeforeValidator(lambda v: "" if v is None else v)] = Field(default="", max_length=1000)
+
+    @field_validator("notion", "enonce", "choix_donne", "bonne_reponse")
+    @classmethod
+    def _non_vide(cls, valeur: str) -> str:
+        valeur = valeur.strip()
+        if not valeur:
+            raise ValueError("Ce champ est obligatoire")
+        return valeur
+
+    @model_validator(mode="after")
+    def _reponse_fausse(self) -> "RemedierRequest":
+        if self.choix_donne.casefold() == self.bonne_reponse.casefold():
+            raise ValueError("La réponse donnée est la bonne réponse : rien à remédier")
+        return self
+
+
+class RemedierResponse(CamelModel):
+    notion: str
+    # Chain-of-Thought : réservé à quiz-service (formateur), jamais montré à l'apprenant.
+    raisonnement: str
+    explication: str
+    conseil: str
+    question_rattrapage: QuestionQcm | None = None
+    version_prompt: str
+    fournisseur: str | None = None
+    alertes: list[str] = Field(default_factory=list)
+
+
 # --- Réponses attendues du LLM -----------------------------------------------------------------
 
 # Un null ou un type inattendu sur un champ ne doit pas invalider tout le lot : il devient une valeur vide,
 # et la question concernée est rejetée ensuite par la validation stricte.
 TexteLlm = Annotated[str, BeforeValidator(lambda v: v if isinstance(v, str) else "")]
 BoolLlm = Annotated[bool, BeforeValidator(lambda v: v is True)]
+
+
+def _texte_ou_lignes(valeur: object) -> str:
+    """Un raisonnement « étape par étape » arrive parfois en liste de chaînes : on la joint au lieu de la perdre."""
+    if isinstance(valeur, list):
+        return "\n".join(v.strip() for v in valeur if isinstance(v, str) and v.strip())
+    return valeur if isinstance(valeur, str) else ""
+
+
+TexteLongLlm = Annotated[str, BeforeValidator(_texte_ou_lignes)]
+
+
+def _seulement_les_objets(valeur: object) -> list:
+    return [v for v in valeur if isinstance(v, dict)] if isinstance(valeur, list) else []
 
 
 class ChoixLlm(CamelModel):
@@ -119,9 +175,7 @@ class QuestionLlm(CamelModel):
     enonce: TexteLlm = ""
     niveau_bloom: TexteLlm = ""
     competence: TexteLlm = ""
-    choix: Annotated[list[ChoixLlm], BeforeValidator(lambda v: v if isinstance(v, list) else [])] = Field(
-        default_factory=list
-    )
+    choix: Annotated[list[ChoixLlm], BeforeValidator(_seulement_les_objets)] = Field(default_factory=list)
     explication: TexteLlm = ""
 
 
@@ -137,3 +191,14 @@ class ReponseVerificationLlm(CamelModel):
 
 class VerificationLlm(CamelModel):
     reponses: list[ReponseVerificationLlm]
+
+
+class RemediationLlm(CamelModel):
+    """Chain-of-Thought : « raisonnement » vient en premier, le reste en découle."""
+
+    raisonnement: TexteLongLlm = ""
+    explication: TexteLongLlm = ""
+    conseil: TexteLongLlm = ""
+    question_rattrapage: Annotated[
+        QuestionLlm | None, BeforeValidator(lambda v: v if isinstance(v, dict) else None)
+    ] = None

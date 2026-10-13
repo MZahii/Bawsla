@@ -7,6 +7,33 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 05 — 2026-10-13 — IA 2 : remédiation adaptative (Chain-of-Thought, question de rattrapage) et relecture
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), agent `code-reviewer` d'oh-my-claudecode pour la relecture (deux passes)
+- **Objectif** : `POST /api/ai/quiz/remedier` : pour UNE mauvaise réponse, diagnostiquer la confusion, l'expliquer à l'apprenant et proposer une question de rattrapage vérifiée (étape 4 du guide).
+- **Contexte fourni** : le contrat 5 de CONTRATS_API.md (PR #3, pas encore fusionnée), le code de l'IA 1 (validation, Self-Consistency), le socle `app/core`.
+- **Prompt** : la spécification est le prompt de l'étape 4 de `GUIDE_MODULE_QUIZ.md`. Le lancement s'est fait avec la consigne :
+  > IA 2, la remédiation (/remedier). N'attends pas la PR #3 : le contrat est déjà écrit, tu peux coder en parallèle.
+- **Résultat** (fichiers de `ai-service/app/modules/quiz/`) :
+  - `schemas.py` : `RemedierRequest` (notion, niveau de Bloom, énoncé, choix donné, bonne réponse, erreur associée et explication facultatives) avec `extra="forbid"` : tout champ inattendu (`etudiantId`, `nom`, `email`…) est refusé en 400, donc **aucun identifiant d'apprenant ne peut atteindre le LLM**. Une « mauvaise réponse » égale à la bonne est refusée ;
+  - `prompts/remediation_v1.py` : prompt de tuteur au tutoiement, en **Chain-of-Thought** : le champ `raisonnement` vient en premier (réservé au formateur, jamais montré à l'apprenant), puis `explication`, `conseil` et `questionRattrapage`. Les données sont encadrées par `<reponse_apprenant>` et traitées comme une simple donnée ;
+  - `remediation.py` : Sanitizer sur tous les textes, pré-contrôle du budget de jetons (413), un appel à 0.3, validation stricte du rattrapage (mêmes règles que l'IA 1, niveau de Bloom égal ou plus bas, différent de la question d'origine), puis 1 vérification Self-Consistency à 0.7. Un rattrapage rejeté n'annule pas le diagnostic : il est écarté avec la raison dans `alertes`.
+- **Vérification** : `pytest` donne 190 tests au vert avant relecture, 198 après corrections.
+- **Gardé / modifié / rejeté** : la première relecture a conclu « REQUEST CHANGES ». **Corrections appliquées** :
+  1. **[HIGH]** Des choix de rattrapage mal typés (`["A", "B"…]`, `[null, {}]`) faisaient échouer tout le schéma : 502 et diagnostic perdu. Les éléments qui ne sont pas des objets sont maintenant écartés, et seule la question est rejetée (cela protège aussi l'IA 1).
+  2. **[MEDIUM]** Un raisonnement « étape par étape » renvoyé en liste devenait vide, donc 502. La liste est maintenant jointe, et le prompt précise « une chaîne, jamais une liste ».
+  3. **[MEDIUM]** Plafond de sortie trop juste : 900 → 1 050 jetons (même estimation qu'une question générée, plus le diagnostic).
+  4. **[LOW]** Une balise `</reponse_apprenant>` glissée dans un texte pouvait sortir du bloc de données : elle est retirée et signalée comme consigne suspecte.
+  5. **[LOW]** `null` envoyé par quiz-service pour l'erreur associée ou l'explication : accepté. Conseil vide : alerte. La compétence du rattrapage est exactement la notion d'origine. Fonctions de l'IA 1 réutilisées plutôt que copiées.
+  - Seconde relecture : **APPROVE**.
+  - Écarts au guide, gardés : la forme du contrat de la PR #3 (textes des choix plutôt qu'index d'options) ; la `notion` renvoyée est celle d'origine, pour que quiz-service agrège les notions ratées par compétence ; 1 seule vérification du rattrapage (économie de quota, réglable par `QUIZ_NB_VERIFICATIONS_REMEDIATION`).
+  - Gardé comme limite connue : la route est ouverte à tout utilisateur authentifié, donc un apprenant pourrait l'appeler directement et lire le `raisonnement`. Il n'apprend rien de nouveau (il doit fournir la bonne réponse), mais c'est à trancher dans le contrat quand quiz-service sera branché.
+  - Gardé comme limite connue : environ 2 000 jetons par remédiation ; avec Groq gratuit (8 000 par minute), quiz-service devra étaler les appels et relancer après un 429.
+- **Captures** : à ajouter, au format `captures/2026-10-13_05_ia2-remediation.png` et `captures/2026-10-13_05_relecture.png`.
+- **Leçon** : un LLM ne respecte pas toujours le type demandé (liste au lieu de chaîne, chaîne au lieu d'objet). Il faut que la partie précieuse de la réponse (le diagnostic) survive à un défaut sur la partie accessoire (le rattrapage).
+
+---
+
 ### 04 — 2026-10-13 — IA 1 : Self-Consistency renforcée (2 vérifications à 0.7)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), avec oh-my-claudecode 5.7.1

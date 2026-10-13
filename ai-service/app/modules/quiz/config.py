@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class QuizAiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
-    # Version des prompts de génération et de vérification (v1 seulement pour l'instant).
+    # Version des prompts de génération, de vérification et de remédiation (v1 seulement pour l'instant).
     prompt_quiz_version: str = "v1"
     # Nombre maximal de questions demandées au LLM en un seul appel (le lot est encore réduit si le budget l'exige).
     quiz_lot_max: int = 5
@@ -20,6 +20,10 @@ class QuizAiSettings(BaseSettings):
     # et leur température (> 0 pour que les vérifications ne soient pas des copies l'une de l'autre).
     quiz_nb_verifications: int = 2
     quiz_temperature_verification: float = 0.7
+    # Remédiation (IA 2) : température du diagnostic, et vérifications de la question de rattrapage
+    # (une seule : une remédiation est lancée pour chaque mauvaise réponse, le quota compte).
+    quiz_temperature_remediation: float = 0.3
+    quiz_nb_verifications_remediation: int = 1
 
 
 @lru_cache
