@@ -31,7 +31,7 @@ def test_budget_par_defaut_tous_les_appels_tiennent_dans_8000_jetons(client, ave
 
 
 def test_budget_serre_reduit_la_taille_des_lots(client, avec_llm, monkeypatch):
-    _budget(monkeypatch, 3000)
+    _budget(monkeypatch, 3500)  # prompt v2 (échelle de difficulté) : lots de 2
     reponses = [generation(question(i), question(i + 1)) for i in (1, 3)] + [generation(question(5))]
     faux = avec_llm(FauxLLM(*reponses, repondre(), repondre()))
 
@@ -41,7 +41,7 @@ def test_budget_serre_reduit_la_taille_des_lots(client, avec_llm, monkeypatch):
     assert len(generations) == 3  # lots de 2 au lieu de 5
     assert data["nbValidees"] == 5
     for appel in faux.appels:
-        assert estimer_tokens("".join(m.content for m in appel["messages"])) + appel["max_tokens"] + 400 <= 3000
+        assert estimer_tokens("".join(m.content for m in appel["messages"])) + appel["max_tokens"] + 400 <= 3500
 
 
 def test_budget_trop_petit_413_sans_appel(client, avec_llm, monkeypatch):
@@ -55,7 +55,7 @@ def test_budget_trop_petit_413_sans_appel(client, avec_llm, monkeypatch):
     assert faux.appels == []
 
 
-@pytest.mark.parametrize(("budget", "nb_generations", "nb_verifications"), [(2400, 2, 2), (8000, 1, 1)])
+@pytest.mark.parametrize(("budget", "nb_generations", "nb_verifications"), [(2900, 2, 2), (8000, 1, 1)])
 def test_verification_decoupee_seulement_si_necessaire(client, avec_llm, monkeypatch, budget, nb_generations, nb_verifications):
     _budget(monkeypatch, budget)
     longue = "Pourquoi cette jointure renvoie-t-elle ces lignes ? " + "Contexte détaillé. " * 250

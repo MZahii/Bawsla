@@ -30,7 +30,7 @@ python -m venv .venv                         # si .venv n'existe pas encore
 .venv/Scripts/python -m pytest tests/quiz -q
 ```
 
-Attendu : `113 passed`. Pour tout ai-service : `.venv/Scripts/python -m pytest tests -q` (211 passed).
+Attendu : `130 passed` (dont `test_quiz_difficulte.py` : les 5 niveaux de difficulté). Pour tout ai-service : `.venv/Scripts/python -m pytest tests -q` (228 passed).
 
 ### 1.2 Couverture des instructions ET des branches
 
@@ -40,7 +40,7 @@ Attendu : `113 passed`. Pour tout ai-service : `.venv/Scripts/python -m pytest t
   --cov-report=html:tests/quiz/boite_noire/resultats/couverture
 ```
 
-Attendu dans le terminal : `TOTAL 452 0 118 0 100%`.
+Attendu dans le terminal : `TOTAL 475 0 120 0 100%`.
 
 Lecture des colonnes :
 
@@ -91,7 +91,7 @@ Résultats dans `tests/quiz/boite_noire/resultats/` (non versionnés) :
 |---|---|
 | `rapport.html` | tableau des 38 cas : technique, requête, statut attendu / obtenu, durée, verdict |
 | `generation.html` | le quiz de BN-02 : 2 questions VALIDÉES, 2 REJETÉES avec la raison |
-| `remediation.html` | BN-25 : ce que voit l'apprenant, et le raisonnement réservé au formateur |
+| `remediation.html` | BN-26 : ce que voit l'apprenant, et le raisonnement réservé au formateur (BN-25 vérifie qu'un apprenant ne le reçoit pas) |
 | `resultats.json` | réponses brutes de chaque cas |
 
 ### 2.2 Les techniques utilisées
@@ -149,7 +149,7 @@ curl -s http://127.0.0.1:8000/api/ai/quiz/remedier \
   --data-binary @tests/quiz/boite_noire/exemples/remedier.json
 ```
 
-Attendu : 200 avec `raisonnement`, `explication`, `conseil` et `questionRattrapage` (statut `VALIDEE`).
+Attendu : 200 avec `explication`, `conseil` et `questionRattrapage` (statut `VALIDEE`), **sans** `raisonnement` : le Chain-of-Thought est retiré pour un apprenant. Avec `X-User-Role: ENSEIGNANT`, `raisonnement` est présent.
 
 À essayer ensuite, en copiant le fichier et en faisant une modification à la fois :
 

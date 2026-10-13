@@ -19,7 +19,7 @@ DEMANDE = {
     "theme": "Jointures SQL",
     "competences": ["Écrire une jointure interne", "Choisir entre INNER JOIN et LEFT JOIN"],
     "niveauxBloom": ["APPLIQUER", "ANALYSER"],
-    "difficulte": "MOYEN",
+    "difficulte": "INTERMEDIAIRE",
     "nbQuestions": 2,
 }
 
@@ -138,7 +138,7 @@ def environnement(monkeypatch):
     monkeypatch.setenv("LLM_SECOURS", "")
     monkeypatch.setenv("GROQ_TOKENS_PAR_MINUTE", "8000")
     monkeypatch.setenv("GROQ_MARGE_REFLEXION", "400")
-    monkeypatch.setenv("PROMPT_QUIZ_VERSION", "v1")
+    monkeypatch.setenv("PROMPT_QUIZ_VERSION", "v2")
     monkeypatch.setenv("QUIZ_LOT_MAX", "5")
     monkeypatch.setenv("QUIZ_BUDGET_TOKENS", "0")
     # Une seule passe de vérification par défaut : test_quiz_coherence couvre les passes multiples.

@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class QuizAiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
-    # Version des prompts de génération, de vérification et de remédiation (v1 seulement pour l'instant).
-    prompt_quiz_version: str = "v1"
+    # Version des prompts : v2 = échelle de difficulté à 5 niveaux ; v1 reste disponible pour comparaison.
+    prompt_quiz_version: str = "v2"
     # Nombre maximal de questions demandées au LLM en un seul appel (le lot est encore réduit si le budget l'exige).
     quiz_lot_max: int = 5
     # Budget de jetons d'un appel (prompt + sortie) ; 0 = celui du secours Groq (GROQ_TOKENS_PAR_MINUTE).

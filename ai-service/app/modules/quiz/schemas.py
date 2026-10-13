@@ -25,9 +25,18 @@ class NiveauBloom(StrEnum):
 
 
 class Difficulte(StrEnum):
+    """Cinq niveaux, du rappel direct au cas limite d'expert (grille détaillée : prompts/difficultes.py)."""
+
     FACILE = "FACILE"
-    MOYEN = "MOYEN"
+    INTERMEDIAIRE = "INTERMEDIAIRE"
+    AVANCE = "AVANCE"
     DIFFICILE = "DIFFICILE"
+    MASTER = "MASTER"
+
+
+def _ancienne_difficulte(valeur: object) -> object:
+    """« MOYEN » (échelle à 3 niveaux) reste accepté : il correspond à INTERMEDIAIRE."""
+    return Difficulte.INTERMEDIAIRE if valeur == "MOYEN" else valeur
 
 
 class StatutQuestion(StrEnum):
@@ -45,7 +54,7 @@ class GenererQuizRequest(CamelModel):
     theme: str = Field(min_length=2, max_length=200)
     competences: list[str] = Field(min_length=1, max_length=8)
     niveaux_bloom: list[NiveauBloom] = Field(min_length=1, max_length=6)
-    difficulte: Difficulte = Difficulte.MOYEN
+    difficulte: Annotated[Difficulte, BeforeValidator(_ancienne_difficulte)] = Difficulte.INTERMEDIAIRE
     nb_questions: int = Field(default=5, ge=1, le=10)
 
     @field_validator("theme")
@@ -98,6 +107,7 @@ class GenererQuizResponse(CamelModel):
     nb_validees: int
     nb_rejetees: int
     version_prompt: str
+    difficulte: Difficulte
     fournisseur: str | None = None
     alertes: list[str] = Field(default_factory=list)
 
@@ -133,8 +143,8 @@ class RemedierRequest(CamelModel):
 
 class RemedierResponse(CamelModel):
     notion: str
-    # Chain-of-Thought : réservé à quiz-service (formateur), jamais montré à l'apprenant.
-    raisonnement: str
+    # Chain-of-Thought : réservé au formateur (et à quiz-service). Retiré par le routeur pour un apprenant.
+    raisonnement: str | None = None
     explication: str
     conseil: str
     question_rattrapage: QuestionQcm | None = None

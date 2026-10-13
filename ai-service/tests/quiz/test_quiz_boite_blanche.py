@@ -21,7 +21,7 @@ from app.modules.quiz.schemas import (
 )
 from tests.quiz.conftest import DEMANDE, question
 
-OBJECTIFS = Objectifs("Jointures SQL", ["Écrire une jointure interne"], [NiveauBloom.APPLIQUER], "MOYEN")
+OBJECTIFS = Objectifs("Jointures SQL", ["Écrire une jointure interne"], [NiveauBloom.APPLIQUER], "INTERMEDIAIRE")
 
 
 def _qcm() -> QuestionQcm:
@@ -109,4 +109,4 @@ def test_competences_en_double_fusionnees():
 
 
 def test_versions_disponibles():
-    assert versions_disponibles() == ["v1"]
+    assert versions_disponibles() == ["v1", "v2"]

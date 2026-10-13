@@ -22,7 +22,7 @@ from app.core.llm_client import LLMClient, LLMMessage, estimer_tokens
 from app.core.sanitizer import Sanitizer
 from app.modules.quiz import coherence
 from app.modules.quiz.config import QuizAiSettings
-from app.modules.quiz.generation import JETONS_SORTIE_BASE, JETONS_SORTIE_PAR_QUESTION, Objectifs, _cle, _noter, valider
+from app.modules.quiz.generation import Objectifs, _cle, _noter, max_tokens_generation, valider
 from app.modules.quiz.prompts import Prompt, prompt_remediation, prompt_verification
 from app.modules.quiz.schemas import (
     NiveauBloom,
@@ -36,7 +36,7 @@ from app.modules.quiz.schemas import (
 MODULE = "quiz"
 # Sortie : une question de rattrapage (comme une génération d'une question), plus raisonnement, explication
 # et conseil (~450 jetons).
-MAX_TOKENS_REMEDIATION = JETONS_SORTIE_BASE + JETONS_SORTIE_PAR_QUESTION + 450
+MAX_TOKENS_REMEDIATION = max_tokens_generation(1, "INTERMEDIAIRE") + 450
 MESSAGE_TROP_LONG = "Question trop longue pour le fournisseur de secours"
 # Un texte qui ouvre ou ferme la balise de données pourrait en sortir : la balise est retirée.
 BALISE = re.compile(r"<\s*/?\s*reponse_apprenant\s*>", re.IGNORECASE)
@@ -82,7 +82,7 @@ def valider_rattrapage(reponse: RemediationLlm, demande: RemedierRequest, enonce
         return "aucune question de rattrapage renvoyée"
     # Une seule notion est visée : la compétence est la notion d'origine (la même que `notion` en réponse).
     brute = reponse.question_rattrapage.model_copy(update={"competence": demande.notion})
-    objectifs = Objectifs(demande.notion, [demande.notion], _niveaux_jusqua(demande.niveau_bloom), "MOYEN")
+    objectifs = Objectifs(demande.notion, [demande.notion], _niveaux_jusqua(demande.niveau_bloom), "INTERMEDIAIRE")
     question = valider(brute, objectifs)
     if question.statut is StatutQuestion.REJETEE:
         return question.raison_rejet or "format invalide"

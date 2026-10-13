@@ -7,6 +7,7 @@ from tests.quiz.conftest import FauxLLM, question, repondre
 
 URL = "/api/ai/quiz/remedier"
 APPRENANT = {"X-User-Id": "12", "X-User-Role": "ETUDIANT"}
+FORMATEUR = {"X-User-Id": "3", "X-User-Role": "ENSEIGNANT"}
 
 REPONSE_FAUSSE = {
     "notion": "Choisir entre INNER JOIN et LEFT JOIN",
@@ -43,7 +44,7 @@ def test_remediation_complete(client, avec_llm):
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["notion"] == REPONSE_FAUSSE["notion"]
-    assert data["raisonnement"].startswith("La bonne réponse")
+    assert "raisonnement" not in data  # le Chain-of-Thought n'est jamais envoyé à un apprenant
     assert data["explication"] and data["conseil"]
     assert data["versionPrompt"] == "v1"
     assert data["fournisseur"] == "stub"
@@ -57,10 +58,12 @@ def test_remediation_complete(client, avec_llm):
     assert faux.appels[1]["temperature"] == 0.7
 
 
-def test_formateur_et_admin_aussi(client, avec_llm):
+def test_formateur_et_admin_voient_le_raisonnement(client, avec_llm):
     for role in ("ENSEIGNANT", "ADMIN"):
         avec_llm(FauxLLM(remediation(), repondre()))
-        assert _poster(client, entetes={"X-User-Id": "3", "X-User-Role": role}).status_code == 200
+        r = _poster(client, entetes={"X-User-Id": "3", "X-User-Role": role})
+        assert r.status_code == 200
+        assert r.json()["data"]["raisonnement"].startswith("La bonne réponse")
 
 
 def test_sans_en_tetes_401(client, avec_llm):
@@ -286,7 +289,7 @@ def test_choix_mal_types_n_annulent_pas_le_diagnostic(client, avec_llm, choix):
 def test_raisonnement_en_liste_joint(client, avec_llm):
     avec_llm(FauxLLM(remediation(raisonnement=["Étape 1.", "  ", 3, "Étape 2."]), repondre()))
 
-    data = _poster(client).json()["data"]
+    data = _poster(client, entetes=FORMATEUR).json()["data"]
 
     assert data["raisonnement"] == "Étape 1.\nÉtape 2."
 

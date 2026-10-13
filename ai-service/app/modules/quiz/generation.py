@@ -20,6 +20,7 @@ from app.core.sanitizer import Sanitizer
 from app.modules.quiz import coherence
 from app.modules.quiz.config import QuizAiSettings
 from app.modules.quiz.prompts import Prompt, prompt_generation, prompt_verification
+from app.modules.quiz.prompts.difficultes import niveau
 from app.modules.quiz.prompts.exemples_bloom import exemples_pour
 from app.modules.quiz.schemas import (
     ChoixQcm,
@@ -33,11 +34,10 @@ from app.modules.quiz.schemas import (
 )
 
 MODULE = "quiz"
-# Sortie d'une génération : environ 450 jetons par question (énoncé, 4 choix, 3 erreurs, explication).
+# Sortie d'une génération : de 350 (FACILE) à 750 (MASTER) jetons par question (énoncé, 4 choix, 3 erreurs,
+# explication), voir prompts/difficultes.py.
 JETONS_SORTIE_BASE = 150
-JETONS_SORTIE_PAR_QUESTION = 450
 MESSAGE_TROP_LONG = "Objectifs trop longs pour le fournisseur de secours"
-NOMS_DIFFICULTE = {"FACILE": "facile", "MOYEN": "moyenne", "DIFFICILE": "difficile"}
 
 
 @dataclass
@@ -62,8 +62,8 @@ def nettoyer(demande: GenererQuizRequest, sanitizer: Sanitizer) -> Objectifs:
     return Objectifs(textes[0].text.strip(), competences, demande.niveaux_bloom, demande.difficulte.value, alertes)
 
 
-def max_tokens_generation(nb: int) -> int:
-    return JETONS_SORTIE_BASE + JETONS_SORTIE_PAR_QUESTION * nb
+def max_tokens_generation(nb: int, difficulte: str = "INTERMEDIAIRE") -> int:
+    return JETONS_SORTIE_BASE + niveau(difficulte).jetons_par_question * nb
 
 
 def _messages(prompt: Prompt, obj: Objectifs, nb: int, deja: list[str]) -> list[LLMMessage]:
@@ -80,7 +80,8 @@ def _messages(prompt: Prompt, obj: Objectifs, nb: int, deja: list[str]) -> list[
                 theme=obj.theme,
                 competences="\n".join(f"- {c}" for c in obj.competences),
                 niveaux=", ".join(n.value for n in obj.niveaux),
-                difficulte=NOMS_DIFFICULTE[obj.difficulte],
+                difficulte=niveau(obj.difficulte).nom,
+                consigne_difficulte=niveau(obj.difficulte).consigne,
                 nb=str(nb),
                 deja=rappel,
             ),
@@ -95,7 +96,7 @@ def _jetons(messages: list[LLMMessage]) -> int:
 def taille_lot(prompt: Prompt, obj: Objectifs, lot_max: int, budget: int, marge: int) -> int:
     """Plus grand nombre de questions par appel (≤ lot_max) dont le prompt + la sortie tiennent dans le budget."""
     for n in range(lot_max, 0, -1):
-        if _jetons(_messages(prompt, obj, n, [])) + max_tokens_generation(n) + marge <= budget:
+        if _jetons(_messages(prompt, obj, n, [])) + max_tokens_generation(n, obj.difficulte) + marge <= budget:
             return n
     raise LLMTropLongError(MESSAGE_TROP_LONG)
 
@@ -180,14 +181,14 @@ async def generer_quiz(
     while restant > 0:
         nb = min(lot, restant)
         rappel = list(deja)
-        while rappel and _jetons(_messages(generation, obj, nb, rappel)) + max_tokens_generation(nb) + marge > budget:
+        while rappel and _jetons(_messages(generation, obj, nb, rappel)) + max_tokens_generation(nb, obj.difficulte) + marge > budget:
             rappel.pop(0)  # budget serré : on ne rappelle que les énoncés les plus récents
         reponse = await llm.complete_json(
             _messages(generation, obj, nb, rappel),
             GenerationLlm,
             module=MODULE,
             temperature=reglages.quiz_temperature_generation,
-            max_tokens=max_tokens_generation(nb),
+            max_tokens=max_tokens_generation(nb, obj.difficulte),
         )
         _noter(fournisseurs)
         recues = reponse.questions[:nb]
@@ -231,6 +232,7 @@ async def generer_quiz(
         nb_validees=nb_validees,
         nb_rejetees=len(questions) - nb_validees,
         version_prompt=generation.version,
+        difficulte=demande.difficulte,
         # Sans secours configuré, le socle n'enregistre pas de fournisseur : on reprend LLM_PROVIDER.
         fournisseur="+".join(fournisseurs) or socle.llm_provider,
         alertes=alertes,

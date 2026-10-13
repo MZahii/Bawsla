@@ -38,7 +38,7 @@ DEMANDE = {
     "theme": "Jointures SQL",
     "competences": ["Choisir entre INNER JOIN et LEFT JOIN", "Écrire une jointure externe"],
     "niveauxBloom": ["APPLIQUER", "ANALYSER"],
-    "difficulte": "MOYEN",
+    "difficulte": "INTERMEDIAIRE",
     "nbQuestions": 4,
 }
 MAUVAISE_REPONSE = {
@@ -115,9 +115,17 @@ def deux_rejets_motives(r: dict) -> list[str]:
     return pbs
 
 
+def sans_raisonnement(r: dict) -> list[str]:
+    return ["raisonnement (Chain-of-Thought) envoyé à un apprenant"] if "raisonnement" in r["data"] else []
+
+
+def avec_raisonnement(r: dict) -> list[str]:
+    return [] if r["data"].get("raisonnement") else ["raisonnement absent pour le formateur"]
+
+
 def remediation_conforme(r: dict) -> list[str]:
     d, pbs = r["data"], []
-    for champ in ("raisonnement", "explication", "conseil", "versionPrompt"):
+    for champ in ("explication", "conseil", "versionPrompt"):
         if not d.get(champ):
             pbs.append(f"{champ} vide")
     q = d.get("questionRattrapage")
@@ -196,9 +204,9 @@ def catalogue() -> list[Cas]:
             503, [erreur("LLM_MISSING_KEY")], serveur="stub"),
         # Remédiation
         Cas("BN-25", "Remédiation", "Nominal", "Apprenant : diagnostic, explication, conseil, rattrapage validé",
-            REMEDIER, MAUVAISE_REPONSE, APPRENANT, 200, [remediation_conforme]),
-        Cas("BN-26", "Remédiation", "Table de décision", "Formateur autorisé", REMEDIER, MAUVAISE_REPONSE, FORMATEUR, 200,
-            [remediation_conforme]),
+            REMEDIER, MAUVAISE_REPONSE, APPRENANT, 200, [remediation_conforme, sans_raisonnement]),
+        Cas("BN-26", "Remédiation", "Table de décision", "Formateur autorisé, voit le raisonnement", REMEDIER,
+            MAUVAISE_REPONSE, FORMATEUR, 200, [remediation_conforme, avec_raisonnement]),
         Cas("BN-27", "Remédiation", "Table de décision", "Sans en-têtes d'identité", REMEDIER, MAUVAISE_REPONSE, {}, 401,
             [erreur("UNAUTHORIZED")]),
         Cas("BN-28", "Remédiation", "Confidentialité", "Champ etudiantId refusé", REMEDIER, m(etudiantId=12), APPRENANT,
@@ -374,7 +382,7 @@ def vitrine_remediation(r: dict) -> str:
 <p><b>Question de rattrapage</b> <span class="badge v">{q.get('statut', '—')}</span> ({q.get('niveauBloom', '')}) :
 {html.escape(q.get('enonce', ''))}</p>{choix}
 <div class=sous style='margin-top:6px'>Les bonnes réponses et erreurs visées ne sont montrées qu'après la réponse.</div></div>
-<div class='carte'><b>Réservé au formateur : raisonnement (Chain-of-Thought)</b>
+<div class='carte'><b>Réservé au formateur : raisonnement (Chain-of-Thought), retiré pour un apprenant</b>
 <div class=formateur><pre>{html.escape(d['raisonnement'])}</pre></div></div>""")
 
 
@@ -404,7 +412,7 @@ def main() -> int:
     par_id = {r["cas"].id: r for r in resultats}
     # Les vitrines mettent en forme une réponse réussie : inutiles (et impossibles) si le cas a échoué
     for id_cas, fichier, vitrine in (("BN-02", "generation.html", vitrine_generation),
-                                     ("BN-25", "remediation.html", vitrine_remediation)):
+                                     ("BN-26", "remediation.html", vitrine_remediation)):
         if not par_id[id_cas]["problemes"]:
             (DOSSIER / fichier).write_text(vitrine(par_id[id_cas]), encoding="utf-8")
     (DOSSIER / "resultats.json").write_text(json.dumps(

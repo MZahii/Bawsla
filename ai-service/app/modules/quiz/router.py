@@ -4,6 +4,7 @@
   JSON strict, Self-Consistency). Le module ne lit jamais le texte ni le PDF du cours.
 - POST /api/ai/quiz/remedier : diagnostic Chain-of-Thought d'une mauvaise réponse et question de rattrapage.
   Appelée par quiz-service pour chaque mauvaise réponse ; aucune donnée de l'apprenant n'est acceptée.
+  Pour un apprenant (rôle ETUDIANT), le raisonnement Chain-of-Thought est retiré de la réponse.
 Tous les appels LLM passent par app.core (LLMClient) ; tout texte est nettoyé par le Sanitizer avant.
 Pas de try/except ici : les erreurs LLM (413, 429, 502, 503, 504) sont traduites par les gestionnaires du socle.
 """
@@ -21,6 +22,7 @@ from app.modules.quiz.schemas import GenererQuizRequest, GenererQuizResponse, Re
 
 MODULE = "quiz"
 ROLES_GENERATION = ("ENSEIGNANT", "ADMIN")
+ROLE_APPRENANT = "ETUDIANT"
 router = APIRouter(prefix="/api/ai/quiz", tags=["quiz"])
 
 
@@ -41,10 +43,12 @@ async def generer_qcm(
 @router.post("/remedier", response_model=ApiResponse[RemedierResponse], response_model_exclude_none=True)
 async def remedier_reponse(
     body: RemedierRequest,
-    _user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
     llm: LLMClient = Depends(get_llm_client),
     sanitizer: Sanitizer = Depends(get_sanitizer),
     reglages: QuizAiSettings = Depends(get_quiz_ai_settings),
 ) -> ApiResponse[RemedierResponse]:
     resultat = await remedier(llm, sanitizer, body, reglages=reglages)
+    if user.role == ROLE_APPRENANT:
+        resultat = resultat.model_copy(update={"raisonnement": None})
     return ApiResponse.ok(resultat)

@@ -144,14 +144,15 @@ def test_doublon_rejete(client, avec_llm):
     assert rejetee["raisonRejet"] == "Doublon d'une question déjà générée"
 
 
-def test_version_de_prompt_inconnue_repli_sur_v1(client, avec_llm, monkeypatch):
+def test_version_de_prompt_inconnue_repli_sur_la_version_par_defaut(client, avec_llm, monkeypatch):
     from app.modules.quiz.config import get_quiz_ai_settings
+    from app.modules.quiz.prompts import VERSION_PAR_DEFAUT
 
     monkeypatch.setenv("PROMPT_QUIZ_VERSION", "v9")
     get_quiz_ai_settings.cache_clear()
     avec_llm(FauxLLM(generation(question(1), question(2)), repondre()))
 
-    assert _poster(client).json()["data"]["versionPrompt"] == "v1"
+    assert _poster(client).json()["data"]["versionPrompt"] == VERSION_PAR_DEFAUT == "v2"
 
 
 def test_champs_null_rejettent_la_question_sans_perdre_le_lot(client, avec_llm):

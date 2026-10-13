@@ -4,5 +4,5 @@
   "competences": ["Choisir entre INNER JOIN et LEFT JOIN", "Écrire une jointure externe"],
   "niveauxBloom": ["APPLIQUER", "ANALYSER"],
   "nbQuestions": 4,
-  "difficulte": "MOYEN"
+  "difficulte": "INTERMEDIAIRE"
 }

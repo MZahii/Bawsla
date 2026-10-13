@@ -25,7 +25,8 @@ def test_generer_renvoie_l_enveloppe_et_le_fournisseur(client, avec_llm):
     data = corps["data"]
     assert data["coursId"] == 3
     assert data["nbValidees"] == 2 and data["nbRejetees"] == 0
-    assert data["versionPrompt"] == "v1"
+    assert data["versionPrompt"] == "v2"
+    assert data["difficulte"] == "INTERMEDIAIRE"
     assert data["fournisseur"] == "gemini"
     q = data["questions"][0]
     assert q["statut"] == "VALIDEE"
