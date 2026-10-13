@@ -7,6 +7,23 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 09 — 2026-10-13 — Matières générales (avec « Autre » précisée) transmises à l'IA
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5)
+- **Objectif** : remplacer les catégories informatiques des cours de démo par une vraie liste de disciplines, et utiliser la matière dans la génération.
+- **Prompt** :
+  > Je redis la matiere peut etre Mathematique Histoire, Science, Psychologie / Autre avec precision ... / et par apport a la generation y a quoi?
+- **Résultat** :
+  - **ai-service** : `GenererQuizRequest.matiere`, facultatif, 80 caractères au plus, espaces retirés. La matière passe par le Sanitizer comme le thème : données personnelles masquées, consigne suspecte signalée. Le prompt v2 l'injecte (`Matière : …`, « non précisée » si absente) et demande des questions propres à la discipline : vocabulaire, notations, exemples. Le prompt v1 l'ignore sans erreur.
+  - **Front** (générateur et éditeur) : 12 matières (Informatique, Mathématiques, Physique-Chimie, SVT, Histoire, Géographie, Langues, Économie et gestion, Psychologie, Philosophie, Arts, Autre). « Autre » ouvre un champ obligatoire « Précise la matière », et c'est cette précision qui est envoyée à l'IA. Les cours de démo (Données, Back-end…) sont rangés dans Informatique. Si une matière n'a aucun cours, un message le dit au lieu d'un sélecteur vide.
+  - **Génération en échec** : ce n'est pas un bug. `.env` contient `LLM_PROVIDER=stub` sans clé, donc l'API répond 503 `LLM_MISSING_KEY` comme prévu. Il faut renseigner une clé Gemini (ou Groq en secours) dans `.env`, qui n'est jamais commité.
+- **Vérification** : `pytest tests` donne 237 passed ; `tests/quiz` donne 139 passed avec 100 % des branches couvertes (483 instructions, 120 branches) ; `test_quiz_matiere.py` couvre matière présente, absente ou vide, trop longue (400) et email masqué ; boîte noire 38/38 ; `ng build` passe.
+- **Gardé / modifié / rejeté** : gardé tel quel. La matière ne remplace pas `coursId`, que l'API exige toujours.
+- **Reste à faire** : les matières des cours doivent venir du module Cours (djappa) et des spécialités du formateur validées par l'admin (Hamza). D'ici là, seule Informatique a des cours dans la démo. Il faut aussi ajouter `matiere` au contrat dans `CONTRATS_API.md` (PR #3).
+- **Leçon** : un champ de contexte envoyé au LLM est une entrée utilisateur comme une autre. Il passe par le Sanitizer, sa longueur est bornée et il est testé.
+
+---
+
 ### 08 — 2026-10-13 — Écrans Quiz corrigés et 5 niveaux de difficulté pour la génération IA
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), relecture indépendante par l'agent `code-reviewer`

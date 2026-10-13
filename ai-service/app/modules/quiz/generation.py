@@ -49,17 +49,23 @@ class Objectifs:
     niveaux: list[NiveauBloom]
     difficulte: str
     alertes: list[str] = field(default_factory=list)
+    matiere: str = ""
 
 
 def nettoyer(demande: GenererQuizRequest, sanitizer: Sanitizer) -> Objectifs:
     textes = [sanitizer.sanitize(demande.theme)] + [sanitizer.sanitize(c) for c in demande.competences]
+    matiere = sanitizer.sanitize(demande.matiere) if demande.matiere else None
     alertes: list[str] = []
-    if any(t.pii_masked for t in textes):
+    verifies = textes + ([matiere] if matiere else [])
+    if any(t.pii_masked for t in verifies):
         alertes.append("Des données personnelles ont été masquées dans les objectifs avant l'envoi au LLM")
-    if any(t.injection_suspected for t in textes):
+    if any(t.injection_suspected for t in verifies):
         alertes.append("Consigne suspecte dans les objectifs : elle a été traitée comme une simple donnée")
     competences = list(dict.fromkeys(t.text.strip() for t in textes[1:] if t.text.strip()))
-    return Objectifs(textes[0].text.strip(), competences, demande.niveaux_bloom, demande.difficulte.value, alertes)
+    return Objectifs(
+        textes[0].text.strip(), competences, demande.niveaux_bloom, demande.difficulte.value, alertes,
+        matiere.text.strip() if matiere else "",
+    )
 
 
 def max_tokens_generation(nb: int, difficulte: str = "INTERMEDIAIRE") -> int:
@@ -78,6 +84,7 @@ def _messages(prompt: Prompt, obj: Objectifs, nb: int, deja: list[str]) -> list[
             content=prompt.utilisateur(
                 exemples=exemples,
                 theme=obj.theme,
+                matiere=obj.matiere or "non précisée",
                 competences="\n".join(f"- {c}" for c in obj.competences),
                 niveaux=", ".join(n.value for n in obj.niveaux),
                 difficulte=niveau(obj.difficulte).nom,

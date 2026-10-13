@@ -30,7 +30,7 @@ python -m venv .venv                         # si .venv n'existe pas encore
 .venv/Scripts/python -m pytest tests/quiz -q
 ```
 
-Attendu : `130 passed` (dont `test_quiz_difficulte.py` : les 5 niveaux de difficulté). Pour tout ai-service : `.venv/Scripts/python -m pytest tests -q` (228 passed).
+Attendu : `139 passed` (dont `test_quiz_difficulte.py` : les 5 niveaux de difficulté, et `test_quiz_matiere.py` : la matière dans le prompt). Pour tout ai-service : `.venv/Scripts/python -m pytest tests -q` (237 passed).
 
 ### 1.2 Couverture des instructions ET des branches
 
@@ -40,7 +40,7 @@ Attendu : `130 passed` (dont `test_quiz_difficulte.py` : les 5 niveaux de diffic
   --cov-report=html:tests/quiz/boite_noire/resultats/couverture
 ```
 
-Attendu dans le terminal : `TOTAL 475 0 120 0 100%`.
+Attendu dans le terminal : `TOTAL 483 0 120 0 100%`.
 
 Lecture des colonnes :
 

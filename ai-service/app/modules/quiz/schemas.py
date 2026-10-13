@@ -51,11 +51,18 @@ class GenererQuizRequest(CamelModel):
     """Objectifs pédagogiques uniquement : aucun texte de cours, aucune donnée d'apprenant."""
 
     cours_id: int = Field(ge=1)
+    # Discipline du cours (Mathématiques, Histoire, ou la précision donnée pour « Autre ») : cadre le vocabulaire.
+    matiere: str | None = Field(default=None, max_length=80)
     theme: str = Field(min_length=2, max_length=200)
     competences: list[str] = Field(min_length=1, max_length=8)
     niveaux_bloom: list[NiveauBloom] = Field(min_length=1, max_length=6)
     difficulte: Annotated[Difficulte, BeforeValidator(_ancienne_difficulte)] = Difficulte.INTERMEDIAIRE
     nb_questions: int = Field(default=5, ge=1, le=10)
+
+    @field_validator("matiere")
+    @classmethod
+    def _matiere_propre(cls, valeur: str | None) -> str | None:
+        return (valeur or "").strip() or None
 
     @field_validator("theme")
     @classmethod

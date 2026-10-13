@@ -4,7 +4,7 @@ v1 n'écrivait que « Difficulté : moyenne » : le LLM interprétait seul l'adj
 donnaient des questions indiscernables. v2 lui montre l'échelle complète (prompts/difficultes.py), puis
 la consigne précise du niveau demandé.
 
-L'échelle est fixe : elle est écrite dans SYSTEME. Variables du modèle : celles de v1, plus $consigne_difficulte.
+L'échelle est fixe : elle est écrite dans SYSTEME. Variables du modèle : celles de v1, plus $matiere et $consigne_difficulte.
 """
 
 from app.modules.quiz.prompts import generation_v1
@@ -22,6 +22,7 @@ UTILISATEUR = """Exemples du format attendu (sujets sans rapport avec la demande
 $exemples
 
 <objectifs>
+Matière : $matiere
 Thème : $theme
 Compétences :
 $competences
@@ -31,4 +32,4 @@ Difficulté : $difficulte
 
 Critères du niveau « $difficulte » : $consigne_difficulte
 
-Écris exactement $nb questions, en répartissant les niveaux de Bloom et les compétences demandés.$deja Réponds en JSON."""
+Écris exactement $nb questions propres à cette matière (vocabulaire, notations et exemples de la discipline), en répartissant les niveaux de Bloom et les compétences demandés.$deja Réponds en JSON."""

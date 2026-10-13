@@ -14,12 +14,22 @@
           @for (m of matieres; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Cours</mat-label>
-        <mat-select [ngModel]="coursId()" (ngModelChange)="coursId.set($event)">
-          @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
-        </mat-select>
-      </mat-form-field>
+      @if (matiere() === matiereAutre) {
+        <mat-form-field appearance="outline">
+          <mat-label>Précise la matière</mat-label>
+          <input matInput required [ngModel]="precision()" (ngModelChange)="precision.set($event)" [maxlength]="maxLongueurMatiere" placeholder="Ex. : Œnologie" />
+        </mat-form-field>
+      }
+      @if (cours().length > 0) {
+        <mat-form-field appearance="outline">
+          <mat-label>Cours</mat-label>
+          <mat-select [ngModel]="coursId()" (ngModelChange)="coursId.set($event)">
+            @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+      } @else {
+        <p class="muted small" role="status">Aucun cours publié dans cette matière pour l’instant : crée d’abord le cours dans le studio.</p>
+      }
     </div>
     <fieldset>
       <legend>Difficulté</legend>

@@ -34,8 +34,27 @@ export function libelleDifficulte(code: Difficulte): string {
   return DIFFICULTES.find((d) => d.code === code)?.libelle ?? code;
 }
 
+/** Disciplines proposées au formateur ; « Autre » demande une précision libre (80 caractères au plus). */
+export const MATIERE_AUTRE = 'Autre';
+export const MAX_LONGUEUR_MATIERE = 80;
+export const MATIERES = [
+  'Informatique', 'Mathématiques', 'Physique-Chimie', 'Sciences de la vie et de la Terre', 'Histoire', 'Géographie',
+  'Langues', 'Économie et gestion', 'Psychologie', 'Philosophie', 'Arts', MATIERE_AUTRE,
+];
+
+// Catégories du catalogue de démonstration (module Cours) : toutes relèvent de l'informatique.
+const CATEGORIES_INFORMATIQUE = ['Données', 'Back-end', 'Front-end', 'DevOps', 'Outils'];
+
+/** Matière d'un cours d'après sa catégorie ; une catégorie inconnue est gardée telle quelle (rangée dans « Autre »). */
+export function matiereDuCours(categorie: string): string {
+  if (CATEGORIES_INFORMATIQUE.includes(categorie)) return 'Informatique';
+  return MATIERES.includes(categorie) ? categorie : MATIERE_AUTRE;
+}
+
 export interface GenererQuizRequest {
   coursId: number;
+  /** Matière choisie, ou la précision saisie pour « Autre ». */
+  matiere?: string;
   theme: string;
   competences: string[];
   niveauxBloom: NiveauBloom[];

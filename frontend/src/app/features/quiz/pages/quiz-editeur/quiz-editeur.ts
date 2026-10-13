@@ -12,7 +12,14 @@ import { Router } from '@angular/router';
 import { COURS } from '../../../../core/demo/demo-data';
 import { BwButton } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
-import { DIFFICULTES, Difficulte } from '../../models/quiz-ia.model';
+import {
+  DIFFICULTES,
+  Difficulte,
+  MATIERES,
+  MATIERE_AUTRE,
+  MAX_LONGUEUR_MATIERE,
+  matiereDuCours,
+} from '../../models/quiz-ia.model';
 
 interface QuestionEditee {
   enonce: string;
@@ -45,10 +52,14 @@ export class QuizEditeur {
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
 
-  protected readonly matieres = [...new Set(COURS.map((c) => c.categorie))].sort();
-  protected readonly matiere = signal(COURS[0]?.categorie ?? '');
-  protected readonly cours = computed(() => COURS.filter((c) => c.categorie === this.matiere()));
-  protected readonly coursId = signal<number | null>(COURS[0]?.id ?? null);
+  protected readonly matieres = MATIERES;
+  protected readonly matiereAutre = MATIERE_AUTRE;
+  protected readonly maxLongueurMatiere = MAX_LONGUEUR_MATIERE;
+  protected readonly matiere = signal('Informatique');
+  protected readonly precision = signal('');
+  protected readonly cours = computed(() => COURS.filter((c) => matiereDuCours(c.categorie) === this.matiere()));
+  protected readonly coursId = signal<number | null>(this.cours()[0]?.id ?? null);
+  private readonly matiereRenseignee = computed(() => this.matiere() !== MATIERE_AUTRE || this.precision().trim().length >= 2);
   protected readonly titre = signal('');
   protected readonly difficultes = DIFFICULTES;
   protected readonly difficulte = signal<Difficulte>('INTERMEDIAIRE');
@@ -59,7 +70,7 @@ export class QuizEditeur {
   /** Une question est complète quand l'énoncé et les 4 choix sont remplis, et les choix tous différents. */
   protected readonly completes = computed(() => this.questions().map((q) => this.complete(q)));
   protected readonly valide = computed(
-    () => this.coursId() !== null && this.titre().trim().length >= 3 && this.completes().every((c) => c),
+    () => this.coursId() !== null && this.matiereRenseignee() && this.titre().trim().length >= 3 && this.completes().every((c) => c),
   );
 
   protected choisirMatiere(m: string): void {

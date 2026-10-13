@@ -17,10 +17,14 @@ import {
   DIFFICULTES,
   Difficulte,
   GenererQuizResponse,
+  MATIERES,
+  MATIERE_AUTRE,
+  MAX_LONGUEUR_MATIERE,
   NIVEAUX_BLOOM,
   NiveauBloom,
   libelleBloom,
   libelleDifficulte,
+  matiereDuCours,
 } from '../../models/quiz-ia.model';
 import { QuizIaService, messageErreurIa } from '../../services/quiz-ia.service';
 
@@ -44,7 +48,7 @@ const MAX_LONGUEUR_COMPETENCE = 150;
 
 /**
  * Studio : génération d'un QCM par l'IA à partir d'objectifs (thème et compétences visées), jamais du
- * contenu d'un chapitre. Le formateur choisit la matière, le cours, les niveaux de Bloom, l'un des 5 niveaux
+ * contenu d'un chapitre. Le formateur choisit la matière (ou « Autre » avec une précision, transmise à l'IA), le cours, les niveaux de Bloom, l'un des 5 niveaux
  * de difficulté et le nombre de questions, puis accepte ou rejette chaque question proposée. Les questions
  * incohérentes sont déjà écartées par la vérification Self-Consistency.
  * À brancher : QuizService.create() avec les questions acceptées (quiz-service).
@@ -63,11 +67,16 @@ export class QuizGenerateur {
   private readonly router = inject(Router);
   private readonly ia = inject(QuizIaService);
 
-  // La matière vient du cours (catégorie côté module Cours) : on ne propose que les cours de la matière choisie.
-  protected readonly matieres = [...new Set(COURS.map((c) => c.categorie))].sort();
-  protected readonly matiere = signal(COURS[0]?.categorie ?? '');
-  protected readonly cours = computed(() => COURS.filter((c) => c.categorie === this.matiere()));
-  protected readonly coursId = signal<number | null>(COURS[0]?.id ?? null);
+  // Liste générale de disciplines ; on ne propose que les cours de la matière choisie (déduite de leur catégorie).
+  protected readonly matieres = MATIERES;
+  protected readonly matiereAutre = MATIERE_AUTRE;
+  protected readonly maxLongueurMatiere = MAX_LONGUEUR_MATIERE;
+  protected readonly matiere = signal('Informatique');
+  protected readonly precision = signal('');
+  protected readonly cours = computed(() => COURS.filter((c) => matiereDuCours(c.categorie) === this.matiere()));
+  protected readonly coursId = signal<number | null>(this.cours()[0]?.id ?? null);
+  /** Matière envoyée à l'IA : la précision pour « Autre ». */
+  protected readonly matiereEnvoyee = computed(() => (this.matiere() === MATIERE_AUTRE ? this.precision().trim() : this.matiere()));
 
   protected readonly theme = signal('');
   protected readonly competencesTexte = signal('');
@@ -92,6 +101,8 @@ export class QuizGenerateur {
   protected readonly formulaireValide = computed(
     () =>
       this.coursId() !== null &&
+      this.matiereEnvoyee().length >= 2 &&
+      this.matiereEnvoyee().length <= MAX_LONGUEUR_MATIERE &&
       this.theme().trim().length >= 2 &&
       this.competences().length >= 1 &&
       this.competences().length <= MAX_COMPETENCES &&
@@ -126,6 +137,7 @@ export class QuizGenerateur {
     this.ia
       .generer({
         coursId,
+        matiere: this.matiereEnvoyee(),
         theme: this.theme().trim(),
         competences: this.competences(),
         niveauxBloom: this.bloom(),
