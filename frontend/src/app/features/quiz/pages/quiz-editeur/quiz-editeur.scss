@@ -1,0 +1,18 @@
+.edit { display: grid; gap: var(--space-4); max-width: 880px; }
+.infos, .q { display: flex; flex-direction: column; gap: var(--space-2); }
+h2, h3 { margin: 0; font: 600 17px var(--font-heading); }
+.infos h2 { margin-bottom: var(--space-3); }
+.row { display: grid; gap: var(--space-3); }
+@media (min-width: 700px) { .row { grid-template-columns: 1fr 1fr; } }
+fieldset { margin: 0; padding: 0; border: 0; }
+legend { margin-bottom: var(--space-2); font-weight: 600; font-size: 14px; }
+.niveaux { display: flex; flex-wrap: wrap; width: 100%; }
+.niveaux mat-button-toggle { flex: 1 1 auto; }
+.q { border-left: 3px solid var(--color-success); }
+.q.incomplete { border-left-color: var(--color-border); }
+.q header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.grow { flex: 1; }
+.choix { display: grid; gap: var(--space-2); }
+.choix-ligne { display: flex; align-items: center; gap: var(--space-2); }
+.choix-ligne mat-form-field { flex: 1; }
+.actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }

@@ -89,12 +89,64 @@
         @if (erreurs().length > 0) {
           <bw-ai-box heading="Remédiation">
             <p class="remed-notion">Notion à revoir : <strong>{{ erreurs()[0].notion }}</strong></p>
-            <p>
-              Un LEFT JOIN garde toutes les lignes de la table de gauche. Les colonnes de la table de droite valent NULL
-              quand il n’y a pas de correspondance : un filtre WHERE sur ces colonnes les élimine.
-            </p>
-            <button type="button" bwButton="ia">Essayer une question de rattrapage</button>
-            <span bwAiSource>Source : Bases de données relationnelles, chapitre « Les jointures »</span>
+            @switch (rattrapage()) {
+              @case ('chargement') {
+                <bw-ai-loading message="L’IA analyse ta réponse et prépare une question…" />
+              }
+              @case ('pret') {
+                @if (remediation(); as r) {
+                  <p>{{ r.explication }}</p>
+                  <p><strong>Conseil :</strong> {{ r.conseil }}</p>
+                  @if (questionRattrapage(); as qr) {
+                    <div class="rattrapage">
+                      <p class="rattrapage-titre" id="q-rattrapage">Question de rattrapage</p>
+                      <p class="rattrapage-enonce">{{ qr.enonce }}</p>
+                      <div class="options" role="radiogroup" aria-labelledby="q-rattrapage">
+                        @for (c of qr.choix; track $index) {
+                          <button
+                            type="button"
+                            role="radio"
+                            [class]="'option ' + etatOptionRattrapage($index)"
+                            [attr.aria-checked]="choixRattrapage() === $index"
+                            [disabled]="rattrapageValide()"
+                            (click)="choisirRattrapage($index)"
+                          >
+                            <span class="letter" aria-hidden="true">{{ lettres[$index] }}</span>
+                            <span class="option-text">{{ c.texte }}</span>
+                          </button>
+                        }
+                      </div>
+                      @if (rattrapageValide()) {
+                        <div class="feedback" [class.ok]="rattrapageJuste()" [class.ko]="!rattrapageJuste()" role="status">
+                          <mat-icon aria-hidden="true">{{ rattrapageJuste() ? 'check_circle' : 'error' }}</mat-icon>
+                          <div>
+                            <p class="verdict">{{ rattrapageJuste() ? 'Bravo, c’est acquis' : 'Pas encore' }}</p>
+                            <p>{{ qr.explication }}</p>
+                          </div>
+                        </div>
+                        <button type="button" bwButton="ia" [disabled]="essaisRestants() <= 0" (click)="essayerRattrapage()">Une autre question</button>
+                        <p class="muted small">{{ essaisRestants() > 0 ? 'Encore ' + essaisRestants() + ' question(s) possible(s) pour ce passage.' : 'Tu as utilisé toutes tes questions de rattrapage pour ce passage.' }}</p>
+                      } @else {
+                        <button type="button" bwButton="secondaire" [disabled]="choixRattrapage() === null" (click)="validerRattrapage()">
+                          Valider
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <p>L’IA n’a pas pu proposer de question de rattrapage fiable cette fois.</p>
+                    <button type="button" bwButton="ia" [disabled]="essaisRestants() <= 0" (click)="essayerRattrapage()">Réessayer</button>
+                  }
+                }
+              }
+              @default {
+                <p>{{ erreurs()[0].explication }}</p>
+                @if (rattrapage() === 'erreur') {
+                  <p class="remed-erreur" role="alert">{{ erreurIa() }}</p>
+                }
+                <button type="button" bwButton="ia" [disabled]="essaisRestants() <= 0" (click)="essayerRattrapage()">Essayer une question de rattrapage</button>
+              }
+            }
+            <span bwAiSource>Source : ta réponse à la question {{ erreurs()[0].numero }}</span>
           </bw-ai-box>
 
           <section class="mistakes" aria-labelledby="mistakes-title">

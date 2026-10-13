@@ -1,23 +1,34 @@
-import { Component, computed, input, numberAttribute, signal } from '@angular/core';
+import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { QUESTIONS, QUIZ, coursParId } from '../../../../core/demo/demo-data';
-import { AiBox, Badge, BwButton, EmptyState, Route } from '../../../../shared';
+import { AiBox, AiLoading, Badge, BwButton, EmptyState, Route } from '../../../../shared';
+import { QuestionQcm, RemedierResponse, codeBloom } from '../../models/quiz-ia.model';
+import { QuizIaService, messageErreurIa } from '../../services/quiz-ia.service';
 
 type Phase = 'question' | 'correction' | 'resultat';
+type EtatRattrapage = 'inactif' | 'chargement' | 'pret' | 'erreur';
+
+/** Nombre de questions de rattrapage demandées à l'IA par passage du quiz (limite le coût LLM). */
+const MAX_RATTRAPAGES = 3;
 
 /**
  * Passage d'un quiz : une question par écran, correction immédiate, puis résultat et remédiation IA.
- * À brancher : les questions viennent de quiz-service, la remédiation de /api/ai/quiz.
+ * La remédiation appelle POST /api/ai/quiz/remedier avec la première erreur : explication, conseil et question
+ * de rattrapage. Rien sur l'apprenant n'est envoyé, seulement la question et les deux réponses.
+ * À brancher : les questions viennent de quiz-service.
  */
 @Component({
   selector: 'app-quiz-player',
-  imports: [RouterLink, MatIconModule, AiBox, Badge, BwButton, EmptyState, Route],
+  imports: [RouterLink, MatIconModule, AiBox, AiLoading, Badge, BwButton, EmptyState, Route],
   templateUrl: './quiz-player.html',
   styleUrl: './quiz-player.scss',
 })
 export class QuizPlayer {
+  private readonly ia = inject(QuizIaService);
+
   readonly id = input(0, { transform: numberAttribute });
 
   protected readonly quiz = computed(() => QUIZ.find((q) => q.id === this.id()));
@@ -59,6 +70,68 @@ export class QuizPlayer {
     return 'Ce quiz révèle un point à retravailler. C’est exactement à ça qu’il sert.';
   });
 
+  // Question de rattrapage : la bonne réponse n'est révélée qu'après validation.
+  protected readonly rattrapage = signal<EtatRattrapage>('inactif');
+  protected readonly remediation = signal<RemedierResponse | null>(null);
+  protected readonly erreurIa = signal('');
+  protected readonly choixRattrapage = signal<number | null>(null);
+  protected readonly rattrapageValide = signal(false);
+  protected readonly essais = signal(0);
+  protected readonly essaisRestants = computed(() => MAX_RATTRAPAGES - this.essais());
+  private appelIa?: Subscription;
+  protected readonly questionRattrapage = computed<QuestionQcm | undefined>(() => this.remediation()?.questionRattrapage);
+  protected readonly rattrapageJuste = computed(() => {
+    const i = this.choixRattrapage();
+    return i !== null && this.questionRattrapage()?.choix[i]?.estCorrecte === true;
+  });
+
+  protected essayerRattrapage(): void {
+    const e = this.erreurs()[0];
+    if (!e || this.rattrapage() === 'chargement' || this.essaisRestants() <= 0) return;
+    this.essais.update((n) => n + 1);
+    this.rattrapage.set('chargement');
+    this.erreurIa.set('');
+    this.choixRattrapage.set(null);
+    this.rattrapageValide.set(false);
+    this.appelIa = this.ia
+      .remedier({
+        notion: e.notion,
+        niveauBloom: codeBloom(e.bloom),
+        enonce: e.enonce,
+        choixDonne: e.options[e.donnee],
+        bonneReponse: e.options[e.bonne],
+        explication: e.explication,
+      })
+      .subscribe({
+        next: (r) => {
+          this.remediation.set(r);
+          this.rattrapage.set('pret');
+        },
+        error: (err) => {
+          this.erreurIa.set(messageErreurIa(err));
+          this.rattrapage.set('erreur');
+        },
+      });
+  }
+
+  protected choisirRattrapage(i: number): void {
+    if (!this.rattrapageValide()) this.choixRattrapage.set(i);
+  }
+
+  protected validerRattrapage(): void {
+    if (this.choixRattrapage() !== null) this.rattrapageValide.set(true);
+  }
+
+  protected etatOptionRattrapage(i: number): 'bonne' | 'fausse' | 'choisie' | '' {
+    const q = this.questionRattrapage();
+    if (this.rattrapageValide() && q) {
+      if (q.choix[i].estCorrecte) return 'bonne';
+      if (i === this.choixRattrapage()) return 'fausse';
+      return '';
+    }
+    return i === this.choixRattrapage() ? 'choisie' : '';
+  }
+
   protected choisir(i: number): void {
     if (this.phase() === 'question') this.choix.set(i);
   }
@@ -84,6 +157,13 @@ export class QuizPlayer {
     this.choix.set(null);
     this.reponses.set([]);
     this.phase.set('question');
+    this.appelIa?.unsubscribe();
+    this.rattrapage.set('inactif');
+    this.remediation.set(null);
+    this.erreurIa.set('');
+    this.choixRattrapage.set(null);
+    this.rattrapageValide.set(false);
+    this.essais.set(0);
   }
 
   /** Apparence d'une option selon la phase : choisie, puis bonne ou fausse à la correction. */

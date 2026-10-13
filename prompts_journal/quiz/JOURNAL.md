@@ -7,6 +7,31 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 08 — 2026-10-13 — Écrans Quiz corrigés et 5 niveaux de difficulté pour la génération IA
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), relecture indépendante par l'agent `code-reviewer`
+- **Objectif** : corriger les boutons qui ne marchaient pas (rattrapage, « Nouveau quiz »), relier matière, cours et génération, et passer à 5 niveaux de difficulté réellement différents dans le prompt.
+- **Prompt** :
+  > Essayer une question de rattrapage? marche pas? boutton Nouveau quiz ne marche pas? Generer par AI; Cours et Chapitre source sont relie non? car par exemple j peux pas avoir Requetes Select dans un Git en equipe et on oublie ici de faire des Matiere (car un Formateur peut avoir la possibilite de proposer cours en differents matieres selon le cours specialise dans ce formateur deja verifie par l administrateur) Difficulté; a revoir …
+  >
+  > reprend mais juste ajout: Difficulté; a revoir j considere avoir 5 difficulté pour plus de depth dans la generation AI et on teste leurs differences 5il fqut qvoir une difference entre Facile Intermediaire Avance Difficile MAster !
+- **Résultat** :
+  - **ai-service** : `Difficulte` passe à 5 niveaux (FACILE, INTERMEDIAIRE, AVANCE, DIFFICILE, MASTER ; MOYEN reste accepté et vaut INTERMEDIAIRE). `prompts/difficultes.py` donne à chaque niveau un profil distinct : public visé, niveaux de Bloom favorisés, forme de l'énoncé, nature des distracteurs, piège attendu. `prompts/generation_v2.py` (prompt v2, par défaut) injecte ce profil. La réponse renvoie le `difficulte` utilisé. `test_quiz_difficulte.py` vérifie que les 5 prompts sont différents deux à deux.
+  - **Rattrapage** (quiz-player) : le bouton n'avait aucun gestionnaire. Il appelle maintenant `POST /api/ai/quiz/remedier` avec la première erreur, puis affiche l'explication, le conseil et une question de rattrapage. La bonne réponse n'apparaît qu'après validation.
+  - **« Nouveau quiz »** : le bouton n'avait pas de route. Il ouvre maintenant un éditeur manuel (`/studio/quiz/nouveau`) : matière, cours, titre, difficulté, questions à 4 choix validées.
+  - **Générateur** : on choisit la matière puis le cours (filtré par matière). Le sélecteur de chapitre est retiré : la génération part d'objectifs (thème et compétences) et pas du contenu d'un chapitre (contrainte C7). Il y a 5 niveaux, et de 1 à 10 questions (la limite de l'API).
+- **Vérification** : `pytest tests` donne 228 passed ; `tests/quiz` donne 130 passed avec 100 % des branches couvertes (475 instructions, 120 branches) ; boîte noire 38/38 ; `ng build` passe.
+- **Gardé / modifié / rejeté** — modifié après la relecture (verdict REQUEST CHANGES) :
+  - **[HIGH]** `/remedier` renvoyait le raisonnement Chain-of-Thought au navigateur de l'apprenant. Le routeur le retire maintenant pour le rôle ETUDIANT (`raisonnement` devient facultatif). Les tests le prouvent : BN-25 (apprenant, raisonnement absent) et BN-26 (formateur, raisonnement présent).
+  - **[MEDIUM]** Au plus 3 questions de rattrapage par passage, pour limiter le coût LLM. Une vraie limite côté serveur demanderait de modifier le socle.
+  - **[MEDIUM]** « Recommencer » annule l'appel IA en cours et remet tout l'état du rattrapage à zéro.
+  - **[LOW]** « Tout accepter » garde les rejets manuels. Une compétence ne peut pas dépasser 150 caractères (la limite de l'API). Le compteur est annoncé aux lecteurs d'écran (`aria-live`). Le libellé des boutons radio de l'éditeur est corrigé (`aria-label`).
+  - **Décision assumée** : `estCorrecte` reste dans la question de rattrapage envoyée à l'apprenant. Cette question d'entraînement n'est pas notée, et la correction se fait dans le navigateur.
+  - **Reste à faire** : `CONTRATS_API.md` (socle) via la PR #3 `docs/contrat-quiz-ia`. Les matières viennent pour l'instant du champ `categorie` des cours de démo ; leur vraie source (spécialités du formateur validées par l'admin) est à voir avec les modules Cours (djappa) et User (Hamza).
+- **Leçon** : aucune clé LLM n'est configurée, donc la différence entre les 5 niveaux est prouvée sur les prompts, pas encore sur des quiz réellement générés. La comparaison sur un vrai modèle se fera dès qu'une clé sera dans `.env`.
+
+---
+
 ### 07 — 2026-10-13 — Notebook d'analyse de l'IA et captures de l'IA en marche
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), nbformat + nbclient pour le notebook, Playwright (Chrome) pour les captures
