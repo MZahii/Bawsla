@@ -18,8 +18,8 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [x] 1.5 Demandes formateur : à l'inscription ou depuis Mon compte, liste admin, accepter / refuser avec motif, statut visible ; `formateurValide` ajouté au contrat 4 (commit socle)
 
 ## 2. IA — Machine Learning (ai-service/app/modules/user)
-- [ ] 2.1 PR socle : `scikit-learn`, `pandas`, `numpy`, `joblib` dans `requirements.txt`
-- [ ] 2.2 Générateur de jeu de données simulé (~200 apprenants, graine fixe, signalé comme simulé)
+- [x] 2.1 Socle : `scikit-learn`, `pandas`, `numpy`, `joblib` dans `requirements.txt` (commit `chore(socle)`)
+- [x] 2.2 Générateur de jeu de données simulé : 200 apprenants, 4 profils cachés, 15 cours, 630 inscriptions, graine 42
 - [ ] 2.3 K-Means : choix de k (coude + silhouette), nommage des groupes
 - [ ] 2.4 Random Forest risque d'échec : CV, F1, matrice de confusion, baseline, importance des variables
 - [ ] 2.5 Filtrage collaboratif + démarrage à froid, précision@k

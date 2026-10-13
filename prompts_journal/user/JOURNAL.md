@@ -7,6 +7,27 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 05 — 2026-10-13 — IA : préparation et jeu de données simulé (étapes A1, A2, B1)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : préparer le ML du module User et produire les données d'entraînement simulées demandées par le sujet (« environ 200 étudiants fictifs, à dire clairement dans le rapport »)
+- **Contexte fourni** : capture du sujet (partie IA du module User), lecture de toutes les branches du dépôt (quiz-service n'a pas encore de tentatives ni de notions ratées ; cours-service n'a ni inscriptions, ni progression, ni temps passé ; contrat 3 `notions-ratees` garanti stable par le membre Quiz)
+- **Prompts** :
+  > okay lets start with simulated data and start working ! but before that i need a summuray on what we gonna do from begging to the end in the ia working !
+
+  > okay lets start working on it check the image !
+- **Résultat** :
+  - A1 : `develop` fusionnée dans `feature/user` (client LLM du socle), sans conflit.
+  - A2 (commit socle) : `scikit-learn 1.9.1`, `pandas 3.0.6`, `numpy 2.5.4`, `joblib 1.6.0` dans `requirements.txt`.
+  - B1 : `ml/donnees_simulees.py` : 200 apprenants tirés de 4 profils cachés (débutant en difficulté, régulier, avancé, décrocheur) avec du bruit, 15 cours (catégories et niveaux de cours-service), 630 inscriptions ; échec à l'examen selon une loi logistique des chiffres plus du hasard ; graine fixe 42 ; colonnes nommées comme les contrats (`nbErreurs`, `tauxReussite`, `note`, `progression`, `tempsPasseMinutes`…) pour brancher les vraies données sans changer les modèles ; identifiants `A001`… sans aucune donnée personnelle. CSV générés dans `ml/donnees/`.
+  - 7 tests pytest (`tests/user/test_donnees_simulees.py`).
+- **Vérification** : `pytest` (105/105, dont 7 nouveaux) ; statistiques par profil ; image Docker reconstruite (les 4 bibliothèques s'installent sous Python 3.12).
+- **Gardé / modifié / rejeté** :
+  - Modifié : la première version donnait 60 % d'échecs (30 % même chez les avancés), peu réaliste. Constante de la loi logistique recalée : 40 % d'échecs au total, 11 % chez les avancés, 20 % chez les réguliers, environ 70 % chez les débutants en difficulté et les décrocheurs.
+  - Gardé : la colonne `profilCache` (vérité terrain) sert uniquement à évaluer le K-Means, jamais d'entrée à un modèle.
+- **Captures** : _(à ajouter : statistiques par profil)_
+- **Leçon** : vérifier les ordres de grandeur des données simulées avant d'entraîner : un taux d'échec irréaliste aurait faussé toutes les métriques.
+
 ### 04 — 2026-10-13 — Fin de la partie web : suppression, parcours, photo, demandes formateur (checklist 1.3 à 1.6)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
