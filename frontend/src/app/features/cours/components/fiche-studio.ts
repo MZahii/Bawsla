@@ -10,6 +10,9 @@ import { Skeleton } from '../../../shared/ui';
 import { EtapeIA, Fiche, FicheRequest, StatutTraitement, Traitement } from '../models/cours.model';
 import { CoursService } from '../services/cours.service';
 import { FicheAudio } from './fiche-audio';
+import { FicheCartes } from './fiche-cartes/fiche-cartes';
+import { VueFiche } from './fiche-cartes/fiche-cartes.modele';
+import { FicheVueBascule } from './fiche-cartes/fiche-vue-bascule';
 import { FicheContenu } from './fiche-contenu';
 
 /** Fiche en cours de correction (les mots-clés sont saisis séparés par des virgules). */
@@ -26,7 +29,7 @@ interface BrouillonFiche {
  */
 @Component({
   selector: 'app-fiche-studio',
-  imports: [FormsModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, BwButton, EmptyState, Skeleton, FicheAudio, FicheContenu],
+  imports: [FormsModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, BwButton, EmptyState, Skeleton, FicheAudio, FicheCartes, FicheContenu, FicheVueBascule],
   template: `
     @if (attente()) {
       <div class="ia-attente">
@@ -57,6 +60,9 @@ interface BrouillonFiche {
           (regenerate)="genererFiche()"
           (validate)="validerFiche()"
         >
+          @if (!brouillon()) {
+            <app-fiche-vue-bascule [vue]="vue()" (vueChange)="vue.set($event)" />
+          }
           @if (brouillon(); as b) {
             <div class="correction">
               <label class="champ">
@@ -86,6 +92,9 @@ interface BrouillonFiche {
                 </button>
               </div>
             </div>
+          } @else if (vue() === 'cartes') {
+            <p class="muted small apercu-cartes">Aperçu de ce que verra l’apprenant, en lecture seule. Pour corriger les notions, passe en « Vue liste ».</p>
+            <app-fiche-cartes [fiche]="f" [gestionnaire]="true" />
           } @else {
             <app-fiche-contenu [fiche]="f" [gestionnaire]="true" />
           }
@@ -132,6 +141,7 @@ interface BrouillonFiche {
     .notion-edit { display: grid; gap: var(--space-2); margin: 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); legend { padding: 0 var(--space-2); font-weight: 600; font-size: 14px; } }
     .actions-correction { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
     .audio-fiche { margin-top: var(--space-3); }
+    .apercu-cartes { margin: 0 0 var(--space-3); }
   `,
 })
 export class FicheStudio implements OnInit {
@@ -150,6 +160,8 @@ export class FicheStudio implements OnInit {
   protected readonly lancement = signal(false);
   protected readonly ficheEnvoi = signal(false);
   protected readonly brouillon = signal<BrouillonFiche | null>(null);
+  /** Vue liste par défaut dans le studio : c'est là que le formateur corrige. La vue fiches est un aperçu en lecture seule. */
+  protected readonly vue = signal<VueFiche>('liste');
   protected readonly etapesIA: { etape: EtapeIA; libelle: string }[] = [
     { etape: 'TEXTE', libelle: 'Lecture du cours' },
     { etape: 'FICHE', libelle: 'Rédaction de la fiche' },
@@ -272,6 +284,7 @@ export class FicheStudio implements OnInit {
   protected modifierFiche(): void {
     const f = this.fiche();
     if (!f) return;
+    this.vue.set('liste'); // la correction des notions se fait dans la vue liste
     this.brouillon.set({
       resume: f.resume,
       motsCles: f.motsCles.join(', '),
