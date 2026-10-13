@@ -31,6 +31,10 @@ export interface RegisterRequest {
   email: string;
   motDePasse: string;
   role: Exclude<Role, 'ADMIN'>;
+  /** Formateur uniquement : si renseignée, une demande de validation part à l'admin avec le compte. */
+  expertise?: string;
+  presentation?: string;
+  lien?: string;
 }
 
 export interface AuthResponse {

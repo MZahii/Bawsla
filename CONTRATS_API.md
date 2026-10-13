@@ -102,8 +102,9 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 
 `200` (informations **publiques uniquement**) :
 ```json
-{ "success": true, "data": { "id": 2, "nom": "Ben Ali", "prenom": "Sami", "role": "ENSEIGNANT" } }
+{ "success": true, "data": { "id": 2, "nom": "Ben Ali", "prenom": "Sami", "role": "ENSEIGNANT", "formateurValide": true } }
 ```
+- `formateurValide` : `true` seulement pour un `ENSEIGNANT` validé par l'admin (Admin → Demandes formateurs) ; `false` pour un formateur en attente ou refusé et pour les autres rôles. **cours-service doit refuser la publication d'un cours (`403`) si `formateurValide` est `false`.**
 - Erreur : `404` si l'utilisateur n'existe pas.
 - **Jamais** d'email, de hash, de statut `actif` ni de date dans ce contrat. Les données complètes ne sont visibles que par l'intéressé (`/api/users/me`) ou un ADMIN (`/api/users`).
 - Ces données ne doivent **jamais** être transmises au LLM.
@@ -143,7 +144,7 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 Ils peuvent évoluer librement par leur propriétaire :
 
-- **user** : `POST /api/auth/register` et `POST /api/auth/login` (publics), `GET /api/users/me`, `GET /api/users` (ADMIN).
+- **user** : `POST /api/auth/register` (avec `expertise`, `presentation`, `lien` facultatifs pour un formateur) et `POST /api/auth/login` (publics) ; `GET` et `PUT /api/users/me`, `PUT /me/mot-de-passe`, `POST /me/desactivation`, `GET` et `PUT /me/parcours`, `POST` et `DELETE /me/avatar`, `GET /{id}/avatar`, `GET` et `POST /me/demande-formateur` ; ADMIN : `GET` et `POST /api/users`, `PUT /{id}`, `PATCH /{id}/statut`, `PUT /{id}/mot-de-passe`, `GET /demandes-formateur`, `POST /demandes-formateur/{id}/accepter` et `/refuser`.
 - **cours** : `GET /api/cours?categorie=&niveau=`, `POST`, `PUT /{id}`, `DELETE /{id}` (ENSEIGNANT propriétaire ou ADMIN pour l'écriture).
 - **quiz** : `GET /api/quiz?coursId=`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`.
 - **forum** : `GET /api/forum/discussions?coursId=`, `GET /{id}`, `POST` (tout utilisateur), `PUT` et `DELETE /{id}` (auteur ou ADMIN).
@@ -154,3 +155,4 @@ Ils peuvent évoluer librement par leur propriétaire :
 | Date | Changement | PR |
 |---|---|---|
 | 2026-10-04 | Version initiale du socle (contrats 1 à 5) | commit initial |
+| 2026-10-13 | Contrat 4 : ajout de `formateurValide` (validation des formateurs par l'admin), à utiliser par cours-service avant publication ; liste des endpoints internes du module user mise à jour | PR `feature/user` |

@@ -6,6 +6,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CATEGORIES, ONBOARDING } from '../../core/demo/demo-plus';
 import { enregistrerOnboarding } from '../../core/profil/onboarding';
 import { BwButton, Logo } from '../../shared';
+import { UserService } from '../../features/user/services/user.service';
 
 /**
  * Questionnaire d'accueil de l'apprenant, juste après l'inscription : 4 questions, toutes facultatives
@@ -22,6 +23,7 @@ export class Onboarding {
   private readonly router = inject(Router);
   private readonly cours = inject(ActivatedRoute).snapshot.queryParamMap.get('cours');
   private readonly auth = inject(AuthService);
+  private readonly users = inject(UserService);
   protected readonly prenom = computed(() => this.auth.currentUser()?.prenom ?? '');
 
   protected readonly etapes = ['Qui es-tu ?', 'Ton objectif', 'Ce qui t’intéresse', 'Ton rythme'];
@@ -44,7 +46,10 @@ export class Onboarding {
   }
 
   protected terminer(passe: boolean): void {
-    enregistrerOnboarding({ profil: this.profil(), objectif: this.objectif(), domaines: this.domaines(), temps: this.temps(), passe });
+    const reponses = { profil: this.profil(), objectif: this.objectif(), domaines: this.domaines(), temps: this.temps() };
+    enregistrerOnboarding({ ...reponses, passe });
+    // Réponses aussi enregistrées par user-service (« Mon compte » et module IA). Un échec ne bloque pas l'accueil.
+    if (!passe) this.users.enregistrerMonParcours(reponses).subscribe({ error: () => undefined });
     this.router.navigateByUrl(this.cours ? `/app/explorer/${this.cours}` : '/app');
   }
 }
