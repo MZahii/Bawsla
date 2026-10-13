@@ -16,5 +16,10 @@ mutagen==1.48.1
 imageio-ffmpeg==0.6.0
 # Comparaison approximative de textes : contrôle de fidélité des fiches (sans LLM)
 rapidfuzz==3.14.6
-# Les libs ML (scikit-learn, sentence-transformers…) seront ajoutées par PR, avec version fixée,
+# Machine Learning classique du module User (K-Means, Random Forest, filtrage collaboratif), sans LLM
+scikit-learn==1.9.1
+pandas==3.0.6
+numpy==2.5.4
+joblib==1.6.0
+# Les autres libs ML (sentence-transformers…) seront ajoutées par PR, avec version fixée,
 # quand un module en aura besoin.
