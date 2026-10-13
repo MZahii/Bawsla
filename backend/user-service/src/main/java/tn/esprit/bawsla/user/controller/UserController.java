@@ -19,6 +19,8 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.DesactivationRequest;
+import tn.esprit.bawsla.user.dto.ParcoursDto;
 import tn.esprit.bawsla.user.dto.MotDePasseRequest;
 import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.StatutRequest;
@@ -51,6 +53,23 @@ public class UserController {
                                                   CurrentUser user) {
         userService.changerMonMotDePasse(user, request);
         return ApiResponse.ok(null, "Mot de passe modifié");
+    }
+
+    /** « Supprimer mon compte » : désactivation, le mot de passe confirme. */
+    @PostMapping("/me/desactivation")
+    public ApiResponse<Void> desactiverMonCompte(@Valid @RequestBody DesactivationRequest request, CurrentUser user) {
+        userService.desactiverMonCompte(user, request.motDePasse());
+        return ApiResponse.ok(null, "Compte supprimé");
+    }
+
+    @GetMapping("/me/parcours")
+    public ApiResponse<ParcoursDto> monParcours(CurrentUser user) {
+        return ApiResponse.ok(userService.monParcours(user));
+    }
+
+    @PutMapping("/me/parcours")
+    public ApiResponse<ParcoursDto> enregistrerMonParcours(@Valid @RequestBody ParcoursDto request, CurrentUser user) {
+        return ApiResponse.ok(userService.enregistrerMonParcours(user, request), "Parcours enregistré");
     }
 
     /** ADMIN uniquement. */

@@ -7,6 +7,33 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 04 — 2026-10-13 — Fin de la partie web : suppression, parcours, photo, demandes formateur (checklist 1.3 à 1.6)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : terminer toute la partie web du module User avant l'IA, pour que les autres membres puissent s'appuyer dessus
+- **Contexte fourni** : CHECKLIST.md ; découpage proposé par l'IA en 8 petites étapes (supprimer mon compte, parcours côté serveur, photo, puis demandes formateur en 4 étapes, puis push)
+- **Prompts** :
+  > i got confused too much ! lets make it with little steps so i can understand !
+
+  > okay do them all and then run a test !
+- **Résultat** :
+  - Suppression du compte : `POST /api/users/me/desactivation` (mot de passe exigé ; compte désactivé et non effacé pour ne pas casser les données des autres modules ; interdit à l'admin).
+  - Parcours : `GET`/`PUT /api/users/me/parcours` (`@Embeddable Parcours`, domaines en JSON via `ListeTexteConverter`) ; enregistré à la fin du questionnaire d'accueil et modifiable dans Mon compte.
+  - Photo : table `avatars` séparée (MEDIUMBLOB) ; `POST`/`DELETE /me/avatar`, `GET /{id}/avatar` ; type déduit des premiers octets (PNG, JPEG, WebP), jamais du nom ni du Content-Type ; 2 Mo ; le front charge l'image en blob car la gateway exige le JWT (`AvatarService`, cache par version).
+  - Demandes formateur : entité `DemandeFormateur` (EN_ATTENTE, ACCEPTEE, REFUSEE) ; créée à l'inscription si l'expertise est donnée, ou depuis Mon compte ; admin : liste, accepter (rôle ENSEIGNANT + `formateurValide`), refuser avec motif obligatoire ; nouvelle demande possible après un refus.
+  - `formateurValide` dans `UserDto` et dans le contrat 4 (`GET /api/users/{id}`), pour que cours-service bloque la publication d'un formateur non validé ; un formateur créé ou promu par l'admin est validé d'office.
+  - Pages : Mon compte (photo, parcours, onglet « Devenir formateur » / « Profil de formateur », zone de suppression), Admin → Demandes formateurs (KPI réels, en attente / traitées), Admin → Utilisateurs (photos, « non validé »).
+  - Socle (commit séparé) : `RegisterRequest` (front) et page d'inscription qui envoient expertise, présentation, lien ; questionnaire d'accueil qui enregistre aussi côté serveur ; `CONTRATS_API.md`.
+  - 60 tests unitaires (23 nouveaux : `DemandeFormateurServiceTest`, `AvatarServiceTest`, ajouts dans `UserServiceTest` et `AuthServiceTest`).
+- **Vérification** : `mvnw test` (60/60) ; curl via la gateway pour chaque étape (demande à l'inscription, doublon 409, contrat avant et après validation, refus sans motif 400, double traitement 409, nouvelle demande après refus, apprenant devenu formateur, parcours, photo relue octet par octet par un autre utilisateur, faux PNG, plus de 2 Mo, sans fichier, sans token, suppression) ; scénario complet en navigateur headless (étapes 1 à 7) + 2 captures.
+- **Gardé / modifié / rejeté** :
+  - Faux échecs des tests curl : les JSON avec accents envoyés depuis le terminal Windows arrivaient mal encodés (« Requête mal formée »). Rejoués depuis des fichiers UTF-8 : tout passe. Ce n'était pas un bug de l'application.
+  - Corrigé après le test navigateur : espace manquant dans « Motif du refus : » (Angular supprime les espaces entre balises) ; la zone de dépôt gardait le dernier fichier refusé (elle est maintenant recréée après chaque envoi).
+  - Choix : l'inscription d'un formateur sans expertise reste acceptée (exemples du README) ; la demande pourra être faite depuis Mon compte.
+  - Non fait : la photo dans l'en-tête et le badge « 3 » du menu admin (socle, `core/layouts`) ; le bandeau « en attente » de l'accueil formateur lit encore le stockage local (socle).
+- **Captures** : `captures/2026-10-13_04_admin-formateurs.png`, `captures/2026-10-13_04_mon-compte-photo.png` (navigateur headless, comptes de test supprimés ensuite)
+- **Leçon** : quand un test échoue seulement sur certaines données (ici les accents), vérifier l'outil de test avant de chercher un bug dans le code.
+
 ### 03 — 2026-10-13 — Mon compte : profil et mot de passe (checklist 1.2)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

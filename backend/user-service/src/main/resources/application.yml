@@ -13,6 +13,12 @@ spring:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/bawsla_user?serverTimezone=UTC
     username: ${MYSQL_USER:bawsla}
     password: ${MYSQL_PASSWORD:bawsla}
+  servlet:
+    multipart:
+      # Photo de profil : AvatarService refuse au-delà de 2 Mo avec un message clair ;
+      # cette limite plus large évite une erreur technique juste au-dessus.
+      max-file-size: 5MB
+      max-request-size: 6MB
   jpa:
     hibernate:
       ddl-auto: update

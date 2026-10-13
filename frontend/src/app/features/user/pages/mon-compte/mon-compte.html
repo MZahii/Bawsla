@@ -11,10 +11,15 @@
   @let u = user()!;
   <div class="layout">
     <aside class="card card-pad who">
-      <bw-avatar [nom]="nom()" [size]="88" />
+      <bw-avatar [nom]="nom()" [size]="88" [src]="photo()" />
       <h2>{{ nom() }}</h2>
       <p class="muted small">{{ u.email }}</p>
       <span class="pill accent plain">{{ roles[u.role] }}</span>
+      @if (formateur()) {
+        @if (u.formateurValide) { <span class="pill ok mt-xs">Formateur validé</span> }
+        @else if (demande()?.statut === 'EN_ATTENTE') { <span class="pill mt-xs">Validation en cours</span> }
+        @else { <span class="pill ko mt-xs">Non validé</span> }
+      }
       @if (u.bio) { <p class="bio small" dir="auto">{{ u.bio }}</p> }
       <dl>
         <div><dt>Membre depuis</dt><dd>{{ membreDepuis() }}</dd></div>
@@ -25,8 +30,25 @@
 
     <section class="card">
       <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+        <!-- ===== Informations ===== -->
         <mat-tab label="Informations">
-          <form class="form" [formGroup]="infos" (ngSubmit)="enregistrerInfos()" novalidate>
+          <div class="form">
+            <p class="lbl">Photo de profil</p>
+            <div class="photo">
+              <bw-avatar [nom]="nom()" [size]="64" [src]="photo()" />
+              <div class="photo-actions">
+                <!-- Recréée après chaque envoi pour vider la liste de fichiers interne de bw-dropzone. -->
+                @for (k of [cleDropzone()]; track k) {
+                  <bw-dropzone accept="image/png,image/jpeg,image/webp" hint="PNG, JPEG ou WebP, 2 Mo maximum" (files)="choisirPhoto($event)" />
+                }
+                @if (u.avatarVersion) {
+                  <button type="button" bwButton="fantome" (click)="retirerPhoto()" [disabled]="envoiPhoto()"><mat-icon>delete</mat-icon> Retirer la photo</button>
+                }
+              </div>
+            </div>
+            @if (erreurPhoto()) { <p class="error" role="alert">{{ erreurPhoto() }}</p> }
+          </div>
+          <form class="form sep" [formGroup]="infos" (ngSubmit)="enregistrerInfos()" novalidate>
             <div class="row2">
               <mat-form-field appearance="outline">
                 <mat-label>Prénom</mat-label>
@@ -56,10 +78,11 @@
           </form>
         </mat-tab>
 
-        <mat-tab [label]="etudiant() ? 'Mon parcours' : 'Profil de formateur'">
-          <div class="form">
-            @if (etudiant()) {
-              <p class="muted small">Ces réponses servent à l’IA pour te recommander des cours. Elles ne sont jamais envoyées avec ton nom ou ton email. Pour l’instant, elles restent enregistrées sur cet appareil.</p>
+        <!-- ===== Parcours (apprenant) ===== -->
+        @if (etudiant()) {
+          <mat-tab label="Mon parcours">
+            <div class="form">
+              <p class="muted small">Ces réponses servent à l’IA pour te recommander des cours. Elles ne sont jamais envoyées avec ton nom ou ton email.</p>
               <mat-form-field appearance="outline"><mat-label>Ce qui te décrit le mieux</mat-label>
                 <mat-select [(ngModel)]="parcours.profil">
                   @for (p of profils; track p.code) { <mat-option [value]="p.code">{{ p.titre }}</mat-option> }
@@ -75,16 +98,80 @@
                   @for (d of domainesListe; track d) { <mat-option [value]="d">{{ d }}</mat-option> }
                 </mat-select>
               </mat-form-field>
+              <mat-form-field appearance="outline"><mat-label>Ton temps d’étude par semaine</mat-label>
+                <mat-select [(ngModel)]="parcours.temps">
+                  @for (t of tempsListe; track t) { <mat-option [value]="t">{{ t }}</mat-option> }
+                </mat-select>
+              </mat-form-field>
               <div class="actions">
                 <a bwButton="fantome" routerLink="/demarrer">Refaire le questionnaire</a>
-                <button type="button" bwButton="principal" (click)="enregistrerParcours()">Enregistrer</button>
+                <button type="button" bwButton="principal" (click)="enregistrerParcours()" [disabled]="enregistrementParcours()">Enregistrer</button>
               </div>
-            } @else {
-              <p class="muted">Ton profil de formateur (domaine d’expertise, présentation détaillée, lien LinkedIn ou site) sera disponible avec la validation des formateurs par l’équipe Bawsla.</p>
-            }
-          </div>
-        </mat-tab>
+            </div>
+          </mat-tab>
+        }
 
+        <!-- ===== Enseigner ===== -->
+        @if (u.role !== 'ADMIN') {
+          <mat-tab [label]="formateur() ? 'Profil de formateur' : 'Devenir formateur'">
+            <div class="form">
+              @if (u.formateurValide) {
+                <div class="statut ok" role="status">
+                  <mat-icon aria-hidden="true">verified</mat-icon>
+                  <div><strong>Tu es formateur validé.</strong><span class="small">Tu peux publier tes cours sur Bawsla.</span></div>
+                </div>
+              } @else if (demande(); as d) {
+                @if (d.statut === 'EN_ATTENTE') {
+                  <div class="statut" role="status">
+                    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+                    <div><strong>Ta demande est en cours d’examen.</strong><span class="small">Envoyée le {{ d.dateCreation | date: 'dd/MM/yyyy' }}. L’équipe Bawsla te répond sous 48 h.</span></div>
+                  </div>
+                } @else if (d.statut === 'REFUSEE') {
+                  <div class="statut ko" role="status">
+                    <mat-icon aria-hidden="true">info</mat-icon>
+                    <div><strong>Ta demande du {{ d.dateCreation | date: 'dd/MM/yyyy' }} n’a pas été acceptée.</strong><span class="small" dir="auto">Motif : {{ d.motifRefus }}</span><span class="small">Tu peux en envoyer une nouvelle ci-dessous.</span></div>
+                  </div>
+                }
+                @if (d.statut === 'EN_ATTENTE') {
+                  <dl class="recap">
+                    <div><dt>Expertise</dt><dd dir="auto">{{ d.expertise }}</dd></div>
+                    @if (d.lien) { <div><dt>Lien</dt><dd>{{ d.lien }}</dd></div> }
+                    @if (d.presentation) { <div><dt>Présentation</dt><dd dir="auto">{{ d.presentation }}</dd></div> }
+                  </dl>
+                }
+              } @else if (etudiant()) {
+                <p class="muted">Tu veux partager ce que tu sais ? Présente ton expertise : l’équipe Bawsla la vérifie, puis tu pourras publier tes cours, gratuits ou payants.</p>
+              } @else {
+                <p class="muted">Pour publier tes cours, décris ton expertise : l’équipe Bawsla valide ton profil sous 48 h.</p>
+              }
+
+              @if (peutDemander()) {
+                <form class="form-inner" [formGroup]="demandeForm" (ngSubmit)="envoyerDemande()" novalidate>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Domaine d’expertise</mat-label>
+                    <input matInput formControlName="expertise" maxlength="200" placeholder="Ex. : bases de données, cybersécurité" />
+                    @if (demandeForm.controls.expertise.hasError('required')) { <mat-error>Indique au moins un domaine.</mat-error> }
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Ton expérience, ce que tu veux enseigner</mat-label>
+                    <textarea matInput rows="4" formControlName="presentation" maxlength="1000" dir="auto"></textarea>
+                    <mat-hint align="end">{{ demandeForm.controls.presentation.value.length }} / 1000</mat-hint>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="mt-s">
+                    <mat-label>Lien (LinkedIn, portfolio…) facultatif</mat-label>
+                    <input matInput formControlName="lien" maxlength="300" />
+                  </mat-form-field>
+                  @if (erreurDemande()) { <p class="error" role="alert">{{ erreurDemande() }}</p> }
+                  <div class="actions">
+                    <button type="submit" bwButton="principal" [disabled]="envoiDemande()">Envoyer ma demande</button>
+                  </div>
+                </form>
+              }
+            </div>
+          </mat-tab>
+        }
+
+        <!-- ===== Sécurité ===== -->
         <mat-tab label="Sécurité">
           <form class="form" [formGroup]="mdp" (ngSubmit)="changerMotDePasse()" novalidate>
             <mat-form-field appearance="outline">
@@ -109,8 +196,29 @@
             </div>
             <p class="muted small">Après 5 mots de passe erronés à la connexion, ton compte est bloqué 15 minutes pour le protéger.</p>
           </form>
+
+          @if (u.role !== 'ADMIN') {
+            <div class="form danger-zone">
+              <p class="lbl">Supprimer mon compte</p>
+              <p class="muted small">Tu ne pourras plus te connecter. Tes cours, résultats et messages restent visibles sans être effacés ; l’équipe Bawsla peut réactiver ton compte sur demande.</p>
+              @if (!confirmationSuppression()) {
+                <div><button type="button" bwButton="danger" (click)="confirmationSuppression.set(true)"><mat-icon>person_remove</mat-icon> Supprimer mon compte</button></div>
+              } @else {
+                <mat-form-field appearance="outline">
+                  <mat-label>Ton mot de passe, pour confirmer</mat-label>
+                  <input matInput type="password" [(ngModel)]="mdpSuppression" autocomplete="current-password" />
+                </mat-form-field>
+                @if (erreurSuppression()) { <p class="error" role="alert">{{ erreurSuppression() }}</p> }
+                <div class="actions">
+                  <button type="button" bwButton="fantome" (click)="confirmationSuppression.set(false); mdpSuppression = ''">Annuler</button>
+                  <button type="button" bwButton="danger" (click)="supprimerCompte()" [disabled]="!mdpSuppression || suppressionEnCours()">Supprimer définitivement mon accès</button>
+                </div>
+              }
+            </div>
+          }
         </mat-tab>
 
+        <!-- ===== Préférences ===== -->
         <mat-tab label="Préférences">
           <div class="form">
             <p class="lbl">Thème</p>

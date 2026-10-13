@@ -17,3 +17,17 @@ dd { margin: 0; font-weight: 600; }
 .bio { margin: var(--space-3) 0 0; white-space: pre-line; color: var(--color-text-muted); }
 .error { margin: 0; color: var(--color-error); }
 .actions { gap: var(--space-3); }
+.mt-xs { margin-top: var(--space-2); }
+.sep { padding-top: 0; }
+.photo { display: flex; align-items: flex-start; gap: var(--space-4); }
+.photo-actions { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.photo-actions bw-dropzone { align-self: stretch; }
+.statut { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); }
+.statut div { display: flex; flex-direction: column; gap: 2px; }
+.statut.ok mat-icon { color: var(--color-success); }
+.statut.ko mat-icon { color: var(--color-error); }
+.recap { margin: 0; padding: 0; border: 0; }
+.recap div { flex-direction: column; gap: 2px; }
+.recap dd { font-weight: 400; white-space: pre-line; }
+.form-inner { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); }
+.danger-zone { border-top: 1px solid var(--color-border); }

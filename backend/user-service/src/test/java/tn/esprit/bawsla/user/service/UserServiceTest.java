@@ -26,6 +26,7 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ParcoursDto;
 import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.entity.Role;
@@ -229,6 +230,94 @@ class UserServiceTest {
         service().changerMonMotDePasse(APPRENANT, new ChangementMotDePasseRequest("Password1", "Nouveau123"));
 
         assertThat(encoder.matches("Nouveau123", u.getMotDePasse())).isTrue();
+    }
+
+    // ---------- Supprimer mon compte ----------
+
+    @Test
+    void desactiverMonCompte_avecLeBonMotDePasse() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setMotDePasse(encoder.encode("Password1"));
+        existe(u);
+
+        service().desactiverMonCompte(APPRENANT, "Password1");
+
+        assertThat(u.isActif()).isFalse();
+    }
+
+    @Test
+    void desactiverMonCompte_mauvaisMotDePasse_400_etResteActif() {
+        User u = compte(5, Role.ETUDIANT, true);
+        u.setMotDePasse(encoder.encode("Password1"));
+        existe(u);
+
+        assertThatThrownBy(() -> service().desactiverMonCompte(APPRENANT, "faux")).isInstanceOf(BadRequestException.class);
+        assertThat(u.isActif()).isTrue();
+    }
+
+    @Test
+    void desactiverMonCompte_interditAUnAdmin() {
+        existe(compte(1, Role.ADMIN, true));
+
+        assertThatThrownBy(() -> service().desactiverMonCompte(ADMIN, "x")).isInstanceOf(BadRequestException.class);
+    }
+
+    // ---------- Parcours ----------
+
+    @Test
+    void monParcours_videParDefaut() {
+        existe(compte(5, Role.ETUDIANT, true));
+
+        ParcoursDto p = service().monParcours(APPRENANT);
+
+        assertThat(p.profil()).isNull();
+        assertThat(p.domaines()).isEmpty();
+    }
+
+    @Test
+    void enregistrerMonParcours_nettoieLesValeurs() {
+        User u = compte(5, Role.ETUDIANT, true);
+        existe(u);
+
+        ParcoursDto p = service().enregistrerMonParcours(APPRENANT,
+                new ParcoursDto(" etudiant ", "", java.util.Arrays.asList("Data", " Data ", "", null, "Web"), "2h"));
+
+        assertThat(p.profil()).isEqualTo("etudiant");
+        assertThat(p.objectif()).isNull();
+        assertThat(p.domaines()).containsExactly("Data", "Web");
+        assertThat(u.getParcours().getTemps()).isEqualTo("2h");
+    }
+
+    // ---------- Statut de formateur fixé par l'admin ----------
+
+    @Test
+    void creer_unFormateurParLAdminEstValide() {
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(service().creer(ADMIN, new AdminCreationRequest("A", "B", "f@x.com", "Password1", Role.ENSEIGNANT, true))
+                .formateurValide()).isTrue();
+        assertThat(service().creer(ADMIN, new AdminCreationRequest("A", "B", "e@x.com", "Password1", Role.ETUDIANT, true))
+                .formateurValide()).isFalse();
+    }
+
+    @Test
+    void modifier_passerFormateurValide_etLeRetirerEnChangeantDeRole() {
+        User u = compte(2, Role.ETUDIANT, true);
+        existe(u);
+
+        assertThat(service().modifier(ADMIN, 2L, new AdminModificationRequest("A", "B", "u2@example.com", Role.ENSEIGNANT, true))
+                .formateurValide()).isTrue();
+        assertThat(service().modifier(ADMIN, 2L, new AdminModificationRequest("A", "B", "u2@example.com", Role.ETUDIANT, true))
+                .formateurValide()).isFalse();
+    }
+
+    @Test
+    void modifier_unFormateurNonValideResteNonValideSiLeRoleNeChangePas() {
+        User u = compte(2, Role.ENSEIGNANT, true);
+        existe(u);
+
+        assertThat(service().modifier(ADMIN, 2L, new AdminModificationRequest("A", "B", "u2@example.com", Role.ENSEIGNANT, true))
+                .formateurValide()).isFalse();
     }
 
     // ---------- Mot de passe ----------

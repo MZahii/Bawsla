@@ -13,9 +13,11 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ParcoursDto;
 import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
+import tn.esprit.bawsla.user.entity.Parcours;
 import tn.esprit.bawsla.user.entity.Role;
 import tn.esprit.bawsla.user.entity.User;
 import tn.esprit.bawsla.user.repository.UserRepository;
@@ -62,6 +64,39 @@ public class UserService {
         user.setMotDePasse(passwordEncoder.encode(request.nouveauMotDePasse()));
     }
 
+    /**
+     * « Supprimer mon compte » : le compte est désactivé, pas effacé, pour ne pas casser les cours, quiz et
+     * messages des autres modules qui gardent son id. Un admin peut le réactiver.
+     */
+    @Transactional
+    public void desactiverMonCompte(CurrentUser current, String motDePasse) {
+        User user = getOrThrow(current.id());
+        if (user.getRole() == Role.ADMIN) {
+            throw new BadRequestException("Un compte administrateur ne peut pas être supprimé depuis cette page");
+        }
+        if (!passwordEncoder.matches(motDePasse, user.getMotDePasse())) {
+            throw new BadRequestException("Mot de passe incorrect");
+        }
+        user.setActif(false);
+    }
+
+    public ParcoursDto monParcours(CurrentUser current) {
+        return ParcoursDto.from(getOrThrow(current.id()).getParcours());
+    }
+
+    @Transactional
+    public ParcoursDto enregistrerMonParcours(CurrentUser current, ParcoursDto request) {
+        User user = getOrThrow(current.id());
+        Parcours p = user.getParcours() == null ? new Parcours() : user.getParcours();
+        p.setProfil(DemandeFormateurService.texteOuNull(request.profil()));
+        p.setObjectif(DemandeFormateurService.texteOuNull(request.objectif()));
+        p.setDomaines(request.domaines() == null ? List.of()
+                : request.domaines().stream().filter(d -> d != null && !d.isBlank()).map(String::trim).distinct().toList());
+        p.setTemps(DemandeFormateurService.texteOuNull(request.temps()));
+        user.setParcours(p);
+        return ParcoursDto.from(p);
+    }
+
     public UserPublicDto findPublicById(Long id) {
         return UserPublicDto.from(getOrThrow(id));
     }
@@ -85,6 +120,8 @@ public class UserService {
         user.setEmail(email);
         user.setMotDePasse(passwordEncoder.encode(request.motDePasse()));
         user.setRole(request.role());
+        // Un formateur créé par l'admin est validé d'office.
+        user.setFormateurValide(request.role() == Role.ENSEIGNANT);
         user.setActif(request.actif() == null || request.actif());
         return UserDto.from(userRepository.save(user));
     }
@@ -101,6 +138,12 @@ public class UserService {
         user.setNom(request.nom().trim());
         user.setPrenom(request.prenom().trim());
         user.setEmail(email);
+        if (request.role() != Role.ENSEIGNANT) {
+            user.setFormateurValide(false);
+        } else if (user.getRole() != Role.ENSEIGNANT) {
+            // L'admin qui fait d'un compte un formateur le valide du même coup.
+            user.setFormateurValide(true);
+        }
         user.setRole(request.role());
         user.setActif(request.actif());
         return UserDto.from(user);

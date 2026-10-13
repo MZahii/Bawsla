@@ -12,10 +12,10 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [x] Inscription / connexion : mot de passe renforcé, verrouillage brute force, dernière connexion, 19 tests
 - [x] 1.1 Gestion des utilisateurs (admin) : liste réelle + filtres, création, modification (rôle compris), activer/désactiver (aussi en lot), réinitialiser le mot de passe ; `admin-users` branchée
 - [x] 1.2 Mon compte : modifier nom/prénom/présentation, changer son mot de passe ; page `features/user/pages/mon-compte` (routes `app.routes.ts` : commit socle à faire relire dans la PR)
-- [ ] 1.6 Parcours de l'apprenant (questionnaire d'accueil) stocké côté serveur au lieu du navigateur : utile au ML (profil, objectif, domaines, temps)
-- [ ] 1.3 Avatar (upload)
-- [ ] 1.4 Supprimer mon compte (désactivation)
-- [ ] 1.5 Demandes formateur : envoi (expertise, bio, lien), liste admin, accepter / refuser ; brancher `admin-formateurs` ; contrat dans `CONTRATS_API.md` (PR)
+- [x] 1.6 Parcours de l'apprenant stocké côté serveur (questionnaire d'accueil + Mon compte)
+- [x] 1.3 Photo de profil : PNG/JPEG/WebP, 2 Mo, type vérifié par signature, affichée dans Mon compte et les listes admin
+- [x] 1.4 Supprimer mon compte : désactivation confirmée par le mot de passe, puis déconnexion
+- [x] 1.5 Demandes formateur : à l'inscription ou depuis Mon compte, liste admin, accepter / refuser avec motif, statut visible ; `formateurValide` ajouté au contrat 4 (commit socle)
 
 ## 2. IA — Machine Learning (ai-service/app/modules/user)
 - [ ] 2.1 PR socle : `scikit-learn`, `pandas`, `numpy`, `joblib` dans `requirements.txt`
@@ -27,6 +27,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [ ] 2.7 Page admin « IA » branchée sur les métriques
 
 ## 3. Intégration avec les autres modules
+- [ ] 3.0 Prévenir le membre Cours : refuser la publication (403) si `formateurValide` est false (contrat 4)
 - [ ] 3.1 Contrats avec Quiz (notions ratées, tentatives) et Cours (inscriptions, temps, progression)
 - [ ] 3.2 user-service construit le vecteur numérique (Feign) et appelle ai-service
 - [ ] 3.3 Page `progres` (apprenant) branchée

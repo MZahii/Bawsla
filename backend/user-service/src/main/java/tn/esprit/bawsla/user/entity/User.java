@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -46,6 +47,19 @@ public class User {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /**
+     * Formateur validé par l'admin : seul un formateur validé peut publier un cours (contrat GET /api/users/{id},
+     * lu par cours-service). Toujours false pour les autres rôles.
+     */
+    @Column(nullable = false)
+    private boolean formateurValide;
+
+    /** Horodatage (ms) de la photo de profil, null sans photo : sert aussi à rafraîchir le cache du front. */
+    private Long avatarVersion;
+
+    @Embedded
+    private Parcours parcours;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateCreation;
 
@@ -87,6 +101,15 @@ public class User {
 
     public boolean isActif() { return actif; }
     public void setActif(boolean actif) { this.actif = actif; }
+
+    public boolean isFormateurValide() { return formateurValide; }
+    public void setFormateurValide(boolean formateurValide) { this.formateurValide = formateurValide; }
+
+    public Long getAvatarVersion() { return avatarVersion; }
+    public void setAvatarVersion(Long avatarVersion) { this.avatarVersion = avatarVersion; }
+
+    public Parcours getParcours() { return parcours; }
+    public void setParcours(Parcours parcours) { this.parcours = parcours; }
 
     public LocalDateTime getDateCreation() { return dateCreation; }
 

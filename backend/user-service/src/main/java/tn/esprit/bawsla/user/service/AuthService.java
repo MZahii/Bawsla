@@ -29,13 +29,15 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final DemandeFormateurService demandeFormateurService;
     private final Clock clock;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       Clock clock) {
+                       DemandeFormateurService demandeFormateurService, Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.demandeFormateurService = demandeFormateurService;
         this.clock = clock;
     }
 
@@ -56,6 +58,11 @@ public class AuthService {
         user.setMotDePasse(passwordEncoder.encode(request.motDePasse()));
         user.setRole(role);
         userRepository.save(user);
+        // Un formateur s'inscrit non validé : sa demande part à l'admin s'il a décrit son expertise
+        // (sinon il pourra la faire plus tard depuis « Mon compte »).
+        if (role == Role.ENSEIGNANT && request.expertise() != null && !request.expertise().isBlank()) {
+            demandeFormateurService.creerPourInscription(user, request.expertise(), request.presentation(), request.lien());
+        }
         return toAuthResponse(user);
     }
 

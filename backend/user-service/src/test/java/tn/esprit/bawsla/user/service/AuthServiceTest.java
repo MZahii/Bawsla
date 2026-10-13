@@ -41,6 +41,9 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private DemandeFormateurService demandeFormateurService;
+
     /** Coût BCrypt minimal : les tests restent rapides. */
     private final PasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private final JwtService jwtService = new JwtService("un-secret-de-test-d-au-moins-32-caracteres!!", 3_600_000);
@@ -52,7 +55,7 @@ class AuthServiceTest {
     }
 
     private AuthService serviceA(Instant instant) {
-        return new AuthService(userRepository, encoder, jwtService, Clock.fixed(instant, ZONE));
+        return new AuthService(userRepository, encoder, jwtService, demandeFormateurService, Clock.fixed(instant, ZONE));
     }
 
     private User compte(boolean actif) {
@@ -99,6 +102,30 @@ class AuthServiceTest {
         service.register(new RegisterRequest("A", "B", "a@b.com", MDP, Role.ENSEIGNANT));
 
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void register_formateurAvecExpertise_creeUneDemandeEnAttente_etNonValide() {
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthResponse res = service.register(new RegisterRequest("A", "B", "f@b.com", MDP, Role.ENSEIGNANT,
+                "Bases de données", "10 ans de SQL", "linkedin.com/in/x"));
+
+        assertThat(res.user().role()).isEqualTo(Role.ENSEIGNANT);
+        assertThat(res.user().formateurValide()).isFalse();
+        verify(demandeFormateurService).creerPourInscription(any(User.class),
+                org.mockito.ArgumentMatchers.eq("Bases de données"), org.mockito.ArgumentMatchers.eq("10 ans de SQL"),
+                org.mockito.ArgumentMatchers.eq("linkedin.com/in/x"));
+    }
+
+    @Test
+    void register_apprenantOuFormateurSansExpertise_pasDeDemande() {
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.register(new RegisterRequest("A", "B", "e@b.com", MDP, Role.ETUDIANT, "ignoré", null, null));
+        service.register(new RegisterRequest("A", "B", "f@b.com", MDP, Role.ENSEIGNANT, "  ", null, null));
+
+        verify(demandeFormateurService, never()).creerPourInscription(any(), any(), any(), any());
     }
 
     @Test

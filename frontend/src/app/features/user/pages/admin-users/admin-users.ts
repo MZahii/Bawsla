@@ -22,6 +22,7 @@ import { ROLE_LABELS, Role } from '../../../../shared/models/user.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { Avatar, Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
 import { Utilisateur } from '../../models/utilisateur.model';
+import { AvatarService } from '../../services/avatar.service';
 import { UserService } from '../../services/user.service';
 
 /** Mêmes règles que MotDePasse côté user-service. */
@@ -43,6 +44,7 @@ const MDP_REGEX = /^(?=.*\p{L})(?=.*\d).{8,72}$/u;
 })
 export class AdminUsers implements OnInit {
   private readonly api = inject(UserService);
+  private readonly avatars = inject(AvatarService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly sort = viewChild(MatSort);
@@ -56,6 +58,7 @@ export class AdminUsers implements OnInit {
   protected readonly listeRoles: Role[] = ['ETUDIANT', 'ENSEIGNANT', 'ADMIN'];
   protected readonly colonnes = ['select', 'nom', 'role', 'statut', 'inscrit', 'connexion', 'actions'];
   protected readonly tous = signal<Utilisateur[]>([]);
+  protected readonly photos = signal<Record<number, string | undefined>>({});
   protected readonly chargement = signal(true);
   protected readonly erreur = signal<string | null>(null);
   protected readonly enCours = signal(false);
@@ -119,6 +122,12 @@ export class AdminUsers implements OnInit {
   private majTous(fn: (l: Utilisateur[]) => Utilisateur[]): void {
     this.tous.update(fn);
     this.appliquerFiltres();
+    // AvatarService met en cache par utilisateur et version : redemander une photo déjà chargée ne coûte rien.
+    for (const u of this.tous()) {
+      this.avatars.url(u.id, u.avatarVersion).subscribe((url) => {
+        if (this.photos()[u.id] !== url) this.photos.update((p) => ({ ...p, [u.id]: url }));
+      });
+    }
   }
 
   protected nomComplet(u: Pick<Utilisateur, 'prenom' | 'nom'>): string {
