@@ -7,6 +7,67 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 11 — 2026-10-13 — Vrais modèles branchés, captures refaites avec le rôle de l'IA, notebook relu et corrigé
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5). Modèles appelés par l'application : Gemini `gemini-3.8-flash` (principal) et Groq `openai/gpt-oss-120b` (secours).
+- **Objectif** : remplacer le LLM simulé par de vrais modèles, refaire les captures IA en expliquant le rôle de l'IA sur chaque écran, puis relire et corriger le notebook d'analyse (la relecture par agent avait échoué sans rendre de verdict).
+- **Prompts** :
+  > voila l api gemini utilise le pour le moment / et voila celle de groq […]
+  >
+  > refait les captures avec des vrai model en precisant le role de l ai
+  >
+  > once all done push into github branch that corresponds to my work and ignore the screenshots that I asked for cause they will be used for the report […] / agent responsible for review quiz Ai notebook failed so see throught it and fix
+- **Résultat** :
+  - **Configuration** : clés Gemini et Groq ajoutées dans `.env` (jamais commité, valeurs jamais affichées), avec `LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-3.8-flash` et `LLM_SECOURS=groq`. `gemini-2.5-flash` répondait 404 et `gemini-3.5-flash` 503, d'où ce choix de modèle. Le conteneur ai-service a été recréé.
+  - **Captures** : 6 captures avec le préfixe `2026-10-13_11_` : `generateur-parametres`, `generateur-resultat`, `generateur-resultat-complet`, `rattrapage-ia`, `rattrapage-ia-complet`, `rattrapage-corrige`.
+    - Elles passent par la gateway et le JWT, sans aucune redirection.
+    - Sous chaque image, un bandeau « Rôle de l'IA » explique ce que fait l'IA sur l'écran. Il indique aussi le modèle réellement utilisé, lu dans le champ `fournisseur` de la réponse. L'interface elle-même n'est pas retouchée.
+    - Gemini était saturé (503/429) pendant la prise : c'est Groq qui a répondu, ce qui montre la bascule de secours en conditions réelles.
+  - **Notebook** (`analyse_ia_quiz.ipynb`), points relevés et corrigés :
+    1. La section 6.4 lisait `raisonnement` dans une réponse adressée à un apprenant. Or le routeur le retire désormais, donc la cellule aurait levé une `KeyError`. La cellule vérifie maintenant que le champ est absent côté apprenant, puis fait le même appel comme formateur pour l'afficher.
+    2. Les objectifs de la section 3.1 utilisaient la difficulté `MOYEN` et le prompt v1. Ils utilisent maintenant `Difficulte.INTERMEDIAIRE`, la matière et la version active, v2.
+    3. Les textes affirmaient « `.env` a `LLM_PROVIDER=stub` ». Ils sont devenus conditionnels, et la section 7 mentionne la bascule Groq.
+    4. Le tableau des limites présentait encore comme une limite « `/remedier` laisse lire le raisonnement », alors que c'est réglé. Il signale à la place que `estCorrecte` et `erreurAssociee` du rattrapage restent lisibles dans la réponse réseau.
+    5. L'appel réel de la section 7 a maintenant un délai de 300 s.
+  - **Captures hors du dépôt** : les captures `_10_` et `_11_` servent au rapport. Elles sont retirées du commit local et exclues par `.git/info/exclude`, qui est local et ne touche pas au socle.
+- **Vérification** :
+  - Le notebook a été ré-exécuté de bout en bout avec nbclient, sans aucune erreur.
+  - Section 7 : 401 sans jeton, 403 pour l'apprenant, et 200 pour le formateur avec une vraie génération (fournisseur `groq`).
+  - `tests/quiz` : 139 passed, 100 % de couverture des branches.
+  - Les sorties ont été scannées : aucune clé (`AIza`, `gsk_`), aucun JWT, aucun mot de passe ni email de démo.
+  - Captures relues une par une : côté apprenant, aucun `raisonnement` n'est visible, et le script s'arrête si ce champ arrive dans la réponse.
+- **Gardé / modifié / rejeté** : gardé. Le premier essai de captures restait bloqué sur « Voir mon résultat » : le libellé du bouton change à la dernière question, et le sélecteur a été corrigé.
+- **Reste à faire** :
+  - révoquer puis régénérer les deux clés, qui ont été collées en clair dans la conversation ;
+  - corriger le rattrapage côté quiz-service pour ne plus envoyer `erreurAssociee` à l'apprenant.
+- **Leçon** : une relecture qui ne rend rien ne vaut pas une validation. Il fallait relire le notebook à la main face au code actuel : trois évolutions récentes (retrait du raisonnement, 5 niveaux, prompt v2) l'avaient rendu faux sans qu'aucun test ne le signale.
+
+---
+
+### 10 — 2026-10-13 — Captures du front en marche et du module Quiz IA
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), script Playwright (Chrome) gardé hors du dépôt
+- **Objectif** : montrer en images le front Bawsla qui tourne (stack Docker) et chaque fonction IA du module Quiz, côté formateur et côté apprenant.
+- **Prompt** :
+  > Generes des images de l application frontend en marche et de l utilisation de mon module ai
+- **Résultat** : 18 captures dans `captures/`, préfixe `2026-10-13_10_`, **gardées en local pour le rapport et non poussées** (voir l'entrée 11) :
+  - **Public** : `accueil`, `connexion`.
+  - **Formateur** : `formateur-accueil`, `studio-quiz`. Pour le générateur : `generateur-matiere-autre` (« Autre » précisée en « Œnologie », sans cours, donc bouton désactivé), `generateur-parametres`, `generateur-resultat`, `generateur-resultat-complet`, `generateur-question-ecartee` (question écartée par la vérification Self-Consistency). Enfin `editeur-manuel`.
+  - **Apprenant** : `apprenant-accueil`, `evaluations`, `quiz-question`, `quiz-correction`, `quiz-resultat`. Pour le rattrapage IA : `rattrapage-ia`, `rattrapage-ia-complet`, `rattrapage-corrige`.
+- **Comment** :
+  - Le front et la gateway tournent pour de vrai, avec les comptes de démo.
+  - `.env` est en `LLM_PROVIDER=stub` sans clé. Les appels `/api/ai/quiz/**` du navigateur sont donc redirigés vers `tests.quiz.boite_noire.serveur_demo` : c'est le vrai code de l'ai-service (routeur, Sanitizer, prompts v2, vérification, retrait du raisonnement pour l'apprenant), mais avec un **LLM simulé**. Le script ajoute les en-têtes `X-User-Id` et `X-User-Role` qu'aurait posés la gateway.
+  - **Les textes générés sur ces captures viennent du LLM simulé, pas d'un vrai modèle** (la raison de rejet affiche d'ailleurs « Raisonnement simulé »).
+- **Vérification** :
+  - Captures relues une par une.
+  - Côté apprenant, ni `raisonnement` ni `erreurAssociee` ne sont visibles. La bonne réponse du rattrapage n'apparaît qu'après validation.
+  - Aucune clé, aucun token, aucune donnée personnelle réelle : seulement les comptes de démo.
+- **Gardé / modifié / rejeté** : gardé. Le premier essai échouait à la connexion, parce que le champ s'appelle `motDePasse` et non `password` ; le sélecteur a été corrigé.
+- **Reste à faire** : refaire les captures du générateur et du rattrapage avec un vrai modèle dès qu'une clé Gemini ou Groq sera dans `.env`.
+- **Leçon** : sans clé, on peut quand même montrer le parcours de bout en bout avec le vrai code. Il faut simplement dire clairement que le LLM est simulé, pour ne pas faire passer ces captures pour une démonstration du modèle.
+
+---
+
 ### 09 — 2026-10-13 — Matières générales (avec « Autre » précisée) transmises à l'IA
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5)
