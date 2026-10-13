@@ -1,10 +1,102 @@
 # Journal des prompts — module Quiz
 
-**Membre** : _(nom prénom)_
+**Membre** : Zahi Mohamed
 **Branche** : `feature/quiz`
 
 Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées les plus récentes vont en haut.
 
 ---
 
-_(aucune entrée pour l'instant)_
+### 04 — 2026-10-13 — IA 1 : Self-Consistency renforcée (2 vérifications à 0.7)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), avec oh-my-claudecode 5.7.1
+- **Objectif** : rendre la Self-Consistency capable de rejeter réellement des questions, pour en montrer en démo.
+- **Contexte fourni** : le code de l'IA 1 (entrée 03) et l'avis d'un relecteur extérieur.
+- **Prompt** :
+  > La Self-Consistency est un peu faible. Une seule vérification à température 0, avec le même modèle, sera presque toujours d'accord avec lui-même : tu risques de n'avoir aucun rejet à montrer en démo. Demande-lui : « Self-Consistency : 2 vérifications à température 0.7 (réglable), rejet si une seule diverge. »
+- **Résultat** :
+  - nouveaux réglages `QUIZ_NB_VERIFICATIONS` (2 par défaut) et `QUIZ_TEMPERATURE_VERIFICATION` (0.7 par défaut) dans `config.py` ;
+  - `coherence.verifier` fait N passes indépendantes. À chaque passe, les choix sont mélangés dans un ordre différent (graine fixe par énoncé et par passe), pour que le modèle ne retienne pas une position ;
+  - une seule divergence suffit pour REJETEE. La raison indique la passe concernée, par exemple « Désaccord à la vérification : « X » choisi au lieu de « Y » — justification (vérification 2/2) ».
+- **Vérification** : `pytest` : 163 tests passent, dont 5 nouveaux (réglages par défaut, deux passes d'accord, une seule passe divergente qui rejette, ordre des choix par passe, graine par passe).
+- **Gardé / modifié / rejeté** :
+  - gardé : **un appel par passe pour tout le lot**, et non un appel par question en parallèle comme le proposait le guide. Avec la limite gratuite de Groq (environ 8 000 jetons par minute), 10 questions × 2 vérifications feraient 20 appels au lieu de 2 ;
+  - corrigé : ma première version (entrée 03) s'écartait du guide, qui demandait déjà `nb_verifications=2` et une température de vérification plus haute. Elle est maintenant alignée.
+- **Leçon** : relire la spécification point par point avant d'optimiser. Le gain de quota de la première version (1 appel à 0) se payait en efficacité du contrôle.
+
+---
+
+### 03 — 2026-10-13 — IA 1 : génération de QCM (Few-Shot, JSON strict, Self-Consistency) et relecture
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), agent `code-reviewer` d'oh-my-claudecode pour la relecture
+- **Objectif** : remplacer le stub `POST /api/ai/quiz/generer` par la vraie génération, sans jamais lire le cours (étape 2 du guide).
+- **Contexte fourni** : CLAUDE.md, CONTRATS_API.md (PR #3), le socle `app/core` (LLMClient, `fournisseur_courant()`, `estimer_tokens`, Sanitizer), et les conventions du module Cours lues sur `origin/feature/cours` sans les modifier.
+- **Prompt** : la spécification est le prompt de l'étape 2 de `GUIDE_MODULE_QUIZ.md`. Le lancement s'est fait avec la consigne :
+  > Pour l'IA 1, vérifie d'abord que develop (avec le client Gemini de djappa) est fusionné dans feature/quiz ; sinon, travaille uniquement avec un faux LLM dans les tests.
+- **Résultat** (fichiers de `ai-service/app/modules/quiz/`) :
+  - `schemas.py` : `GenererQuizRequest` (thème, 1 à 8 compétences, niveaux de Bloom, difficulté, 1 à 10 questions ; **aucun champ de texte de cours**) et `GenererQuizResponse` (questions VALIDEE ou REJETEE avec `raisonRejet`, `versionPrompt`, `fournisseur`, `alertes`) ;
+  - `prompts/generation_v1.py`, `verification_v1.py` et un registre versionné. `exemples_bloom.py` contient 2 exemples rédigés à la main par niveau de Bloom (12 sujets variés). Seuls les exemples des niveaux demandés sont envoyés ;
+  - `generation.py` : objectifs nettoyés par le Sanitizer et insérés comme **donnée** entre `<objectifs>…</objectifs>`. Les questions sont demandées par lots (`QUIZ_LOT_MAX` = 5), réduits si le budget de jetons de Groq l'exige. Chaque question est validée strictement : 4 choix distincts, 1 seul correct, une `erreurAssociee` par distracteur, une explication, un niveau et une compétence demandés. Une question mal formée est rejetée **seule**, sans perdre le lot ;
+  - `coherence.py` : vérification sans la bonne réponse, sans les erreurs et sans l'explication, avec des choix mélangés ;
+  - tests `tests/quiz/` avec un FauxLLM (aucun appel réseau) : routes, génération, cohérence, confidentialité, budget.
+- **Vérification** : `pytest` donne 151 tests au vert. Mesure de la taille réelle des prompts : environ 1 350 jetons pour 2 niveaux, environ 3 200 pour 6.
+- **Gardé / modifié / rejeté** : la relecture par l'agent `code-reviewer` a conclu « REQUEST CHANGES ». **7 corrections appliquées** :
+  1. **[HIGH] Contrôle de rôle absent** : un apprenant pouvait générer des quiz et épuiser le quota. Il reçoit maintenant un 403, et seuls ENSEIGNANT et ADMIN passent.
+  2. **[HIGH] Un champ `null` renvoyé par le LLM** (compétence, `estCorrecte`, choix…) faisait échouer tout le schéma (502, lot perdu). Les schémas internes transforment maintenant `null` en valeur vide, et seule la question concernée est rejetée.
+  3. **[HIGH] Le FauxLLM ne validait jamais de JSON brut** : les tests ne pouvaient pas voir le défaut 2. Il valide maintenant les dictionnaires avec le schéma, comme le vrai `complete_json`, et des tests avec des champs `null` ont été ajoutés.
+  4. **[LOW] Estimation de sortie trop basse** : elle passe de 350 à 450 jetons par question, avec des tests de budget recalibrés.
+  5. **[LOW] Faux doublons** : une question rejetée bloquait sa version correcte. Seules les questions VALIDEE comptent maintenant.
+  6. **[LOW] Niveau de Bloom** : « Analyser » ou « appliquer » étaient refusés. Le niveau est maintenant normalisé (`strip().upper()`).
+  7. **[LOW] `fournisseur` vide sans secours** : il reprend maintenant `LLM_PROVIDER`.
+  - Rejeté (déjà traité) : une remarque sur CONTRATS_API.md, réglée par la PR #3.
+  - Gardé comme limite connue : le budget **cumulé par minute** de Groq n'est pas garanti sur une grosse génération. quiz-service relancera après un 429.
+  - Gardé comme limite connue : le Sanitizer du socle ne masque pas les noms de personnes. Le risque est faible, car les objectifs sont écrits par le formateur et ne contiennent aucune donnée d'apprenant.
+  - Résultat après corrections : 158 tests au vert.
+- **Captures** : à ajouter, au format `captures/2026-10-13_03_ia1-generation.png` et `captures/2026-10-13_03_relecture.png`.
+- **Leçon** : un faux LLM trop « gentil » (qui renvoie des objets déjà valides) cache les vrais défauts. Il faut tester avec le JSON brut, tel que le fournisseur le renvoie.
+
+---
+
+### 02 — 2026-10-13 — PR #3 (socle) : contrat de l'IA du Quiz
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5)
+- **Objectif** : mettre CONTRATS_API.md en accord avec la spécification avant de coder (conflits C1 à C4 du plan).
+- **Contexte fourni** : le plan de l'étape 0 et CONTRATS_API.md.
+- **Prompt** :
+  > Approuvé, étape 1 d'abord. Avant de modifier CONTRATS_API.md, montre-moi les conflits C1 à C4 et ta proposition pour chacun. C'est un fichier du socle : fais-le sur une petite branche à part avec sa propre PR, et ne change pas la forme existante de GET /api/quiz/notions-ratees (le module User en dépend).
+
+  Puis, après relecture des propositions avec une grille (forme de notions-ratees inchangée, champ `texte` supprimé, `nbQuestions` ≤ 10, aucune donnée personnelle dans les routes IA) :
+  > Pousser et ouvrir la PR (Recommandé)
+- **Résultat** : branche `docs/contrat-quiz-ia`, commit `31bb7ab`, PR #3 vers `develop` (relecteur : djappa001). Seul CONTRATS_API.md change :
+  - contrat 5 : `generer` part des objectifs (theme, competences, niveauxBloom, difficulte, 1 à 10 questions), sans texte de cours ;
+  - contrat 5 : nouvelle route `remedier`, sans identifiant ni nom d'apprenant ;
+  - erreur 413 `LLM_TOO_LONG_FOR_FALLBACK` ajoutée ;
+  - contrat 2 : Quiz retiré des consommateurs de `/cours/{id}/texte` ;
+  - contrat 3 : statut « prévu », **forme de notions-ratees inchangée**.
+- **Vérification** : diff relu avant le push. Aucun autre fichier touché.
+- **Gardé / modifié / rejeté** : gardé tel quel. La règle du socle est respectée : PR séparée et relue, au lieu d'un commit sur `feature/quiz`.
+- **Captures** : à ajouter, au format `captures/2026-10-13_02_pr3-diff.png`.
+- **Leçon** : écrire le contrat d'abord évite de coder contre une interface que l'équipe n'a pas validée.
+
+---
+
+### 01 — 2026-10-13 — Étape 0 : analyse et plan (aucun code)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), skill `/oh-my-claudecode:plan`
+- **Objectif** : obtenir un plan complet du module avant d'écrire du code, et repérer les conflits avec le socle et le module Cours.
+- **Contexte fourni** : CLAUDE.md, DESIGN.md, CONTRATS_API.md, le code existant du Quiz, et `origin/feature/cours` (lu sans le modifier).
+- **Prompt** (étape 0 de `GUIDE_MODULE_QUIZ.md`, début) :
+  > /oh-my-claudecode:plan
+  > Tu travailles sur le module Quiz de Bawsla, branche feature/quiz (qui contient maintenant le client Gemini de feature/socle-llm-gemini). Lis d'abord CLAUDE.md, DESIGN.md et CONTRATS_API.md, puis tout le code de backend/quiz-service, ai-service (core + modules/quiz) et frontend/src/app/features/quiz. […] Produis un plan en étapes : modèle de données, endpoints Java, endpoints IA, intégration quiz-service -> ai-service, branchement du front (en listant précisément les données de démo à remplacer dans chaque page), tests. Signale tout conflit avec le socle, les contrats existants ou le travail du module Cours. N'écris aucun code.
+- **Résultat** : `.omc/plans/quiz-etape0.md` (exigences R1 à R10, conflits C1 à C11, étapes, risques). Conflits importants relevés :
+  - C1 : l'ancien contrat de `generer` demandait le texte du cours ;
+  - C2 : le contrat 2 citait le Quiz comme lecteur du texte des cours ;
+  - C5 : un apprenant aurait vu les brouillons ;
+  - C7 : le générateur du front faisait choisir un chapitre, ce qui revenait à lire le contenu du cours.
+- **Vérification** : plan relu, puis complété à ma demande.
+- **Gardé / modifié / rejeté** : modifié. J'ai sorti l'examen final et les certificats du périmètre, avec cette consigne :
+  > Hors périmètre, mais vérifie que quiz-list et le lecteur de quiz ne cassent pas les liens vers examen-final et certificats : ces pages doivent rester accessibles avec leurs données de démo.
+
+  Le plan a ensuite reçu les contraintes L1 à L4 et le critère 4bis.
+- **Captures** : à ajouter, au format `captures/2026-10-13_01_plan-etape0.png`.
+- **Leçon** : le mode plan a trouvé des conflits de contrat (C1, C2) que je n'aurais vus qu'au moment de l'intégration.
