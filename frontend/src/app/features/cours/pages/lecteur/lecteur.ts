@@ -6,14 +6,11 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 
 import { errorMessage } from '../../../../shared/models/api-response.model';
-import { AiBox, BwButton, EmptyState } from '../../../../shared';
+import { BwButton, EmptyState } from '../../../../shared';
 import { Skeleton } from '../../../../shared/ui';
 import { formatTaille } from '../../models/cours.constantes';
-import { FicheAudio } from '../../components/fiche-audio';
-import { FicheContenu } from '../../components/fiche-contenu';
-import { ExplicationLecteur } from '../../components/explication-lecteur';
-import { ResumeLocalLecteur } from '../../components/resume-local-lecteur';
-import { Chapitre, Cours, Fiche } from '../../models/cours.model';
+import { StudioIaLecteur } from '../../components/studio-ia/studio-ia-lecteur';
+import { Chapitre, Cours } from '../../models/cours.model';
 import { CoursService } from '../../services/cours.service';
 import { analyserLienVideo } from '../../services/video-lien';
 
@@ -27,7 +24,7 @@ type Etat = 'chargement' | 'ok' | 'introuvable';
  */
 @Component({
   selector: 'app-lecteur',
-  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, AiBox, BwButton, EmptyState, Skeleton, FicheAudio, FicheContenu, ExplicationLecteur, ResumeLocalLecteur],
+  imports: [RouterLink, MatIconModule, MatSnackBarModule, MatTooltipModule, BwButton, EmptyState, Skeleton, StudioIaLecteur],
   templateUrl: './lecteur.html',
   styleUrl: './lecteur.scss',
 })
@@ -40,8 +37,6 @@ export class Lecteur implements OnInit {
   protected readonly etat = signal<Etat>('chargement');
   protected readonly cours = signal<Cours | null>(null);
   protected readonly chapitres = signal<Chapitre[]>([]);
-  /** Dernière fiche de révision VALIDEE par le formateur ; null s'il n'y en a pas encore. */
-  protected readonly fiche = signal<Fiche | null>(null);
   protected readonly index = signal(0);
   protected readonly planOuvert = signal(true);
   protected readonly formatTaille = formatTaille;
@@ -66,7 +61,6 @@ export class Lecteur implements OnInit {
     this.service.findById(this.id()).subscribe({
       next: (c) => {
         this.cours.set(c);
-        this.chargerFiche(c.id);
         this.service.chapitres(c.id).subscribe({
           next: (l) => {
             this.chapitres.set(l);
@@ -87,13 +81,6 @@ export class Lecteur implements OnInit {
     });
   }
 
-  /** L'apprenant ne reçoit que la fiche validée ; `null` = pas encore de résumé (ce n'est pas une erreur). */
-  private chargerFiche(coursId: number): void {
-    this.service.fiche(coursId).subscribe({
-      next: (f) => this.fiche.set(f),
-      error: () => this.fiche.set(null),
-    });
-  }
 
   protected ouvrir(i: number): void {
     if (i >= 0 && i < this.chapitres().length) this.index.set(i);

@@ -226,6 +226,9 @@ export class ExplicationStudio implements OnInit, OnDestroy {
   private readonly snack = inject(MatSnackBar);
 
   readonly coursId = input.required<number>();
+  /** Langue et format sélectionnés à l'ouverture (volet du Studio IA, menu « Régénérer »). */
+  readonly langueInitiale = input<LangueExplication>('fr');
+  readonly modeInitial = input<ModeExplication>('monologue');
 
   protected readonly langue = signal<LangueExplication>('fr');
   protected readonly mode = signal<ModeExplication>('monologue');
@@ -254,6 +257,8 @@ export class ExplicationStudio implements OnInit, OnDestroy {
   private suivi?: Subscription;
 
   ngOnInit(): void {
+    this.langue.set(this.langueInitiale());
+    this.mode.set(this.modeInitial());
     this.charger();
     // Un traitement lancé avant l'arrivée sur la page continue : on le reprend.
     this.service.traitementExplication(this.coursId(), this.langue(), this.mode()).subscribe({

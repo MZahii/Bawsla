@@ -160,24 +160,14 @@
             @if (existant()!.aPdf) { <p class="muted small">Envoyer un nouveau PDF remplace l’actuel.</p> }
           }
         </div>
-        <div>
-          <p class="lbl">Résumé IA</p>
-          @if (!existant()) {
-            <bw-empty-state icon="lock" title="Crée d’abord le cours" message="Le résumé se génère à partir du PDF ou du contenu des chapitres." />
+        <div class="studio-bloc">
+          @if (existant(); as cours) {
+            <app-studio-ia [coursId]="cours.id" />
           } @else {
-            <app-fiche-studio [coursId]="existant()!.id" />
+            <p class="lbl">Studio IA</p>
+            <bw-empty-state icon="lock" title="Crée d’abord le cours" message="Les générations IA partent du PDF ou du contenu des chapitres." />
           }
         </div>
-        @if (existant(); as cours) {
-          <div class="explication-bloc">
-            <p class="lbl">Résumé automatique (modèle local, sans IA générative)</p>
-            <app-resume-local-studio [coursId]="cours.id" />
-          </div>
-          <div class="explication-bloc">
-            <p class="lbl">Explication orale par l’IA</p>
-            <app-explication-studio [coursId]="cours.id" />
-          </div>
-        }
       </div>
       <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
     </mat-step>

@@ -9,6 +9,7 @@ import { errorMessage } from '../../../shared/models/api-response.model';
 import { LongueurResume, ModeResume, ResumeLocal, Traitement } from '../models/cours.model';
 import { CoursService } from '../services/cours.service';
 import { ResumeLocalAudio } from './resume-local-audio';
+import { moteurResumeLocal, texteMoteur } from './studio-ia/studio-ia.modele';
 
 const LIBELLES_ETAPES: Record<string, string> = {
   TEXTE: 'Lecture du cours',
@@ -80,6 +81,9 @@ const LIBELLES_LONGUEUR: Record<LongueurResume, string> = { courte: 'Courte', mo
         <div class="entete">
           <span class="pill ia plain">Langue détectée : {{ r.langue === 'fr' ? 'FR' : 'EN' }}</span>
           <span class="pill plain">{{ r.modeUtilise === 'extractif' ? 'Phrases clés du cours' : 'Résumé reformulé' }}</span>
+          @if (algorithme(r.modele); as algo) {
+            <span class="pill ia" title="Algorithme utilisé pour ce résumé">{{ algo }}</span>
+          }
           @if (r.modele) {
             <span class="muted small">Modèle : {{ r.modele }}</span>
           }
@@ -221,9 +225,9 @@ export class ResumeLocalStudio implements OnInit, OnDestroy {
   protected readonly aideMode = computed(
     () =>
       ({
-        auto: 'Auto : le modèle reformule le cours ; si le résultat est peu fidèle, il est remplacé par les phrases clés du cours.',
-        abstractif: 'Reformulé : le modèle réécrit le cours avec ses mots. Relis-le : il peut se tromper.',
-        extractif: 'Phrases clés : les phrases les plus importantes du cours, recopiées sans modification.',
+        auto: 'Auto : reformulé (BARThez en français, DistilBART en anglais) ; s’il est peu fidèle, il est remplacé par les phrases clés (TextRank).',
+        abstractif: 'Reformulé : BARThez (français) ou DistilBART (anglais) réécrit le cours avec ses mots. Relis-le : il peut se tromper.',
+        extractif: 'Phrases clés : TextRank choisit les phrases les plus importantes du cours et les recopie sans modification.',
       })[this.mode()],
   );
 
@@ -304,6 +308,10 @@ export class ResumeLocalStudio implements OnInit, OnDestroy {
 
   protected icone(statut: string): string {
     return statut === 'TERMINE' ? 'check_circle' : statut === 'ECHEC' ? 'error' : statut === 'EN_COURS' ? 'autorenew' : 'schedule';
+  }
+
+  protected algorithme(modele?: string): string {
+    return texteMoteur(moteurResumeLocal(modele));
   }
 
   protected secondes(ms: number): string {
