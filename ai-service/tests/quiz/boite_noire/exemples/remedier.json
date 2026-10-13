@@ -1,0 +1,9 @@
+{
+  "notion": "Choisir entre INNER JOIN et LEFT JOIN",
+  "niveauBloom": "APPLIQUER",
+  "enonce": "Pour lister tous les clients, même sans commande, quelle jointure utiliser ?",
+  "choixDonne": "INNER JOIN",
+  "bonneReponse": "LEFT JOIN",
+  "erreurAssociee": "Croit que INNER JOIN garde les lignes sans correspondance",
+  "explication": "LEFT JOIN garde toute la table de gauche."
+}

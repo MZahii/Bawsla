@@ -118,7 +118,7 @@ def _divergence(question: QuestionQcm, reponse) -> str | None:
     if reponse is None:
         return "La vérification n'a pas répondu à cette question"
     lettre = reponse.choix.strip().upper()[:1]
-    if lettre not in LETTRES:
+    if not lettre or lettre not in LETTRES:  # "" in "ABCD" est vrai en Python : une réponse vide valait « A »
         return f"Réponse de vérification illisible : {_court(reponse.choix, 20)!r}"
     choisi: ChoixQcm = question.choix[LETTRES.index(lettre)]
     if choisi.est_correcte:

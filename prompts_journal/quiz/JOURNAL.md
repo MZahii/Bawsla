@@ -7,6 +7,39 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 06 — 2026-10-13 — Tests boîte noire et boîte blanche de l'IA (génération et remédiation)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), Chrome headless pour les captures
+- **Objectif** : tester les deux routes IA du module des deux points de vue (boîte noire, puis boîte blanche), produire des captures et un guide pour refaire les tests soi-même.
+- **Prompt** :
+  > fais les test en boite noir et boite blanche et donne moi en retour des screenshots des fonctionnalite et puis guide moi pour refaire les tests moi meme
+- **Résultat** (tout sous `ai-service/tests/quiz/`) :
+  - `boite_noire/serveur_demo.py` : lance la vraie application (`app.main:app`) avec un **LLM simulé déterministe**, sans clé et sans réseau. À chaque génération, il produit volontairement une question mal formée (2 bonnes réponses) et une question « piège » sur laquelle le vérificateur diverge. Mettre `[panne-429]` dans un texte simule un quota épuisé. L'option `--llm stub` lance le serveur sans aucun LLM ;
+  - `boite_noire/scenarios.py` : **38 cas** HTTP. Techniques : nominal, table de décision (authentification × rôle), valeurs limites, partitions invalides, confidentialité, sécurité, erreurs 429 et 503. Le script génère les rapports HTML `rapport.html`, `generation.html` et `remediation.html` ;
+  - `test_quiz_boite_blanche.py` : un test par branche non couverte, repérée avec `pytest --cov-branch`. Couverture : 98 % → **100 %** des instructions et des branches (452 instructions, 118 branches) ;
+  - `boite_noire/exemples/*.json` et `GUIDE_TESTS.md` : la marche à suivre pas à pas.
+- **Défaut trouvé par la boîte blanche** : dans `coherence._divergence`, une réponse de vérification vide (`""`) comptait comme la lettre « A », car en Python `"" in "ABCD"` vaut `True`. Conséquence : une question pouvait être VALIDÉE alors que le vérificateur n'avait rien répondu. **Corrigé** par `if not lettre or lettre not in LETTRES`, et un test couvre ce cas.
+- **Vérification** : `pytest tests -q` donne 211 passed ; `pytest tests/quiz` donne 113 passed avec 100 % des branches couvertes ; les scénarios boîte noire donnent 38/38. Une mutation des contrôles (mauvais nombre de questions, rattrapage absent) fait bien échouer les cas, donc ils ne passent pas à vide.
+- **Gardé / modifié / rejeté** :
+  - Gardé : le LLM simulé plutôt qu'un vrai fournisseur pour la boîte noire, pour des résultats reproductibles et aucun quota consommé. Les vrais appels Gemini ou Groq restent à montrer à la démo ;
+  - Gardé : le détail de validation de `extra="forbid"` est en anglais (« Extra inputs are not permitted »). Il vient du socle et n'a pas été modifié ;
+  - Modifié : sous Windows, des accents passés à `curl -d '...'` donnent un 400 « error parsing the body ». Le guide utilise donc des fichiers JSON (`--data-binary @fichier`) ;
+  - Modifié après relecture par l'agent `code-reviewer` (verdict COMMENT, aucun défaut grave) :
+    - le serveur `--llm stub` lisait `.env` et pouvait appeler un vrai fournisseur. Les deux modes remplacent maintenant le LLM ;
+    - beaucoup de cas en 400 ne vérifiaient que le statut. Chacun vérifie désormais le champ cité dans `details`, et les 401 vérifient le code `UNAUTHORIZED` ;
+    - le contrôle « aucun identifiant renvoyé » ne pouvait jamais échouer. Il est remplacé par « l'email ou le téléphone envoyé ne revient pas en clair » ;
+    - les serveurs de test sont arrêtés proprement, même en cas d'erreur, et un serveur qui plante au démarrage est signalé tout de suite ;
+    - le guide installait les tests sans pytest-asyncio et affirmait à tort que Swagger n'a pas de champ pour les en-têtes.
+- **Captures** :
+  - `captures/2026-10-13_06_bn-generation.png` : quiz généré, avec 2 questions validées et 2 rejetées, chacune avec sa raison ;
+  - `captures/2026-10-13_06_bn-remediation.png` : remédiation, avec la vue de l'apprenant et le raisonnement réservé au formateur ;
+  - `captures/2026-10-13_06_bn-rapport.png` : les 38 cas boîte noire ;
+  - `captures/2026-10-13_06_bb-pytest.png`, `_06_bb-couverture.png`, `_06_bb-couverture-coherence.png` : pytest et couverture à 100 % ;
+  - `captures/2026-10-13_06_swagger.png` : les routes exposées.
+- **Leçon** : viser 100 % des branches n'est pas une fin en soi, mais chercher l'entrée qui force la branche manquante a révélé un vrai défaut que 100 tests fonctionnels n'avaient pas vu. Il faut toujours tester la chaîne vide.
+
+---
+
 ### 05 — 2026-10-13 — IA 2 : remédiation adaptative (Chain-of-Thought, question de rattrapage) et relecture
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), agent `code-reviewer` d'oh-my-claudecode pour la relecture (deux passes)
