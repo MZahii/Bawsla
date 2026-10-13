@@ -7,6 +7,29 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 07 — 2026-10-13 — Notebook d'analyse de l'IA et captures de l'IA en marche
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), nbformat + nbclient pour le notebook, Playwright (Chrome) pour les captures
+- **Objectif** : documenter et démontrer le choix du fournisseur, la conception des prompts, les garde-fous et l'appel par API, avec des résultats réels et non recopiés.
+- **Contexte fourni** : le code de `app/core` (llm_client, config, sanitizer) et de `app/modules/quiz`, le serveur de démo des tests boîte noire, la stack Docker en marche.
+- **Prompt** :
+  > prends des screenshots du ai quizz en marche et produit un ipynb qui fait toute une analyse par apport au choix de l ai et de son developpement sa creation ou son appel depuis un api
+- **Résultat** : `prompts_journal/quiz/analyse_ia_quiz.ipynb`, exécuté, sorties conservées. Neuf sections :
+  - choix du fournisseur : Gemini, secours Groq, OpenAI en option ; modèle local et fine-tuning écartés ;
+  - table de bascule calculée par la vraie fonction `_declenche_secours` ;
+  - réglages et taille de lot (graphe de `taille_lot` face au budget Groq) ;
+  - prompts réellement envoyés ;
+  - garde-fous : Sanitizer, validation stricte, Self-Consistency ;
+  - appel de la vraie application FastAPI avec LLM simulé : 2 questions validées, 2 rejetées, remédiation vue apprenant / vue formateur, matrice d'erreurs 8/8 ;
+  - chemin de production via la gateway (401, 403 même avec un faux `X-User-Role: ADMIN`, 503 sans clé) ;
+  - tests : 113 réussis, couverture de branches 100 %.
+- **Vérification** : notebook exécuté de bout en bout sans erreur. Aucune clé, aucun jeton JWT, aucun email dans le fichier (vérifié par recherche). Les identifiants de test sont lus dans des variables d'environnement.
+- **Gardé / modifié / rejeté** : modifié. Le health du serveur de démo affichait `stub` (il lit `.env`) : une note l'explique. Une ligne de code mal échappée a cassé une ré-exécution et laissé deux serveurs de démo actifs : corrigée, serveurs arrêtés.
+- **Captures** : `captures/2026-10-13_07_swagger-{generer,remedier}-{requete,reponse}.png` et `captures/2026-10-13_07_nb-*.png` (11 sections du notebook).
+- **Leçon** : aucune clé réelle n'est configurée, donc l'IA tourne sur un simulateur clairement étiqueté (`fournisseur: "simulateur"`). Avec une clé Gemini dans `.env`, la section 7 montre un vrai quiz sans changer le notebook.
+
+---
+
 ### 06 — 2026-10-13 — Tests boîte noire et boîte blanche de l'IA (génération et remédiation)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), Chrome headless pour les captures
