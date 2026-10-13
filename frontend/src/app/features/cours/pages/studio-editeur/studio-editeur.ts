@@ -1,6 +1,6 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AsyncPipe } from '@angular/common';
-import { Component, DestroyRef, OnInit, TemplateRef, computed, inject, input, numberAttribute, signal, viewChild } from '@angular/core';
+import { Component, OnInit, TemplateRef, computed, inject, input, numberAttribute, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -13,15 +13,13 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepperModule } from '@angular/material/stepper';
 import { Router, RouterLink } from '@angular/router';
-import { Subscription, catchError, of, switchMap, take, takeWhile, timer } from 'rxjs';
 
 import { errorMessage } from '../../../../shared/models/api-response.model';
-import { AiBox, AiLoading, Badge, BwButton, EmptyState } from '../../../../shared';
+import { Badge, BwButton, EmptyState } from '../../../../shared';
 import { Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
 import { CATEGORIES, MATIERE_AUTRE, NIVEAUX, PRECISION_MAX, PRECISION_MIN, formatDuree, formatTaille } from '../../models/cours.constantes';
-import { Chapitre, ChapitreRequest, Cours, CoursRequest, EtapeIA, Fiche, FicheRequest, Niveau, StatutTraitement, Traitement } from '../../models/cours.model';
-import { FicheAudio } from '../../components/fiche-audio';
-import { FicheContenu } from '../../components/fiche-contenu';
+import { Chapitre, ChapitreRequest, Cours, CoursRequest, Niveau } from '../../models/cours.model';
+import { FicheStudio } from '../../components/fiche-studio';
 import { ExplicationStudio } from '../../components/explication-studio';
 import { ResumeLocalStudio } from '../../components/resume-local-studio';
 import { CoursImage } from '../../pipes/cours-image';
@@ -42,13 +40,6 @@ interface FormChapitre {
 
 const CHAPITRE_VIDE: FormChapitre = { id: null, titre: '', dureeMinutes: 20, contenu: '', videoUrl: '' };
 
-/** Fiche en cours de correction (les mots-clés sont saisis séparés par des virgules). */
-interface BrouillonFiche {
-  resume: string;
-  motsCles: string;
-  notions: { titre: string; definition: string; extraitSource: string }[];
-}
-
 /**
  * Éditeur de cours en 5 étapes : informations (image comprise), chapitres, contenu (PDF) et résumé IA,
  * examen final, publication et prix. Sert à la création (/studio/cours/nouveau) et à la modification
@@ -60,7 +51,7 @@ interface BrouillonFiche {
   selector: 'app-studio-editeur',
   imports: [
     RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, Badge, BwButton, FicheAudio, FicheContenu, ExplicationStudio, ResumeLocalStudio,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, Badge, BwButton, FicheStudio, ExplicationStudio, ResumeLocalStudio,
     Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
   templateUrl: './studio-editeur.html',
@@ -123,25 +114,6 @@ export class StudioEditeur implements OnInit {
   protected readonly pdfScanne = signal<boolean | null>(null);
   protected readonly pdfPages = signal(0);
 
-  // ---- Résumé IA : fiche de révision générée par l'IA, relue par le formateur, puis validée
-  protected readonly fiche = signal<Fiche | null>(null);
-  protected readonly ficheEtat = signal<'chargement' | 'ok' | 'erreur'>('chargement');
-  /** Dernier lancement de l'IA sur ce cours (étapes, durées, erreurs). */
-  protected readonly traitement = signal<Traitement | null>(null);
-  /** true tant qu'on attend la fin d'une génération (le traitement tourne côté serveur). */
-  protected readonly attente = signal(false);
-  protected readonly lancement = signal(false);
-  protected readonly ficheEnvoi = signal(false);
-  protected readonly brouillon = signal<BrouillonFiche | null>(null);
-  protected readonly etapesIA: { etape: EtapeIA; libelle: string }[] = [
-    { etape: 'TEXTE', libelle: 'Lecture du cours' },
-    { etape: 'FICHE', libelle: 'Rédaction de la fiche' },
-    { etape: 'AUDIO', libelle: 'Création de l’audio' },
-  ];
-  /** Message d'une étape en échec dans le dernier lancement (affiché tant qu'aucune nouvelle génération n'a commencé). */
-  protected readonly echecIA = computed(() => this.traitement()?.etapes.find((e) => e.statut === 'ECHEC') ?? null);
-  private suivi?: Subscription;
-  private readonly destroyRef = inject(DestroyRef);
   protected readonly examen = signal({ questions: 20, duree: 30, seuil: 70, tentatives: 3, melange: true });
 
   // ---- Publication
@@ -160,7 +132,6 @@ export class StudioEditeur implements OnInit {
 
   ngOnInit(): void {
     if (this.id() > 0) this.charger();
-    this.destroyRef.onDestroy(() => this.arreterSuivi());
   }
 
   private charger(): void {
@@ -171,8 +142,6 @@ export class StudioEditeur implements OnInit {
         this.chargement.set(false);
         this.chargerChapitres();
         if (c.aPdf) this.analyserPdf();
-        this.chargerFiche();
-        this.reprendreSuivi();
       },
       error: (err) => {
         this.chargement.set(false);
@@ -485,195 +454,6 @@ export class StudioEditeur implements OnInit {
 
   protected majExamen(champ: 'questions' | 'duree' | 'seuil' | 'tentatives', v: number): void {
     this.examen.update((e) => ({ ...e, [champ]: Number(v) || 0 }));
-  }
-
-  // ------------------------------------------------------------------ résumé IA (fiche de révision)
-
-  protected chargerFiche(): void {
-    const cours = this.existant();
-    if (!cours) return;
-    this.ficheEtat.set('chargement');
-    this.service.fiche(cours.id).subscribe({
-      next: (f) => {
-        this.fiche.set(f); // null : pas encore de fiche, état vide normal
-        this.ficheEtat.set('ok');
-      },
-      error: (err) => {
-        this.ficheEtat.set('erreur');
-        this.snack.open(errorMessage(err, 'Impossible de charger la fiche'), 'OK', { duration: 5000 });
-      },
-    });
-  }
-
-  /** Lance la génération (la première fois comme les suivantes : l'historique des fiches est conservé côté serveur). */
-  protected genererFiche(): void {
-    const cours = this.existant();
-    if (!cours || this.lancement() || this.attente()) return;
-    this.lancement.set(true);
-    this.brouillon.set(null);
-    this.service.genererFiche(cours.id).subscribe({
-      next: (t) => {
-        this.lancement.set(false);
-        this.traitement.set(t);
-        this.suivre();
-      },
-      error: (err) => {
-        this.lancement.set(false);
-        this.snack.open(errorMessage(err, 'Impossible de lancer la génération'), 'OK', { duration: 7000 });
-      },
-    });
-  }
-
-  /** Au chargement du cours : retrouve un traitement encore en cours (page rechargée) ou le dernier échec. */
-  private reprendreSuivi(): void {
-    const cours = this.existant();
-    if (!cours) return;
-    this.service.traitement(cours.id).subscribe({
-      next: (t) => {
-        this.traitement.set(t);
-        if (t.enCours) this.suivre();
-      },
-      error: () => undefined,
-    });
-  }
-
-  /** Interroge le serveur toutes les 2 s jusqu'à la fin du traitement (au plus 5 min), puis recharge la fiche. */
-  private suivre(): void {
-    const cours = this.existant();
-    if (!cours) return;
-    this.arreterSuivi();
-    this.attente.set(true);
-    this.suivi = timer(0, 2000)
-      .pipe(
-        switchMap(() => this.service.traitement(cours.id).pipe(catchError(() => of(null)))),
-        takeWhile((t) => t === null || t.enCours, true),
-        take(150),
-      )
-      .subscribe({
-        next: (t) => {
-          if (!t) return;
-          this.traitement.set(t);
-          if (!t.enCours) this.finDeTraitement();
-        },
-        complete: () => this.attente.set(false),
-      });
-  }
-
-  private finDeTraitement(): void {
-    this.attente.set(false);
-    this.chargerFiche();
-    const echec = this.echecIA();
-    if (echec) {
-      this.snack.open(echec.erreur ?? 'La génération a échoué.', 'OK', { duration: 8000 });
-    }
-  }
-
-  private arreterSuivi(): void {
-    this.suivi?.unsubscribe();
-    this.suivi = undefined;
-  }
-
-  /** « Annuler » de l'attente : on arrête de surveiller ; le traitement, lui, continue sur le serveur. */
-  protected arreterAttente(): void {
-    this.arreterSuivi();
-    this.attente.set(false);
-    this.snack.open('La génération continue en arrière-plan. Reviens sur cette page dans un instant.', 'OK', { duration: 6000 });
-  }
-
-  protected statutEtape(etape: EtapeIA): StatutTraitement {
-    return this.traitement()?.etapes.find((e) => e.etape === etape)?.statut ?? 'EN_ATTENTE';
-  }
-
-  protected libelleEtape(etape: EtapeIA): string {
-    return this.etapesIA.find((e) => e.etape === etape)?.libelle ?? etape;
-  }
-
-  protected iconeEtape(statut: StatutTraitement): string {
-    switch (statut) {
-      case 'TERMINE': return 'check_circle';
-      case 'EN_COURS': return 'autorenew';
-      case 'ECHEC': return 'error';
-      case 'ANNULE': return 'block';
-      default: return 'radio_button_unchecked';
-    }
-  }
-
-  // ---- Correction par le formateur
-
-  protected modifierFiche(): void {
-    const f = this.fiche();
-    if (!f) return;
-    this.brouillon.set({
-      resume: f.resume,
-      motsCles: f.motsCles.join(', '),
-      notions: f.notions.map((n) => ({ titre: n.titre, definition: n.definition, extraitSource: n.extraitSource ?? '' })),
-    });
-  }
-
-  protected annulerCorrection(): void {
-    this.brouillon.set(null);
-  }
-
-  protected majBrouillon(champ: 'resume' | 'motsCles', valeur: string): void {
-    this.brouillon.update((b) => (b ? { ...b, [champ]: valeur } : b));
-  }
-
-  protected majNotion(index: number, champ: 'titre' | 'definition' | 'extraitSource', valeur: string): void {
-    this.brouillon.update((b) => (b ? { ...b, notions: b.notions.map((n, i) => (i === index ? { ...n, [champ]: valeur } : n)) } : b));
-  }
-
-  protected ajouterNotion(): void {
-    this.brouillon.update((b) => (b ? { ...b, notions: [...b.notions, { titre: '', definition: '', extraitSource: '' }] } : b));
-  }
-
-  protected retirerNotion(index: number): void {
-    this.brouillon.update((b) => (b ? { ...b, notions: b.notions.filter((_, i) => i !== index) } : b));
-  }
-
-  /** Enregistre la correction : le serveur recalcule le score de fidélité avec le texte du cours. */
-  protected enregistrerCorrection(): void {
-    const cours = this.existant();
-    const b = this.brouillon();
-    if (!cours || !b || this.ficheEnvoi()) return;
-    const corps: FicheRequest = {
-      resume: b.resume.trim(),
-      motsCles: b.motsCles.split(/[,\n]/).map((m) => m.trim()).filter(Boolean),
-      notions: b.notions
-        .filter((n) => n.titre.trim() || n.definition.trim())
-        .map((n) => ({ titre: n.titre.trim(), definition: n.definition.trim(), extraitSource: n.extraitSource.trim() })),
-    };
-    this.ficheEnvoi.set(true);
-    this.service.corrigerFiche(cours.id, corps).subscribe({
-      next: (f) => {
-        this.ficheEnvoi.set(false);
-        this.fiche.set(f);
-        this.brouillon.set(null);
-        this.snack.open(`Fiche enregistrée. Fidélité recalculée : ${f.scoreFidelite ?? '—'} / 100`, 'OK', { duration: 5000 });
-      },
-      error: (err) => {
-        this.ficheEnvoi.set(false);
-        this.snack.open(errorMessage(err, 'Enregistrement de la fiche impossible'), 'OK', { duration: 7000 });
-      },
-    });
-  }
-
-  /** Rend la fiche visible des apprenants. Si son audio manque, le serveur le produit en arrière-plan : on le suit. */
-  protected validerFiche(): void {
-    const cours = this.existant();
-    if (!cours || this.ficheEnvoi()) return;
-    this.ficheEnvoi.set(true);
-    this.service.validerFiche(cours.id).subscribe({
-      next: (f) => {
-        this.ficheEnvoi.set(false);
-        this.fiche.set(f);
-        this.snack.open('Fiche validée : les apprenants peuvent la lire.', 'OK', { duration: 4000 });
-        if (!f.aAudio) this.reprendreSuivi();
-      },
-      error: (err) => {
-        this.ficheEnvoi.set(false);
-        this.snack.open(errorMessage(err, 'Validation impossible'), 'OK', { duration: 6000 });
-      },
-    });
   }
 
   // ------------------------------------------------------------------ publication

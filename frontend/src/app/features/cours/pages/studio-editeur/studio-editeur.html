@@ -164,88 +164,8 @@
           <p class="lbl">Résumé IA</p>
           @if (!existant()) {
             <bw-empty-state icon="lock" title="Crée d’abord le cours" message="Le résumé se génère à partir du PDF ou du contenu des chapitres." />
-          } @else if (attente()) {
-            <div class="ia-attente">
-              <bw-ai-loading message="La boussole analyse ton cours…" (cancel)="arreterAttente()" />
-              <ol class="etapes" aria-label="Avancement de la génération">
-                @for (e of etapesIA; track e.etape) {
-                  <li [class]="'etape ' + statutEtape(e.etape).toLowerCase()">
-                    <mat-icon aria-hidden="true">{{ iconeEtape(statutEtape(e.etape)) }}</mat-icon> {{ e.libelle }}
-                  </li>
-                }
-              </ol>
-            </div>
           } @else {
-            @if (echecIA(); as echec) {
-              <p class="alerte" role="alert">
-                <mat-icon aria-hidden="true">error</mat-icon>
-                <span><strong>{{ libelleEtape(echec.etape) }} : échec.</strong> {{ echec.erreur }}</span>
-              </p>
-            }
-            @if (fiche(); as f) {
-              <bw-ai-box
-                [heading]="f.statut === 'VALIDEE' ? 'Fiche de révision (validée)' : 'Fiche de révision (brouillon à relire)'"
-                [editable]="!brouillon()"
-                [regenerable]="!brouillon()"
-                [validatable]="f.statut !== 'VALIDEE' && !brouillon()"
-                [busy]="ficheEnvoi() || lancement()"
-                (edit)="modifierFiche()"
-                (regenerate)="genererFiche()"
-                (validate)="validerFiche()"
-              >
-                @if (brouillon(); as b) {
-                  <div class="correction">
-                    <label class="champ">
-                      <span class="lbl">Résumé</span>
-                      <textarea class="edit" rows="7" [ngModel]="b.resume" (ngModelChange)="majBrouillon('resume', $event)"></textarea>
-                    </label>
-                    <label class="champ">
-                      <span class="lbl">Mots-clés (séparés par des virgules)</span>
-                      <input class="edit" [ngModel]="b.motsCles" (ngModelChange)="majBrouillon('motsCles', $event)" />
-                    </label>
-                    <p class="lbl">Notions</p>
-                    @for (n of b.notions; track $index; let i = $index) {
-                      <fieldset class="notion-edit">
-                        <legend>Notion {{ i + 1 }}</legend>
-                        <input class="edit" placeholder="Titre" aria-label="Titre de la notion" [ngModel]="n.titre" (ngModelChange)="majNotion(i, 'titre', $event)" />
-                        <textarea class="edit" rows="2" placeholder="Définition" aria-label="Définition" [ngModel]="n.definition" (ngModelChange)="majNotion(i, 'definition', $event)"></textarea>
-                        <textarea class="edit" rows="2" placeholder="Extrait du cours qui justifie la notion" aria-label="Extrait source" [ngModel]="n.extraitSource" (ngModelChange)="majNotion(i, 'extraitSource', $event)"></textarea>
-                        <button type="button" bwButton="fantome" (click)="retirerNotion(i)"><mat-icon>delete</mat-icon> Retirer cette notion</button>
-                      </fieldset>
-                    }
-                    <button type="button" bwButton="fantome" (click)="ajouterNotion()"><mat-icon>add</mat-icon> Ajouter une notion</button>
-                    <p class="muted small">À l’enregistrement, la fidélité de ta version au cours est recalculée.</p>
-                    <div class="actions-correction">
-                      <button type="button" bwButton="fantome" (click)="annulerCorrection()" [disabled]="ficheEnvoi()">Annuler</button>
-                      <button type="button" bwButton="secondaire" (click)="enregistrerCorrection()" [disabled]="ficheEnvoi()">
-                        {{ ficheEnvoi() ? 'Enregistrement…' : 'Enregistrer mes corrections' }}
-                      </button>
-                    </div>
-                  </div>
-                } @else {
-                  <app-fiche-contenu [fiche]="f" [gestionnaire]="true" />
-                }
-                @if (f.statut === 'VALIDEE') {
-                  <p class="valid"><mat-icon>verified</mat-icon> Validée : visible par les apprenants dans le lecteur du cours.</p>
-                } @else if (f.valideeDisponible) {
-                  <p class="muted small">Les apprenants voient encore la version validée précédente, jusqu’à ce que tu valides celle-ci.</p>
-                }
-              </bw-ai-box>
-              <app-fiche-audio class="audio-fiche" [coursId]="existant()!.id" [version]="f.id" [serveur]="f.aAudio" [fournisseur]="f.fournisseurAudio" [texte]="f.resume" />
-              @if (!f.aAudio) {
-                <p class="muted small">L’audio de cette version est créé à la validation si besoin.</p>
-              }
-            } @else if (ficheEtat() === 'chargement') {
-              <bw-skeleton height="160px" />
-            } @else if (ficheEtat() === 'erreur') {
-              <bw-empty-state icon="error" title="Impossible de charger la fiche." actionLabel="Réessayer" (action)="chargerFiche()" />
-            } @else {
-              <div class="ai-empty">
-                <mat-icon>explore</mat-icon>
-                <p>Bawsla propose une fiche de révision à partir de ton PDF (ou du contenu des chapitres) : un résumé, des mots-clés et les notions importantes, avec l’extrait du cours qui les justifie. Tu la relis avant de la rendre visible aux apprenants.</p>
-                <button type="button" bwButton="ia" [bwLoading]="lancement()" [disabled]="lancement()" (click)="genererFiche()">Générer le résumé</button>
-              </div>
-            }
+            <app-fiche-studio [coursId]="existant()!.id" />
           }
         </div>
         @if (existant(); as cours) {
