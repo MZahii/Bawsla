@@ -1,5 +1,9 @@
 package tn.esprit.bawsla.user.service;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +22,21 @@ import tn.esprit.bawsla.user.repository.UserRepository;
 @Service
 public class AuthService {
 
+    /** Après 5 échecs consécutifs, le compte est verrouillé 15 minutes. */
+    static final int MAX_TENTATIVES = 5;
+    static final Duration DUREE_VERROU = Duration.ofMinutes(15);
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final Clock clock;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
+                       Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.clock = clock;
     }
 
     @Transactional
@@ -48,15 +59,33 @@ public class AuthService {
         return toAuthResponse(user);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * noRollbackFor : un échec doit rester compté en base même si l'on répond 401.
+     * Le verrou est vérifié avant le mot de passe, pour qu'un attaquant ne puisse plus tester de mot de passe.
+     */
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmailIgnoreCase(request.email().trim())
-                .filter(u -> passwordEncoder.matches(request.motDePasse(), u.getMotDePasse()))
-                .orElseThrow(() -> new UnauthorizedException("Email ou mot de passe incorrect"));
+                .orElseThrow(AuthService::identifiantsInvalides);
+        LocalDateTime maintenant = LocalDateTime.now(clock);
+        if (user.estVerrouille(maintenant)) {
+            long minutes = Math.ceilDiv(Duration.between(maintenant, user.getVerrouilleJusqua()).toSeconds(), 60);
+            throw new UnauthorizedException(
+                    "Trop de tentatives échouées. Réessaie dans " + minutes + " minute" + (minutes > 1 ? "s" : ""));
+        }
+        if (!passwordEncoder.matches(request.motDePasse(), user.getMotDePasse())) {
+            user.enregistrerEchec(maintenant, MAX_TENTATIVES, DUREE_VERROU);
+            throw identifiantsInvalides();
+        }
         if (!user.isActif()) {
             throw new UnauthorizedException("Compte désactivé");
         }
+        user.enregistrerConnexion(maintenant);
         return toAuthResponse(user);
+    }
+
+    private static UnauthorizedException identifiantsInvalides() {
+        return new UnauthorizedException("Email ou mot de passe incorrect");
     }
 
     private AuthResponse toAuthResponse(User user) {

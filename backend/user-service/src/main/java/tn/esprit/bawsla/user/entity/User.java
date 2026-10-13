@@ -1,5 +1,6 @@
 package tn.esprit.bawsla.user.entity;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -44,6 +45,16 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateCreation;
 
+    /** Dernière connexion réussie (null tant que l'utilisateur ne s'est jamais connecté). */
+    private LocalDateTime derniereConnexion;
+
+    /** Échecs de connexion consécutifs, remis à zéro à la connexion suivante réussie. */
+    @Column(nullable = false)
+    private int tentativesEchouees;
+
+    /** Connexion refusée jusqu'à cette date après trop d'échecs (protection contre le brute force). */
+    private LocalDateTime verrouilleJusqua;
+
     @PrePersist
     void onCreate() {
         dateCreation = LocalDateTime.now();
@@ -71,4 +82,29 @@ public class User {
     public void setActif(boolean actif) { this.actif = actif; }
 
     public LocalDateTime getDateCreation() { return dateCreation; }
+
+    public LocalDateTime getDerniereConnexion() { return derniereConnexion; }
+
+    public int getTentativesEchouees() { return tentativesEchouees; }
+
+    public LocalDateTime getVerrouilleJusqua() { return verrouilleJusqua; }
+
+    public boolean estVerrouille(LocalDateTime maintenant) {
+        return verrouilleJusqua != null && verrouilleJusqua.isAfter(maintenant);
+    }
+
+    /** Compte un échec ; au-delà de {@code maxTentatives}, verrouille le compte pendant {@code duree}. */
+    public void enregistrerEchec(LocalDateTime maintenant, int maxTentatives, Duration duree) {
+        tentativesEchouees++;
+        if (tentativesEchouees >= maxTentatives) {
+            verrouilleJusqua = maintenant.plus(duree);
+            tentativesEchouees = 0;
+        }
+    }
+
+    public void enregistrerConnexion(LocalDateTime maintenant) {
+        derniereConnexion = maintenant;
+        tentativesEchouees = 0;
+        verrouilleJusqua = null;
+    }
 }

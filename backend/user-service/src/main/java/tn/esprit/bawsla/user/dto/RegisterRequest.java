@@ -2,6 +2,7 @@ package tn.esprit.bawsla.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import tn.esprit.bawsla.user.entity.Role;
 
@@ -11,6 +12,8 @@ public record RegisterRequest(
         @NotBlank(message = "Le prénom est obligatoire") @Size(max = 100) String prenom,
         @NotBlank(message = "L'email est obligatoire") @Email(message = "Email invalide") @Size(max = 150) String email,
         @NotBlank(message = "Le mot de passe est obligatoire")
-        @Size(min = 8, max = 72, message = "Entre 8 et 72 caractères") String motDePasse,
+        @Size(min = 8, max = 72, message = "Entre 8 et 72 caractères")
+        @Pattern(regexp = "^(?=.*\\p{L})(?=.*\\d).*$", message = "Au moins une lettre et un chiffre")
+        String motDePasse,
         Role role) {
 }
