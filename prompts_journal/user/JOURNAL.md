@@ -7,6 +7,30 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 07 — 2026-10-13 — IA : Random Forest, risque d'échec (étape C2)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : apprentissage supervisé du sujet : prédire le risque d'échec d'un apprenant à partir de ses résultats aux quiz, et expliquer pourquoi
+- **Contexte fourni** : jeu de données simulé (entrée 05), K-Means (entrée 06)
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start C2? »)
+- **Résultat** :
+  - `ml/risque.py` : 11 variables (quiz, cours, activité) ; découpage 80 / 20 stratifié ; `GridSearchCV` à 5 plis (profondeur, feuilles) ; `class_weight="balanced"` ; comparaison avec la classe majoritaire et une régression logistique ; seuil de décision choisi sur des prédictions hors pli en maximisant le F2 ; niveaux faible / moyen / élevé ; jusqu'à 3 raisons lisibles par apprenant, sans doublon, aucune quand le risque est faible.
+  - Validation croisée : Random Forest accuracy 0,794, F1 0,750, AUC 0,810 ; régression logistique 0,750 / 0,719 / 0,833 ; classe majoritaire 0,600 / 0 / 0,5.
+  - Test (40 apprenants jamais vus), seuil 0,4 : accuracy 0,825, précision 0,846, rappel 0,688, F1 0,759, AUC 0,805 ; 11 échecs repérés sur 16, 2 fausses alertes.
+  - 14 tests pytest (`tests/user/test_risque.py`).
+- **Vérification** : `pytest` (131/131) ; exemples d'apprenants avec probabilité, niveau et raisons.
+- **Gardé / modifié / rejeté** :
+  - Modifié : au seuil 0,5, le modèle ne repérait que 7 échecs sur 16 (rappel 0,44). Seuil choisi par F2 (un échec raté compte double) sur les prédictions hors pli, jamais sur le test : 0,4, rappel 0,69.
+  - Modifié : importance par permutation calculée d'abord en F1 sur 40 apprenants, toutes ≤ 0 : trop instable. Passée en AUC, elle reste proche de 0 car des variables vont par paires (note / bonnes réponses, temps / cours suivis). Gardée dans les métriques ; l'ordre des raisons suit l'importance propre à la forêt, stable.
+  - Rejeté : la variable « ancienneté », sans lien avec l'échec (importance par permutation négative).
+  - Modifié : raisons seulement si l'apprenant fait moins bien que 75 % de ceux qui réussissent, une seule par groupe de variables redondantes, et aucune quand le risque est faible.
+  - Limite gardée : sur ces données, la régression logistique est presque aussi bonne (normal : l'échec simulé suit une loi logistique). À dire dans le rapport ; le Random Forest garde l'avantage en validation croisée (F1) et capte des seuils non linéaires.
+  - Accéléré : recherche des hyperparamètres en parallèle (`n_jobs=-1`), tests de 73 s à 39 s.
+- **Captures** : _(à ajouter : tableau de comparaison et matrice de confusion)_
+- **Leçon** : pour un outil d'alerte, l'accuracy ne suffit pas : il faut regarder le rappel de la classe à risque et choisir le seuil en conséquence, sans jamais toucher au jeu de test.
+
 ### 06 — 2026-10-13 — IA : K-Means, regroupement des apprenants (étape C1)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
