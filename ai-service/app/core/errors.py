@@ -36,6 +36,13 @@ class LLMQuotaError(LLMError):
     code = "LLM_QUOTA_EXCEEDED"
 
 
+class LLMTropLongError(LLMError):
+    """Le texte dépasse ce que le fournisseur de SECOURS accepte par minute : inutile de réessayer tel quel."""
+
+    status_code = 413
+    code = "LLM_TOO_LONG_FOR_FALLBACK"
+
+
 class LLMMissingKeyError(LLMError):
     """Aucune clé API (ou aucun fournisseur) configuré."""
 

@@ -1,0 +1,5 @@
+-r requirements.txt
+# Tests (non installés dans l'image Docker) : cd ai-service && .venv/Scripts/python -m pytest
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
