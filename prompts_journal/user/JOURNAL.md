@@ -7,6 +7,27 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 06 — 2026-10-13 — IA : K-Means, regroupement des apprenants (étape C1)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : apprentissage non supervisé du sujet : regrouper les apprenants selon leurs notes, leur temps passé et les cours suivis
+- **Contexte fourni** : jeu de données simulé (entrée 05), capture du sujet
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start C1? »)
+- **Résultat** :
+  - Expérience d'abord : k de 2 à 8, avec et sans transformation log, trois jeux de variables, silhouette et accord avec les profils cachés (ARI).
+  - `ml/clustering.py` : `StandardScaler` + `KMeans` (graine 42) sur 7 variables (note, progression, temps, cours suivis, notions ratées, jours actifs, jours depuis la dernière connexion) ; inertie et silhouette pour k = 2 à 8 (données des graphiques coude et silhouette) ; k retenu = meilleure silhouette entre 3 et 6 ; groupes nommés d'après leur centre par des règles lisibles ; `predire()` pour un nouvel apprenant.
+  - Résultat : k = 3, silhouette 0,289, ARI 0,419. « Régulier » (100 apprenants, 17 % d'échec : tous les avancés et la plupart des réguliers), « Débutant en difficulté » (59, 58 %), « Décrocheur » (41, 71 %).
+  - 12 tests pytest (`tests/user/test_clustering.py`).
+- **Vérification** : `pytest tests/user` (19/19) ; affichage des centres et de la répartition des profils cachés par groupe.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : k = 2, qui a la meilleure silhouette (0,363) mais ne sépare que « ça va / ça ne va pas ». Règle retenue et justifiée : au moins 3 groupes, comme le sujet.
+  - Rejeté : la transformation log du temps et des jours (pas de gain net d'ARI ni de silhouette).
+  - Limite gardée et à expliquer dans le rapport : le K-Means sépare surtout par l'engagement ; il fusionne « avancé » et « régulier » (leurs comportements sont proches) mais ne classe aucun avancé en difficulté ni en décrocheur.
+- **Captures** : _(à ajouter : tableau k / inertie / silhouette)_
+- **Leçon** : la meilleure valeur d'une métrique (ici la silhouette à k = 2) n'est pas forcément le meilleur choix pour le produit ; il faut une règle de choix explicite et la justifier.
+
 ### 05 — 2026-10-13 — IA : préparation et jeu de données simulé (étapes A1, A2, B1)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

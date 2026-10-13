@@ -20,7 +20,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 ## 2. IA — Machine Learning (ai-service/app/modules/user)
 - [x] 2.1 Socle : `scikit-learn`, `pandas`, `numpy`, `joblib` dans `requirements.txt` (commit `chore(socle)`)
 - [x] 2.2 Générateur de jeu de données simulé : 200 apprenants, 4 profils cachés, 15 cours, 630 inscriptions, graine 42
-- [ ] 2.3 K-Means : choix de k (coude + silhouette), nommage des groupes
+- [x] 2.3 K-Means : k = 3 (meilleure silhouette entre 3 et 6), groupes Régulier / Débutant en difficulté / Décrocheur, ARI 0,42
 - [ ] 2.4 Random Forest risque d'échec : CV, F1, matrice de confusion, baseline, importance des variables
 - [ ] 2.5 Filtrage collaboratif + démarrage à froid, précision@k
 - [ ] 2.6 Endpoints `profil`, `risque`, `recommandations`, `metriques`, `entrainer` + contrats (PR)
