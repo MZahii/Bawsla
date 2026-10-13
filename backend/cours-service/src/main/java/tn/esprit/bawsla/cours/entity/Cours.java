@@ -37,8 +37,13 @@ public class Cours {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /** Matière du cours (liste commune avec le module Quiz, voir service/Matieres). */
     @Column(length = 100)
     private String categorie;
+
+    /** Précision de la matière « Autre » (2 à 80 caractères) ; null pour toute autre matière. */
+    @Column(length = 80)
+    private String categoriePrecision;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -97,6 +102,8 @@ public class Cours {
 
     public String getCategorie() { return categorie; }
     public void setCategorie(String categorie) { this.categorie = categorie; }
+    public String getCategoriePrecision() { return categoriePrecision; }
+    public void setCategoriePrecision(String categoriePrecision) { this.categoriePrecision = categoriePrecision; }
 
     public Niveau getNiveau() { return niveau; }
     public void setNiveau(Niveau niveau) { this.niveau = niveau; }

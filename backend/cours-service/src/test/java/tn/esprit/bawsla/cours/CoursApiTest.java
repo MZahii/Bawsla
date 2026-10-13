@@ -191,7 +191,7 @@ class CoursApiTest {
         lire(APPRENANT, "ETUDIANT", id)
                 .andExpect(jsonPath("$.data.id").value(id))
                 .andExpect(jsonPath("$.data.titre").value("Contrat"))
-                .andExpect(jsonPath("$.data.categorie").value("Backend"))
+                .andExpect(jsonPath("$.data.categorie").value("Informatique"))
                 .andExpect(jsonPath("$.data.niveau").value("DEBUTANT"))
                 .andExpect(jsonPath("$.data.enseignantId").value(FORMATEUR_A))
                 .andExpect(jsonPath("$.data.statut").value("PUBLIE"))
@@ -218,10 +218,10 @@ class CoursApiTest {
 
     @Test
     void prixEnregistreEtConserveQuandAbsent() throws Exception {
-        String avecPrix = "{\"titre\":\"Payant\",\"categorie\":\"Backend\",\"niveau\":\"AVANCE\",\"prix\":49}";
+        String avecPrix = "{\"titre\":\"Payant\",\"categorie\":\"Informatique\",\"niveau\":\"AVANCE\",\"prix\":49}";
         MvcResultId cree = new MvcResultId(envoyer(post("/api/cours"), FORMATEUR_A, "ENSEIGNANT", avecPrix)
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.data.prix").value(49.0)));
-        envoyer(put("/api/cours/" + cree.id), FORMATEUR_A, "ENSEIGNANT", "{\"titre\":\"Payant bis\"}")
+        envoyer(put("/api/cours/" + cree.id), FORMATEUR_A, "ENSEIGNANT", "{\"titre\":\"Payant bis\",\"categorie\":\"Informatique\"}")
                 .andExpect(jsonPath("$.data.prix").value(49.0));
         envoyer(post("/api/cours"), FORMATEUR_A, "ENSEIGNANT", "{\"titre\":\"Négatif\",\"prix\":-5}")
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.prix").exists());
@@ -484,7 +484,7 @@ class CoursApiTest {
     // ------------------------------------------------------------------ aides
 
     private static String json(String titre) {
-        return "{\"titre\":\"" + titre + "\",\"description\":\"Description\",\"categorie\":\"Backend\",\"niveau\":\"DEBUTANT\"}";
+        return "{\"titre\":\"" + titre + "\",\"description\":\"Description\",\"categorie\":\"Informatique\",\"niveau\":\"DEBUTANT\"}";
     }
 
     private static String chapitreAvecVideo(String url) {

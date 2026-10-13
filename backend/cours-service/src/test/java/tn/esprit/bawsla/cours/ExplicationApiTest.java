@@ -785,7 +785,7 @@ class ExplicationApiTest {
     }
 
     private long creerCours(long formateur, String titre) throws Exception {
-        String corps = "{\"titre\":\"" + titre + "\",\"categorie\":\"Données\",\"niveau\":\"DEBUTANT\"}";
+        String corps = "{\"titre\":\"" + titre + "\",\"categorie\":\"Informatique\",\"niveau\":\"DEBUTANT\"}";
         return identifiant(envoyer(post("/api/cours"), formateur, "ENSEIGNANT", corps).andExpect(status().isCreated()));
     }
 

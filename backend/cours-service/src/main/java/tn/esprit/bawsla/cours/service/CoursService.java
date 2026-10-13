@@ -72,7 +72,7 @@ public class CoursService {
     public List<CoursResponse> findAll(String categorie, Niveau niveau, CurrentUser user) {
         // Sans correspondance possible pour un apprenant : seuls les cours publiés ressortent.
         Long moi = user.hasAnyRole(CurrentUser.ENSEIGNANT) ? user.id() : -1L;
-        List<Cours> cours = coursRepository.search(categorie, niveau, user.isAdmin(), StatutCours.PUBLIE, moi);
+        List<Cours> cours = coursRepository.search(Matieres.nettoyer(categorie), niveau, user.isAdmin(), StatutCours.PUBLIE, moi);
         Map<Long, int[]> stats = statistiques(cours.stream().map(Cours::getId).toList());
         return cours.stream().map(c -> reponse(c, stats)).toList();
     }
@@ -209,7 +209,14 @@ public class CoursService {
     private static void apply(Cours cours, CoursRequest r) {
         cours.setTitre(r.titre());
         cours.setDescription(r.description());
-        cours.setCategorie(r.categorie());
+        // Défense en profondeur : la contrainte @MatiereValide a déjà rejeté une matière invalide (400 avec details).
+        var erreurs = Matieres.erreurs(r.categorie(), r.categoriePrecision());
+        if (!erreurs.isEmpty()) {
+            throw new BadRequestException(erreurs.values().iterator().next());
+        }
+        String matiere = Matieres.canonique(r.categorie()).orElseThrow();
+        cours.setCategorie(matiere);
+        cours.setCategoriePrecision(Matieres.AUTRE.equals(matiere) ? Matieres.nettoyer(r.categoriePrecision()) : null);
         cours.setNiveau(r.niveau());
         if (r.prix() != null) {
             cours.setPrix(r.prix().setScale(2, RoundingMode.HALF_UP));
