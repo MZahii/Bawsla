@@ -8,7 +8,10 @@ export interface Cours {
   id: number;
   titre: string;
   description: string | null;
+  /** Matière du cours (liste commune avec le module Quiz). */
   categorie: string | null;
+  /** Précision de la matière « Autre » (2 à 80 caractères) ; absente pour toute autre matière. */
+  categoriePrecision?: string | null;
   niveau: Niveau | null;
   /** Nom d'origine du PDF (affichage), pas son chemin. */
   fichierPdf: string | null;
@@ -32,6 +35,8 @@ export interface CoursRequest {
   titre: string;
   description?: string;
   categorie?: string;
+  /** Obligatoire si `categorie` vaut « Autre », interdite sinon. */
+  categoriePrecision?: string;
   niveau?: Niveau;
   prix?: number;
 }

@@ -13,7 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { EmptyState } from '../../../../shared';
 import { CourseTile, CourseTileData, PageHeader, Skeleton } from '../../../../shared/ui';
-import { CATEGORIES, FORMATEUR_DEFAUT, IMAGE_DEFAUT, LIBELLE_NIVEAU, NIVEAUX, formatDuree, libellePrix } from '../../models/cours.constantes';
+import { CATEGORIES, FORMATEUR_DEFAUT, IMAGE_DEFAUT, LIBELLE_NIVEAU, NIVEAUX, formatDuree, libelleMatiere, libellePrix, matiereDepuisUrl } from '../../models/cours.constantes';
 import { Cours } from '../../models/cours.model';
 import { CoursImageService } from '../../services/cours-image.service';
 import { CoursService } from '../../services/cours.service';
@@ -73,7 +73,8 @@ export class Catalogue {
 
   constructor() {
     const p = this.route.snapshot.queryParamMap;
-    if (p.get('domaine')) this.domaines.set([p.get('domaine')!]);
+    // Un ancien libellé (Données, Back-end…) dans l'URL filtre sur « Informatique » au lieu d'afficher une liste vide.
+    if (p.get('domaine')) this.domaines.set([matiereDepuisUrl(p.get('domaine'))]);
     if (p.get('niveau')) this.niveauxChoisis.set([p.get('niveau')!]);
     if (p.get('q')) this.q.set(p.get('q')!);
     if (p.get('prix') === 'gratuit' || p.get('prix') === 'payant') this.prix.set(p.get('prix') as FiltrePrix);
@@ -126,7 +127,7 @@ export class Catalogue {
       id: c.id,
       titre: c.titre,
       description: c.description ?? undefined,
-      categorie: c.categorie ?? '',
+      categorie: libelleMatiere(c.categorie, c.categoriePrecision),
       niveau: c.niveau ? LIBELLE_NIVEAU[c.niveau] : '',
       enseignant: this.noms()[c.enseignantId] ?? FORMATEUR_DEFAUT,
       image: this.imagesCours()[c.id] ?? IMAGE_DEFAUT,

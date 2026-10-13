@@ -17,7 +17,7 @@
         <bw-page-header
           [title]="c.titre"
           [subtitle]="c.description ?? ''"
-          [crumbs]="[{ label: espace === 'etudiant' ? 'Explorer' : 'Catalogue', link: base }, { label: c.categorie ?? 'Cours', link: base }, { label: c.titre }]"
+          [crumbs]="[{ label: espace === 'etudiant' ? 'Explorer' : 'Catalogue', link: base }, { label: matiere(), link: base }, { label: c.titre }]"
         />
         <div class="facts">
           <span><mat-icon>group</mat-icon>0 inscrit</span>

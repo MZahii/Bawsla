@@ -40,14 +40,22 @@
           </mat-form-field>
           @if (erreurs()['description']) { <p class="champ-erreur" role="alert">{{ erreurs()['description'] }}</p> }
           <mat-form-field appearance="outline">
-            <mat-label>Domaine</mat-label>
-            <mat-select [ngModel]="categorie()" (ngModelChange)="categorie.set($event)">
-              @for (c of categories(); track c.nom) {
+            <mat-label>Matière</mat-label>
+            <mat-select [ngModel]="categorie()" (ngModelChange)="categorie.set($event)" required>
+              @for (c of categories; track c.nom) {
                 <mat-option [value]="c.nom"><mat-icon>{{ c.icone }}</mat-icon>{{ c.nom }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
           @if (erreurs()['categorie']) { <p class="champ-erreur" role="alert">{{ erreurs()['categorie'] }}</p> }
+          @if (estAutre()) {
+            <mat-form-field appearance="outline">
+              <mat-label>Précise la matière</mat-label>
+              <input matInput [ngModel]="precision()" (ngModelChange)="precision.set($event)" [maxlength]="precisionMax" required aria-describedby="err-precision" />
+              <mat-hint align="end">{{ precision().length }} / {{ precisionMax }}</mat-hint>
+            </mat-form-field>
+            @if (erreurs()['categoriePrecision']) { <p class="champ-erreur" id="err-precision" role="alert">{{ erreurs()['categoriePrecision'] }}</p> }
+          }
           <div class="radio-field">
             <span class="lbl">Niveau</span>
             <mat-radio-group [ngModel]="niveau()" (ngModelChange)="niveau.set($event)">

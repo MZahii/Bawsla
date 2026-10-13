@@ -15,7 +15,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
-import { LIBELLE_NIVEAU, LIBELLE_STATUT, VIDE, formatDate, libellePrix } from '../../models/cours.constantes';
+import { LIBELLE_NIVEAU, LIBELLE_STATUT, VIDE, formatDate, libelleMatiere, libellePrix } from '../../models/cours.constantes';
 import { Cours, StatutCours } from '../../models/cours.model';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
@@ -154,7 +154,7 @@ function versLigne(c: Cours): Ligne {
     id: c.id,
     cours: c,
     titre: c.titre,
-    categorie: c.categorie ?? VIDE,
+    categorie: libelleMatiere(c.categorie, c.categoriePrecision) || VIDE,
     niveau: c.niveau ? LIBELLE_NIVEAU[c.niveau] : VIDE,
     statut: c.statut,
     prix: libellePrix(c.prix),

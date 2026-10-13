@@ -14,7 +14,7 @@
     </div>
 
     <fieldset>
-      <legend>Domaine</legend>
+      <legend>Matière</legend>
       @for (nom of categories(); track nom) {
         <mat-checkbox [checked]="domaines().includes(nom)" (change)="basculer('domaines', nom)">
           {{ nom }} <span class="muted">({{ compte(nom) }})</span>

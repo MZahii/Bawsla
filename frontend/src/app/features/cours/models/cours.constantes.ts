@@ -2,15 +2,45 @@ import { Niveau, StatutCours } from './cours.model';
 
 /**
  * Listes de référence du module Cours, partagées par l'éditeur du studio et le catalogue.
- * La catégorie est enregistrée telle quelle dans cours-service : un seul libellé par domaine.
+ * La catégorie d'un cours est une MATIÈRE, choisie dans la même liste que le module Quiz (mêmes libellés EXACTS, accents compris) :
+ * cours-service refuse toute autre valeur. « Autre » demande une précision (2 à 80 caractères).
  */
+export const MATIERE_AUTRE = 'Autre';
+export const PRECISION_MIN = 2;
+export const PRECISION_MAX = 80;
+
 export const CATEGORIES = [
-  { nom: 'Données', icone: 'database' },
-  { nom: 'Back-end', icone: 'dns' },
-  { nom: 'Front-end', icone: 'web' },
-  { nom: 'DevOps', icone: 'deployed_code' },
-  { nom: 'Outils', icone: 'build' },
+  { nom: 'Informatique', icone: 'computer' },
+  { nom: 'Mathématiques', icone: 'calculate' },
+  { nom: 'Physique-Chimie', icone: 'science' },
+  { nom: 'Sciences de la vie et de la Terre', icone: 'biotech' },
+  { nom: 'Histoire', icone: 'history_edu' },
+  { nom: 'Géographie', icone: 'public' },
+  { nom: 'Langues', icone: 'translate' },
+  { nom: 'Économie et gestion', icone: 'payments' },
+  { nom: 'Psychologie', icone: 'psychology' },
+  { nom: 'Philosophie', icone: 'lightbulb' },
+  { nom: 'Arts', icone: 'palette' },
+  { nom: MATIERE_AUTRE, icone: 'category' },
 ] as const;
+
+/** Anciennes catégories du catalogue : toutes relevaient de l'informatique (cours-service les a converties en « Informatique »). */
+export const ANCIENS_LIBELLES_INFORMATIQUE: readonly string[] = ['Données', 'Back-end', 'Front-end', 'DevOps', 'Outils'];
+
+/**
+ * Matière à filtrer d'après le paramètre d'URL `?domaine=` : un ancien libellé (anciens favoris ou menus) donne « Informatique »
+ * au lieu d'une liste vide ; la forme Unicode décomposée est ramenée à la forme composée.
+ */
+export function matiereDepuisUrl(valeur: string | null | undefined): string {
+  const propre = (valeur ?? '').normalize('NFC').trim();
+  return ANCIENS_LIBELLES_INFORMATIQUE.includes(propre) ? 'Informatique' : propre;
+}
+
+/** « Mathématiques », ou « Autre · Cryptographie » pour un cours « Autre » qui a une précision. */
+export function libelleMatiere(categorie: string | null | undefined, precision?: string | null): string {
+  if (!categorie) return '';
+  return categorie === MATIERE_AUTRE && precision ? `${MATIERE_AUTRE} · ${precision}` : categorie;
+}
 
 export const NIVEAUX: readonly { code: Niveau; libelle: string }[] = [
   { code: 'DEBUTANT', libelle: 'Débutant' },

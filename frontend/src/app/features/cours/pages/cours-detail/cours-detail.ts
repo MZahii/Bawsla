@@ -8,7 +8,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { Avatar, PageHeader, Skeleton } from '../../../../shared/ui';
-import { FORMATEUR_DEFAUT, LIBELLE_NIVEAU, formatDate, formatDuree, libellePrix } from '../../models/cours.constantes';
+import { FORMATEUR_DEFAUT, LIBELLE_NIVEAU, formatDate, formatDuree, libelleMatiere, libellePrix } from '../../models/cours.constantes';
 import { Chapitre, Cours } from '../../models/cours.model';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
@@ -44,6 +44,8 @@ export class CoursDetail implements OnInit {
 
   protected readonly chapitres = signal<Chapitre[]>([]);
   protected readonly prix = computed(() => libellePrix(this.cours()?.prix));
+  /** Matière du cours, avec sa précision pour « Autre ». */
+  protected readonly matiere = computed(() => libelleMatiere(this.cours()?.categorie, this.cours()?.categoriePrecision) || 'Cours');
   protected readonly payant = computed(() => (this.cours()?.prix ?? 0) > 0);
   protected readonly duree = computed(() => formatDuree(this.cours()?.dureeTotaleMinutes));
   protected readonly formatDuree = formatDuree;

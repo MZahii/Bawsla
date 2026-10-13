@@ -18,7 +18,7 @@ import { Subscription, catchError, of, switchMap, take, takeWhile, timer } from 
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { AiBox, AiLoading, Badge, BwButton, EmptyState } from '../../../../shared';
 import { Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
-import { CATEGORIES, NIVEAUX, formatDuree, formatTaille } from '../../models/cours.constantes';
+import { CATEGORIES, MATIERE_AUTRE, NIVEAUX, PRECISION_MAX, PRECISION_MIN, formatDuree, formatTaille } from '../../models/cours.constantes';
 import { Chapitre, ChapitreRequest, Cours, CoursRequest, EtapeIA, Fiche, FicheRequest, Niveau, StatutTraitement, Traitement } from '../../models/cours.model';
 import { FicheAudio } from '../../components/fiche-audio';
 import { FicheContenu } from '../../components/fiche-contenu';
@@ -91,13 +91,14 @@ export class StudioEditeur implements OnInit {
   // ---- Étape Informations
   protected readonly titre = signal('');
   protected readonly description = signal('');
+  /** Matière du cours (Informatique par défaut) : même liste que le module Quiz. */
   protected readonly categorie = signal<string>(CATEGORIES[0].nom);
+  /** Précision de la matière « Autre » (2 à 80 caractères). */
+  protected readonly precision = signal('');
   protected readonly niveau = signal<Niveau>('INTERMEDIAIRE');
-  /** Catégories connues, plus celle du cours si elle n'est pas dans la liste (cours créé ailleurs). */
-  protected readonly categories = computed(() => {
-    const actuelle = this.categorie();
-    return !actuelle || CATEGORIES.some((c) => c.nom === actuelle) ? [...CATEGORIES] : [...CATEGORIES, { nom: actuelle, icone: 'folder' }];
-  });
+  protected readonly categories = CATEGORIES;
+  protected readonly estAutre = computed(() => this.categorie() === MATIERE_AUTRE);
+  protected readonly precisionMax = PRECISION_MAX;
 
   // ---- Image
   protected readonly imageEnAttente = signal<File | null>(null);
@@ -186,7 +187,9 @@ export class StudioEditeur implements OnInit {
     this.existant.set(c);
     this.titre.set(c.titre);
     this.description.set(c.description ?? '');
-    if (c.categorie) this.categorie.set(c.categorie);
+    // Une valeur hors liste (cours jamais migré) n'est pas proposée : le formateur doit choisir une matière.
+    this.categorie.set(CATEGORIES.some((m) => m.nom === c.categorie) ? c.categorie! : '');
+    this.precision.set(c.categoriePrecision ?? '');
     if (c.niveau) this.niveau.set(c.niveau);
     this.payant.set(c.prix > 0);
     if (c.prix > 0) this.prix.set(c.prix);
@@ -198,10 +201,21 @@ export class StudioEditeur implements OnInit {
       this.erreurs.set({ prix: 'Indique un prix supérieur à 0' });
       return null;
     }
+    const erreurs: Details = {};
+    if (!this.categorie()) erreurs['categorie'] = 'Choisis une matière';
+    const precision = this.precision().trim();
+    if (this.estAutre() && (precision.length < PRECISION_MIN || precision.length > PRECISION_MAX)) {
+      erreurs['categoriePrecision'] = `Précise la matière (${PRECISION_MIN} à ${PRECISION_MAX} caractères)`;
+    }
+    if (Object.keys(erreurs).length) {
+      this.erreurs.set(erreurs);
+      return null;
+    }
     return {
       titre: this.titre().trim(),
       description: this.description().trim() || undefined,
-      categorie: this.categorie() || undefined,
+      categorie: this.categorie(),
+      categoriePrecision: this.estAutre() ? precision : undefined,
       niveau: this.niveau(),
       prix: this.payant() ? this.prix() : 0,
     };
