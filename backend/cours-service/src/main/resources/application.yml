@@ -13,6 +13,11 @@ spring:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/bawsla_cours?serverTimezone=UTC
     username: ${MYSQL_USER:bawsla}
     password: ${MYSQL_PASSWORD:bawsla}
+  servlet:
+    multipart:
+      # Marge au-dessus des limites métier (image 2 Mo, PDF 20 Mo) vérifiées dans FichierService.
+      max-file-size: 25MB
+      max-request-size: 26MB
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,6 +25,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+cours:
+  stockage:
+    # Images et PDF des cours (noms UUID). En Docker, monter un volume sur ce dossier.
+    dossier: ${COURS_STOCKAGE_DOSSIER:./uploads/cours}
+  ia:
+    # Délais de lecture des appels longs à l'IA (par la gateway), en secondes. Le script d'une explication prend souvent plus de 60 s.
+    delai-script-secondes: 330
+    delai-audio-secondes: 420
+    delai-controle-secondes: 30
+  explication:
+    # En dessous de ce nombre de caractères, le cours est jugé vide (PDF scanné…) : erreur claire, aucun appel à l'IA.
+    texte-min-caracteres: 200
 
 eureka:
   client:
