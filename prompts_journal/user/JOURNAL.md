@@ -7,6 +7,26 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 09 — 2026-10-13 — IA : enregistrement des modèles et métriques (étape C4)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : entraîner les trois modèles en une commande, les enregistrer, et les recharger rapidement pour les endpoints ; regrouper toutes les métriques pour le tableau de bord admin
+- **Contexte fourni** : modules `clustering`, `risque`, `recommandation` (entrées 06 à 08)
+- **Prompt** :
+  > YES
+  (réponse à « Shall I start C4? »)
+- **Résultat** :
+  - `ml/entrainement.py` : `entrainer_tout()` (≈ 28 s) écrit `profils.joblib`, `risque.joblib`, `recommandation.joblib` (≈ 165 Ko en tout) et `metriques.json` (scores des trois modèles, courbes du coude et de la silhouette, matrice de confusion, importances, évaluation des recommandations, date, durée, source « données simulées », versions de Python et des bibliothèques).
+  - `obtenir()` : modèles gardés en mémoire, sinon rechargés du disque, sinon entraînés (premier démarrage) ; `reentrainer()` pour le bouton admin ; verrou pour les appels simultanés.
+  - `ml/modeles/.gitignore` : les binaires ne sont pas versionnés.
+  - 9 tests pytest (`tests/user/test_entrainement.py`).
+- **Vérification** : `pytest` (151/151) ; rechargement : mêmes prédictions qu'avant l'enregistrement ; `git status` : seul le `.gitignore` est suivi.
+- **Gardé / modifié / rejeté** :
+  - Ajouté : refus de recharger des modèles produits avec une autre version de Python (mineure), de scikit-learn ou de numpy (le PC est en Python 3.13, l'image Docker en 3.12) : on réentraîne plutôt que de risquer un modèle mal rechargé.
+  - Gardé comme règle de sécurité : joblib repose sur pickle, on ne charge que des fichiers produits par ce module, jamais un fichier venu de l'extérieur.
+- **Captures** : _(à ajouter : sortie de la commande d'entraînement)_
+- **Leçon** : un modèle enregistré dépend des versions qui l'ont produit ; il faut les enregistrer avec lui et les vérifier au chargement.
+
 ### 08 — 2026-10-13 — IA : filtrage collaboratif, recommandation de cours (étape C3)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
