@@ -169,6 +169,8 @@ export interface RattrapageResultat {
 export interface Certificat {
   numero: string;
   coursId: number;
+  /** Titre du cours copié à l'émission (absent si cours-service ne répondait pas). */
+  titreCours?: string;
   quizId: number;
   titreExamen: string;
   score: number;

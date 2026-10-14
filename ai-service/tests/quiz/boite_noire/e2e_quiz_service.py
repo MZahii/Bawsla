@@ -138,6 +138,8 @@ def main() -> int:
     verifier("vérification publique sans jeton", r.status_code == 200 and cert.get("numero") == numero,
              str(r.status_code))
     verifier("aucun identifiant d'apprenant exposé", "etudiantId" not in cert)
+    verifier("titre du cours copié dans le certificat", (cert.get("titreCours") or "").startswith("Algorithmique"),
+             str(cert.get("titreCours")))
     r = client.get(f"{BASE}/quiz/certificats/verification/BW-INCONNU-0000")
     verifier("numéro inconnu -> 404", r.status_code == 404, str(r.status_code))
     r = client.get(f"{BASE}/quiz/certificats/mes")

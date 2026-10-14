@@ -23,7 +23,7 @@ import { QuizService } from '../../services/quiz.service';
         <a bwButton="secondaire" [href]="linkedin(c.numero)" target="_blank" rel="noopener"><mat-icon>share</mat-icon> Ajouter sur LinkedIn</a>
         <button type="button" bwButton="principal" (click)="imprimer()"><mat-icon>download</mat-icon> Télécharger en PDF</button>
       </bw-page-header>
-      <app-certificat-vue [certificat]="c" [titreCours]="cours.titre(c.coursId)" [titulaire]="titulaire()" class="print-zone" />
+      <app-certificat-vue [certificat]="c" [titreCours]="c.titreCours ?? cours.titre(c.coursId)" [titulaire]="titulaire()" class="print-zone" />
       <p class="muted small center">Un recruteur peut vérifier ce certificat sur la page <a [routerLink]="['/verifier', c.numero]">Vérifier un certificat</a>.</p>
     } @else {
       <bw-empty-state icon="workspace_premium" title="Ce certificat n’existe pas.">

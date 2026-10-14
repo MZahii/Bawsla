@@ -44,7 +44,7 @@ import { QuizService } from '../../services/quiz.service';
                 <tr>
                   <td class="num">{{ c.numero }}</td>
                   <td>Apprenant n° {{ c.etudiantId }}</td>
-                  <td class="small">{{ cours.titre(c.coursId) }}</td>
+                  <td class="small">{{ c.titreCours ?? cours.titre(c.coursId) }}</td>
                   <td class="num muted">{{ c.dateEmission | date: 'dd/MM/yyyy' }}</td>
                   <td class="num">{{ c.score }} %</td>
                   <td><a class="icon-btn" [routerLink]="['/verifier', c.numero]" [attr.aria-label]="'Vérifier ' + c.numero"><mat-icon>verified</mat-icon></a></td>
@@ -76,7 +76,7 @@ export class AdminCertificats {
 
   protected readonly liste = computed(() => {
     const q = this.q().trim().toLowerCase();
-    return this.certificats().filter((c) => !q || `${c.numero} ${this.cours.titre(c.coursId)}`.toLowerCase().includes(q));
+    return this.certificats().filter((c) => !q || `${c.numero} ${c.titreCours ?? this.cours.titre(c.coursId)}`.toLowerCase().includes(q));
   });
   protected readonly moyenne = computed(() => {
     const l = this.certificats();

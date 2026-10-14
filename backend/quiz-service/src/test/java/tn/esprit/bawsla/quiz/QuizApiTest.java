@@ -5,6 +5,8 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +36,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import com.jayway.jsonpath.JsonPath;
 
 import tn.esprit.bawsla.quiz.client.CoursClient;
+import tn.esprit.bawsla.quiz.client.CoursDto;
+import tn.esprit.bawsla.quiz.common.ApiResponse;
 
 /**
  * API du module Quiz : création et règles d'un quiz, brouillon / publication, passage sans fuite des bonnes réponses,
@@ -251,6 +255,8 @@ class QuizApiTest {
     void examenReussiDelivreUnCertificatVerifiableUneSeuleFois() throws Exception {
         long apprenant = 310L;
         long id = creer("EXAMEN", 2);
+        // le titre du cours est copié dans le certificat à l'émission (Feign vers cours-service)
+        when(coursClient.getCours(anyLong())).thenReturn(ApiResponse.ok(new CoursDto(1L, "Algorithmique", null, null, 7L)));
         publier(id);
         Passage p = passage(id);
 
@@ -267,6 +273,7 @@ class QuizApiTest {
         mvc.perform(get("/api/quiz/certificats/verification/" + numero.toLowerCase()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(100))
+                .andExpect(jsonPath("$.data.titreCours").value("Algorithmique"))
                 .andExpect(jsonPath("$.data", not(hasKey("etudiantId"))));
         mvc.perform(get("/api/quiz/certificats/verification/BW-0000-INCONNU")).andExpect(status().isNotFound());
 

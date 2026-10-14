@@ -11,16 +11,16 @@ import tn.esprit.bawsla.quiz.entity.Certificat;
  * (ApiResponse n'applique NON_NULL qu'à ses propres champs, pas à data).
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record CertificatResponse(String numero, Long coursId, Long quizId, String titreExamen, int score,
+public record CertificatResponse(String numero, Long coursId, String titreCours, Long quizId, String titreExamen, int score,
                                  LocalDateTime dateEmission, Long etudiantId) {
 
     public static CertificatResponse from(Certificat c) {
-        return new CertificatResponse(c.getNumero(), c.getCoursId(), c.getQuizId(), c.getTitreExamen(), c.getScore(),
+        return new CertificatResponse(c.getNumero(), c.getCoursId(), c.getTitreCours(), c.getQuizId(), c.getTitreExamen(), c.getScore(),
                 c.getDateEmission(), c.getEtudiantId());
     }
 
     public static CertificatResponse verification(Certificat c) {
-        return new CertificatResponse(c.getNumero(), c.getCoursId(), c.getQuizId(), c.getTitreExamen(), c.getScore(),
+        return new CertificatResponse(c.getNumero(), c.getCoursId(), c.getTitreCours(), c.getQuizId(), c.getTitreExamen(), c.getScore(),
                 c.getDateEmission(), null);
     }
 }

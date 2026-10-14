@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 
+import { AuthService } from '../../../../core/auth/auth.service';
 import { AiLoading, BwButton } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
 import { CertificatVue } from '../../components/certificat-vue';
@@ -14,8 +15,9 @@ import { QuizService } from '../../services/quiz.service';
 type Etat = 'vide' | 'chargement' | 'valide' | 'inconnu';
 
 /**
- * Vérification d'un certificat par son numéro (GET /api/quiz/certificats/{numero}). La réponse ne contient
- * aucune donnée personnelle : seulement le cours, l'examen, la date et le score.
+ * Vérification d'un certificat par son numéro (GET /api/quiz/certificats/verification/{numero}). La réponse ne contient
+ * aucune donnée personnelle : seulement le cours, l'examen, la date et le score. Page publique : le catalogue
+ * des cours (réservé aux connectés) n'est chargé qu'avec un compte, sinon le titre vient du certificat.
  */
 @Component({
   selector: 'app-verifier',
@@ -35,7 +37,7 @@ type Etat = 'vide' | 'chargement' | 'valide' | 'inconnu';
       @case ('valide') {
         @if (certificat(); as c) {
           <p class="res ok" role="status"><mat-icon aria-hidden="true">verified</mat-icon> Certificat valide, délivré par Bawsla le {{ c.dateEmission | date: 'dd/MM/yyyy' }}.</p>
-          <app-certificat-vue [certificat]="c" [titreCours]="cours.titre(c.coursId)" />
+          <app-certificat-vue [certificat]="c" [titreCours]="c.titreCours ?? cours.titre(c.coursId)" />
         }
       }
       @case ('inconnu') {
@@ -62,7 +64,7 @@ export class Verifier {
   protected readonly certificat = signal<Certificat | null>(null);
 
   constructor() {
-    this.cours.charger();
+    if (inject(AuthService).isAuthenticated()) this.cours.charger();
     effect(() => {
       const n = this.numero().trim();
       this.saisie = n;
