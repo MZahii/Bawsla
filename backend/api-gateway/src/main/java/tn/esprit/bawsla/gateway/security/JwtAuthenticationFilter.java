@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
  * Point UNIQUE de vérification du JWT.
  * <ol>
  *   <li>Supprime toujours les en-têtes X-User-* envoyés par le client (anti-usurpation).</li>
- *   <li>Laisse passer les chemins publics (/api/auth/**, /api/{module}/health).</li>
+ *   <li>Laisse passer les chemins publics (/api/auth/**, /api/{module}/health, vérification publique d'un certificat).</li>
  *   <li>Sinon exige "Authorization: Bearer &lt;jwt&gt;" valide, puis transmet
  *       X-User-Id et X-User-Role au service cible.</li>
  * </ol>
