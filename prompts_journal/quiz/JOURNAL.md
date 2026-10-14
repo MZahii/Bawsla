@@ -24,9 +24,9 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
     - le certificat n'affiche le nom que pour son titulaire connecté : la vérification publique ne montre ni nom ni identifiant.
 - **Vérification** : `npx ng build` sans erreur, `mvnw test` vert sur quiz-service, `grep core/demo` vide.
 - **Gardé / modifié / rejeté** : gardé. Choix assumé : la correction n'est plus montrée question par question, mais après l'envoi, parce que les bonnes réponses ne quittent plus le serveur avant la soumission.
-- **Reste hors de mon module (PR du socle à ouvrir)** :
-  - gateway : ajouter `/api/quiz/certificats/*` aux `public-paths` pour qu'un recruteur vérifie un certificat sans compte ;
-  - CONTRATS_API.md : passer le contrat 3 (notions ratées) de « prévu » à « en place ».
+- **Socle (branches séparées, PR relue)** :
+  - gateway : branche `chore/gateway-verification-certificat`, qui ajoute `/api/quiz/certificats/verification/*` aux `public-paths` pour qu'un recruteur vérifie un certificat sans compte. J'avais d'abord proposé `/api/quiz/certificats/*`, mais ce motif aurait aussi rendu publique `/certificats/mes`, et la gateway ne lit pas le token sur un chemin public : plus de `X-User-Id`, donc la route aurait cassé. La vérification a donc été déplacée sur une route dédiée dans quiz-service ;
+  - CONTRATS_API.md : le contrat 3 (notions ratées) passe à « en place », commit ajouté à la PR #3.
 - **Leçon** : brancher le front page par page sur un service unique a fait ressortir des écarts de forme (identifiants d'option au lieu d'index, tentatives illimitées à `null`) que la démo cachait.
 
 ---
