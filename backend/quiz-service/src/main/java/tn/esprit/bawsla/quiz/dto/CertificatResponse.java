@@ -2,9 +2,15 @@ package tn.esprit.bawsla.quiz.dto;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import tn.esprit.bawsla.quiz.entity.Certificat;
 
-/** etudiantId est omis (null) dans la vérification d'un numéro. */
+/**
+ * etudiantId vaut null dans la vérification publique d'un numéro ; NON_NULL le retire du JSON
+ * (ApiResponse n'applique NON_NULL qu'à ses propres champs, pas à data).
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record CertificatResponse(String numero, Long coursId, Long quizId, String titreExamen, int score,
                                  LocalDateTime dateEmission, Long etudiantId) {
 

@@ -1,6 +1,7 @@
 package tn.esprit.bawsla.quiz;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
@@ -266,7 +267,7 @@ class QuizApiTest {
         mvc.perform(get("/api/quiz/certificats/verification/" + numero.toLowerCase()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(100))
-                .andExpect(jsonPath("$.data.etudiantId").doesNotExist());
+                .andExpect(jsonPath("$.data", not(hasKey("etudiantId"))));
         mvc.perform(get("/api/quiz/certificats/verification/BW-0000-INCONNU")).andExpect(status().isNotFound());
 
         // un seul certificat par cours
