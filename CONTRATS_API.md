@@ -58,7 +58,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | | |
 |---|---|
 | Fournisseur | cours-service |
-| Consommateurs | ai-service (résumé, génération de quiz), forum-service |
+| Consommateurs | ai-service (résumé, fiche de révision), forum-service |
 | Rôles | tout utilisateur authentifié |
 | Statut | **stub** : renvoie le titre et la description préfixés de `[STUB]`, avec `stub: true` |
 
@@ -76,7 +76,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | Fournisseur | quiz-service |
 | Consommateurs | user-service / ai-service (recommandations), cours-service, front (tableau de bord) |
 | Rôles | l'étudiant lui-même (`X-User-Id == etudiantId`), `ENSEIGNANT`, `ADMIN` |
-| Statut | **stub** : renvoie `[]` avec `message: "stub"` |
+| Statut | **en place** : agrégé à partir des tentatives (une ligne par apprenant, cours et notion) |
 
 `200` :
 ```json
@@ -121,7 +121,8 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 |---|---|---|
 | `POST /api/ai/user/recommandations` | `{ "etudiantId": 3 }` | `{ "etudiantId": 3, "profil": "…", "coursRecommandes": [1, 4], "stub": true }` |
 | `POST /api/ai/cours/resume` | `{ "coursId": 1, "texte": "optionnel" }` | `{ "coursId": 1, "resume": "…", "stub": true }` |
-| `POST /api/ai/quiz/generer` | `{ "coursId": 1, "nbQuestions": 5, "texte": "optionnel" }` (`nbQuestions` entre 1 et 20) | `{ "coursId": 1, "questions": [{ "enonce": "…", "choix": ["…"], "bonneReponse": 0, "notion": "…" }], "stub": true }` |
+| `POST /api/ai/quiz/generer` | `{ "coursId": 1, "matiere": "Mathématiques", "theme": "…", "competences": ["…"], "niveauxBloom": ["APPLIQUER"], "difficulte": "INTERMEDIAIRE", "nbQuestions": 5 }` : `matiere` facultative (80 caractères au plus, la précision saisie pour « Autre »), `nbQuestions` entre 1 et 10, `competences` de 1 à 8, `niveauxBloom` parmi `MEMORISER`, `COMPRENDRE`, `APPLIQUER`, `ANALYSER`, `EVALUER`, `CREER`, et `difficulte` parmi `FACILE`, `INTERMEDIAIRE`, `AVANCE`, `DIFFICILE`, `MASTER` (`MOYEN` reste accepté et vaut `INTERMEDIAIRE`). **Aucun texte de cours.** | `{ "coursId": 1, "questions": [{ "enonce": "…", "niveauBloom": "APPLIQUER", "competence": "…", "choix": [{ "texte": "…", "estCorrecte": true }, { "texte": "…", "estCorrecte": false, "erreurAssociee": "…" }], "explication": "…", "statut": "VALIDEE" }], "nbValidees": 4, "nbRejetees": 1, "versionPrompt": "v2", "difficulte": "INTERMEDIAIRE", "fournisseur": "gemini", "alertes": [] }`. Chaque question a exactement 4 choix, dont 1 seul correct, et chaque mauvais choix porte une `erreurAssociee`. `statut` vaut `VALIDEE` ou `REJETEE` ; dans le second cas, `raisonRejet` est renseigné. |
+| `POST /api/ai/quiz/remedier` | `{ "notion": "…", "niveauBloom": "APPLIQUER", "enonce": "…", "choixDonne": "…", "bonneReponse": "…", "erreurAssociee": "…", "explication": "…" }`. **Aucun identifiant ni aucune donnée de l'apprenant.** | `{ "notion": "…", "raisonnement": "…", "explication": "…", "conseil": "…", "questionRattrapage": { "enonce": "…", "choix": [ … ], "explication": "…" }, "versionPrompt": "v1", "fournisseur": "gemini" }`. `questionRattrapage` est optionnelle et suit le même format qu'une question générée. `raisonnement` est réservé au formateur et à l'admin : il est omis de la réponse quand `X-User-Role` vaut `ETUDIANT`. |
 | `POST /api/ai/forum/questions-similaires` | `{ "question": "…", "coursId": 1, "limite": 5 }` | `{ "question": "…", "similaires": [{ "discussionId": 7, "titre": "…", "score": 0.82 }], "stub": true }` |
 
 Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun :
@@ -130,10 +131,13 @@ Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun 
 |---|---|---|
 | 400 | `BAD_REQUEST` | corps invalide (`details` par champ) |
 | 401 | `UNAUTHORIZED` | en-têtes `X-User-*` absents (appel hors gateway) |
+| 413 | `LLM_TOO_LONG_FOR_FALLBACK` | texte trop long pour la limite par minute du fournisseur de secours (Groq) ; inutile de réessayer tel quel |
 | 429 | `LLM_QUOTA_EXCEEDED` | quota du fournisseur LLM atteint |
 | 502 | `LLM_INVALID_RESPONSE` | le LLM a répondu un JSON invalide pour le schéma attendu |
 | 503 | `LLM_MISSING_KEY` | `LLM_API_KEY` absente, ou provider `stub` sur un appel JSON |
 | 504 | `LLM_TIMEOUT` | dépassement de `LLM_TIMEOUT_SECONDS` |
+
+Le module Quiz ne lit jamais le PDF ni le texte d'un cours : `generer` part uniquement des objectifs pédagogiques. Ces deux routes sont appelées par quiz-service, qui génère en asynchrone.
 
 Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du module), puis on documente sa ligne ici par PR.
 
@@ -154,3 +158,4 @@ Ils peuvent évoluer librement par leur propriétaire :
 | Date | Changement | PR |
 |---|---|---|
 | 2026-10-04 | Version initiale du socle (contrats 1 à 5) | commit initial |
+| 2026-10-13 | Contrat 5 : génération de quiz par objectifs, remédiation, erreur 413. Contrat 2 : consommateurs. Contrat 3 : statut « prévu » (forme inchangée) | docs/contrat-quiz-ia |
