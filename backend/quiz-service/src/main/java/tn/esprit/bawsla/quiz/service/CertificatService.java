@@ -6,8 +6,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+
+import feign.FeignException;
 import org.springframework.transaction.annotation.Transactional;
 
+import tn.esprit.bawsla.quiz.client.CoursClient;
+import tn.esprit.bawsla.quiz.client.CoursDto;
+import tn.esprit.bawsla.quiz.common.ApiResponse;
 import tn.esprit.bawsla.quiz.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.quiz.common.security.CurrentUser;
 import tn.esprit.bawsla.quiz.dto.CertificatResponse;
@@ -21,9 +26,11 @@ import tn.esprit.bawsla.quiz.repository.CertificatRepository;
 public class CertificatService {
 
     private final CertificatRepository certificatRepository;
+    private final CoursClient coursClient;
 
-    public CertificatService(CertificatRepository certificatRepository) {
+    public CertificatService(CertificatRepository certificatRepository, CoursClient coursClient) {
         this.certificatRepository = certificatRepository;
+        this.coursClient = coursClient;
     }
 
     /** Délivre le certificat du cours (un seul par apprenant et par cours) et renvoie son numéro. */
@@ -34,7 +41,7 @@ public class CertificatService {
             numero = "BW-" + Year.now().getValue() + "-"
                     + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
         } while (certificatRepository.findByNumero(numero).isPresent());
-        certificatRepository.save(new Certificat(numero, etudiantId, examen, score));
+        certificatRepository.save(new Certificat(numero, etudiantId, examen, titreCours(examen.getCoursId()), score));
         return numero;
     }
 
@@ -54,5 +61,15 @@ public class CertificatService {
         return certificatRepository.findByNumero(numero.strip().toUpperCase(Locale.ROOT))
                 .map(CertificatResponse::verification)
                 .orElseThrow(() -> new ResourceNotFoundException("Aucun certificat ne porte le numéro " + numero));
+    }
+
+    /** Titre du cours copié dans le certificat ; une panne de cours-service ne bloque pas la délivrance. */
+    private String titreCours(Long coursId) {
+        try {
+            ApiResponse<CoursDto> reponse = coursClient.getCours(coursId);
+            return reponse == null || reponse.data() == null ? null : reponse.data().titre();
+        } catch (FeignException e) {
+            return null;
+        }
     }
 }

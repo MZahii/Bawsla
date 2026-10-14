@@ -38,6 +38,10 @@ public class Certificat {
     @Column(nullable = false, length = 200)
     private String titreExamen;
 
+    /** Copie du titre du cours à l'émission (null si cours-service ne répondait pas) : la vérification publique n'appelle pas cours-service. */
+    @Column(length = 200)
+    private String titreCours;
+
     @Column(nullable = false)
     private int score;
 
@@ -52,12 +56,13 @@ public class Certificat {
     protected Certificat() {
     }
 
-    public Certificat(String numero, Long etudiantId, Quiz examen, int score) {
+    public Certificat(String numero, Long etudiantId, Quiz examen, String titreCours, int score) {
         this.numero = numero;
         this.etudiantId = etudiantId;
         this.coursId = examen.getCoursId();
         this.quizId = examen.getId();
         this.titreExamen = examen.getTitre();
+        this.titreCours = titreCours;
         this.score = score;
     }
 
@@ -72,6 +77,8 @@ public class Certificat {
     public Long getQuizId() { return quizId; }
 
     public String getTitreExamen() { return titreExamen; }
+
+    public String getTitreCours() { return titreCours; }
 
     public int getScore() { return score; }
 

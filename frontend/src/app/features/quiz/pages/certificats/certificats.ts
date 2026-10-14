@@ -27,7 +27,7 @@ import { QuizService } from '../../services/quiz.service';
             <a class="card cert" [routerLink]="['/app/certificats', c.numero]">
               <div class="b">
                 <span class="k"><mat-icon aria-hidden="true">workspace_premium</mat-icon> Certificat</span>
-                <h2>{{ cours.titre(c.coursId) }}</h2>
+                <h2>{{ c.titreCours ?? cours.titre(c.coursId) }}</h2>
                 <p class="muted small">Obtenu le {{ c.dateEmission | date: 'dd/MM/yyyy' }}, score {{ c.score }} %</p>
                 <p class="muted small num">N° {{ c.numero }}</p>
               </div>
