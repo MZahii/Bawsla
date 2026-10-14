@@ -28,4 +28,5 @@ export const QUIZ_STUDIO_ROUTES: Routes = [
   { path: '', loadComponent: () => import('./pages/studio-quiz/studio-quiz').then((m) => m.StudioQuiz) },
   { path: 'generer', loadComponent: () => import('./pages/quiz-generateur/quiz-generateur').then((m) => m.QuizGenerateur) },
   { path: 'nouveau', loadComponent: () => import('./pages/quiz-editeur/quiz-editeur').then((m) => m.QuizEditeur) },
+  { path: ':id', loadComponent: () => import('./pages/quiz-editeur/quiz-editeur').then((m) => m.QuizEditeur) },
 ];

@@ -1,6 +1,9 @@
-<bw-page-header title="Nouveau quiz" subtitle="Écris tes questions toi-même. Le quiz reste en brouillon jusqu’à sa publication." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Quiz', link: '/studio/quiz' }, { label: 'Nouveau' }]" />
+<bw-page-header [title]="quizId ? 'Modifier le quiz' : 'Nouveau quiz'" subtitle="Écris tes questions toi-même. Le quiz reste en brouillon jusqu’à sa publication." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Quiz', link: '/studio/quiz' }, { label: quizId ? 'Modifier' : 'Nouveau' }]" />
 
 <div class="edit">
+  @if (erreur(); as e) {
+    <p class="card card-pad" role="alert" style="color: var(--color-error)">{{ e }}</p>
+  }
   <section class="card card-pad infos" aria-labelledby="infos-titre">
     <h2 id="infos-titre">Informations</h2>
     <mat-form-field appearance="outline">
@@ -31,6 +34,13 @@
         <p class="muted small" role="status">Aucun cours publié dans cette matière pour l’instant : crée d’abord le cours dans le studio.</p>
       }
     </div>
+    <fieldset>
+      <legend>Type</legend>
+      <mat-button-toggle-group [ngModel]="type()" (ngModelChange)="type.set($event)" hideSingleSelectionIndicator aria-label="Type d’évaluation">
+        <mat-button-toggle value="QUIZ">Quiz de chapitre</mat-button-toggle>
+        <mat-button-toggle value="EXAMEN">Examen final (certificat)</mat-button-toggle>
+      </mat-button-toggle-group>
+    </fieldset>
     <fieldset>
       <legend>Difficulté</legend>
       <mat-button-toggle-group
@@ -72,7 +82,12 @@
           </div>
         }
       </mat-radio-group>
-      <p class="muted small">Coche le bouton à gauche de la bonne réponse. Les 4 choix doivent être différents.</p>
+      <p class="muted small">Coche le bouton à gauche de la bonne réponse. Les choix doivent être différents.</p>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Compétence évaluée (sert au suivi des notions ratées)</mat-label>
+        <input matInput maxlength="150" [ngModel]="q.competence" (ngModelChange)="modifier(i, { competence: $event })" />
+      </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Explication (affichée après la réponse)</mat-label>
@@ -86,6 +101,6 @@
       <mat-icon>add</mat-icon> Ajouter une question
     </button>
     <span class="grow"></span>
-    <button type="button" bwButton="principal" [disabled]="!valide()" (click)="enregistrer()">Enregistrer le brouillon</button>
+    <button type="button" bwButton="principal" [disabled]="!valide() || envoi()" (click)="enregistrer()">{{ envoi() ? 'Enregistrement…' : 'Enregistrer le brouillon' }}</button>
   </footer>
 </div>

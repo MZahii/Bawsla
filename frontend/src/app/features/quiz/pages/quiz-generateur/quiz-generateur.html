@@ -107,7 +107,7 @@
           </div>
           <div class="acts">
             <button type="button" bwButton="secondaire" (click)="toutAccepter()">Tout accepter</button>
-            <button type="button" bwButton="principal" [disabled]="acceptees() === 0" (click)="enregistrer()">Enregistrer le quiz</button>
+            <button type="button" bwButton="principal" [disabled]="acceptees() === 0 || envoi()" (click)="enregistrer()">{{ envoi() ? 'Enregistrement…' : 'Enregistrer le quiz' }}</button>
           </div>
         </div>
 
