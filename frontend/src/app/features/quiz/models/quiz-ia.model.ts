@@ -46,7 +46,8 @@ export const MATIERES = [
 const CATEGORIES_INFORMATIQUE = ['Données', 'Back-end', 'Front-end', 'DevOps', 'Outils'];
 
 /** Matière d'un cours d'après sa catégorie ; une catégorie inconnue est gardée telle quelle (rangée dans « Autre »). */
-export function matiereDuCours(categorie: string): string {
+export function matiereDuCours(categorie: string | null): string {
+  if (!categorie) return MATIERE_AUTRE;
   if (CATEGORIES_INFORMATIQUE.includes(categorie)) return 'Informatique';
   return MATIERES.includes(categorie) ? categorie : MATIERE_AUTRE;
 }

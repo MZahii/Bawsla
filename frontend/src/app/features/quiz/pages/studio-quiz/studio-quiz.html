@@ -3,80 +3,109 @@
   <a bwButton="principal" routerLink="/studio/quiz/nouveau"><mat-icon>add</mat-icon> Nouveau quiz</a>
 </bw-page-header>
 
+@if (erreur(); as e) {
+  <bw-empty-state icon="error" title="Action impossible" [message]="e" />
+}
+
 <div class="grid-4">
-  <bw-kpi label="Quiz publiés" value="5" icon="quiz" />
-  <bw-kpi label="Tentatives ce mois" value="410" icon="replay" [delta]="14" deltaLabel="vs septembre" [trend]="[210, 260, 300, 320, 360, 410]" />
-  <bw-kpi label="Score moyen" value="68 %" icon="percent" [delta]="3" deltaLabel="vs septembre" />
-  <bw-kpi label="Questions générées par l’IA" value="42" icon="auto_awesome" />
+  <bw-kpi label="Quiz publiés" [value]="'' + nbPublies()" icon="quiz" />
+  <bw-kpi label="Tentatives" [value]="'' + nbTentatives()" icon="replay" />
+  <bw-kpi label="Score moyen" [value]="moyenneGlobale() == null ? '—' : moyenneGlobale() + ' %'" icon="percent" />
+  <bw-kpi label="Questions" [value]="'' + nbQuestions()" icon="help" />
 </div>
 
-<section class="card mt">
-  <div class="card-head"><h2>Tous les quiz</h2><span class="sub">Clique sur une ligne pour l’analyser</span></div>
-  <div class="table-wrap">
-    <table mat-table [dataSource]="lignes" class="bw-table">
-      <ng-container matColumnDef="titre">
-        <th mat-header-cell *matHeaderCellDef>Quiz</th>
-        <td mat-cell *matCellDef="let l">
-          <span class="cell-main"><img [src]="l.image" alt="" /><span class="t"><strong>{{ l.titre }}</strong><span>{{ l.cours }}</span></span></span>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="questions">
-        <th mat-header-cell *matHeaderCellDef>Questions</th>
-        <td mat-cell *matCellDef="let l" class="num">{{ l.questions }}</td>
-      </ng-container>
-      <ng-container matColumnDef="tentatives">
-        <th mat-header-cell *matHeaderCellDef>Tentatives</th>
-        <td mat-cell *matCellDef="let l" class="num">{{ l.tentatives }}</td>
-      </ng-container>
-      <ng-container matColumnDef="moyenne">
-        <th mat-header-cell *matHeaderCellDef>Score moyen</th>
-        <td mat-cell *matCellDef="let l"><span class="pill" [class]="'pill ' + ton(l.moyenne)">{{ l.moyenne }} %</span></td>
-      </ng-container>
-      <ng-container matColumnDef="reussite">
-        <th mat-header-cell *matHeaderCellDef>Taux de réussite</th>
-        <td mat-cell *matCellDef="let l"><span class="bar-cell"><span class="bar"><span [style.width.%]="l.reussite"></span></span><span class="num small">{{ l.reussite }} %</span></span></td>
-      </ng-container>
-      <ng-container matColumnDef="statut">
-        <th mat-header-cell *matHeaderCellDef>Statut</th>
-        <td mat-cell *matCellDef="let l"><span class="pill" [class.ok]="l.statut === 'PUBLIE'">{{ l.statut === 'PUBLIE' ? 'Publié' : 'Brouillon' }}</span></td>
-      </ng-container>
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
-        <td mat-cell *matCellDef="let l" (click)="$event.stopPropagation()">
-          <button type="button" class="icon-btn" [matMenuTriggerFor]="m" [attr.aria-label]="'Actions pour ' + l.titre"><mat-icon>more_vert</mat-icon></button>
-          <mat-menu #m="matMenu" xPosition="before">
-            <button mat-menu-item type="button"><mat-icon>edit</mat-icon>Modifier les questions</button>
-            <button mat-menu-item type="button"><mat-icon>event</mat-icon>Programmer</button>
-            <button mat-menu-item type="button"><mat-icon>download</mat-icon>Exporter les résultats</button>
-            <button mat-menu-item type="button" class="danger"><mat-icon>delete</mat-icon>Supprimer</button>
-          </mat-menu>
-        </td>
-      </ng-container>
-      <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
-      <tr mat-row *matRowDef="let row; columns: colonnes" (click)="selection.set(row)" [style.cursor]="'pointer'" [class.sel]="row === selection()"></tr>
-    </table>
-  </div>
-</section>
-
-<div class="grid-2 mt">
-  <section class="card">
-    <div class="card-head"><h2>Répartition des scores</h2><span class="sub">{{ selection().titre }}</span></div>
-    <div class="card-body">
-      <bw-chart type="bar" [labels]="distribution.labels" [series]="distribution.series" [height]="240" ariaLabel="Nombre d’apprenants par tranche de score" />
+@if (!chargement() && lignes().length === 0) {
+  <bw-empty-state icon="quiz" title="Aucun quiz pour l’instant" message="Crée ton premier quiz à la main ou génère-le avec l’IA à partir d’un cours." />
+} @else {
+  <section class="card mt">
+    <div class="card-head"><h2>Tous les quiz</h2><span class="sub">Clique sur une ligne pour l’analyser</span></div>
+    <div class="table-wrap">
+      <table mat-table [dataSource]="lignes()" class="bw-table">
+        <ng-container matColumnDef="titre">
+          <th mat-header-cell *matHeaderCellDef>Quiz</th>
+          <td mat-cell *matCellDef="let l">
+            <span class="cell-main"><span class="t"><strong>{{ l.titre }}</strong><span>{{ cours.titre(l.coursId) }}{{ l.type === 'EXAMEN' ? ' · examen final' : '' }}</span></span></span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="questions">
+          <th mat-header-cell *matHeaderCellDef>Questions</th>
+          <td mat-cell *matCellDef="let l" class="num">{{ l.nbQuestions }}</td>
+        </ng-container>
+        <ng-container matColumnDef="tentatives">
+          <th mat-header-cell *matHeaderCellDef>Tentatives</th>
+          <td mat-cell *matCellDef="let l" class="num">{{ l.nbTentatives }}</td>
+        </ng-container>
+        <ng-container matColumnDef="moyenne">
+          <th mat-header-cell *matHeaderCellDef>Score moyen</th>
+          <td mat-cell *matCellDef="let l">
+            @if (l.moyenne != null) {
+              <span [class]="'pill ' + ton(l.moyenne)">{{ l.moyenne }} %</span>
+            } @else {
+              <span class="muted small">—</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="reussite">
+          <th mat-header-cell *matHeaderCellDef>Taux de réussite</th>
+          <td mat-cell *matCellDef="let l">
+            @if (l.tauxReussite != null) {
+              <span class="bar-cell"><span class="bar"><span [style.width.%]="l.tauxReussite"></span></span><span class="num small">{{ l.tauxReussite }} %</span></span>
+            } @else {
+              <span class="muted small">—</span>
+            }
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="statut">
+          <th mat-header-cell *matHeaderCellDef>Statut</th>
+          <td mat-cell *matCellDef="let l"><span class="pill" [class.ok]="l.statut === 'PUBLIE'">{{ l.statut === 'PUBLIE' ? 'Publié' : 'Brouillon' }}</span></td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef><span class="bw-visually-hidden">Actions</span></th>
+          <td mat-cell *matCellDef="let l" (click)="$event.stopPropagation()">
+            <button type="button" class="icon-btn" [matMenuTriggerFor]="m" [attr.aria-label]="'Actions pour ' + l.titre"><mat-icon>more_vert</mat-icon></button>
+            <mat-menu #m="matMenu" xPosition="before">
+              <button mat-menu-item type="button" (click)="modifier(l)"><mat-icon>edit</mat-icon>Modifier les questions</button>
+              <button mat-menu-item type="button" (click)="basculer(l)">
+                <mat-icon>{{ l.statut === 'PUBLIE' ? 'visibility_off' : 'publish' }}</mat-icon>{{ l.statut === 'PUBLIE' ? 'Repasser en brouillon' : 'Publier' }}
+              </button>
+              <button mat-menu-item type="button" class="danger" (click)="supprimer(l)"><mat-icon>delete</mat-icon>Supprimer</button>
+            </mat-menu>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="colonnes"></tr>
+        <tr mat-row *matRowDef="let row; columns: colonnes" (click)="selectionner(row)" [style.cursor]="'pointer'" [class.sel]="row.id === selection()?.id"></tr>
+      </table>
     </div>
   </section>
-  <section class="card">
-    <div class="card-head"><h2>Questions les plus ratées</h2><span class="sub">{{ selection().titre }}</span></div>
-    <ul style="list-style: none; margin: 0; padding: 0">
-      @for (q of questions(); track q.numero) {
-        <li style="padding: 12px 20px; border-bottom: 1px solid var(--color-border)">
-          <div style="display: flex; justify-content: space-between; gap: 12px">
-            <span class="small"><strong>Q{{ q.numero }}.</strong> {{ q.enonce }}</span>
-            <span class="pill" [class]="'pill ' + ton(100 - q.erreurs)">{{ q.erreurs }} % d’erreurs</span>
-          </div>
-          <span class="muted small">{{ q.notion }}, niveau « {{ q.bloom }} »</span>
-        </li>
-      }
-    </ul>
-  </section>
-</div>
+
+  @if (selection(); as sel) {
+    <div class="grid-2 mt">
+      <section class="card">
+        <div class="card-head"><h2>Répartition des scores</h2><span class="sub">{{ sel.titre }}</span></div>
+        <div class="card-body">
+          @if (stats()?.nbTentatives) {
+            <bw-chart type="bar" [labels]="distribution().labels" [series]="distribution().series" [height]="240" ariaLabel="Nombre de tentatives par tranche de score" />
+          } @else {
+            <p class="muted small">Pas encore de tentative sur ce quiz.</p>
+          }
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Questions les plus ratées</h2><span class="sub">{{ sel.titre }}</span></div>
+        <ul style="list-style: none; margin: 0; padding: 0">
+          @for (q of stats()?.questions ?? []; track q.questionId) {
+            <li style="padding: 12px 20px; border-bottom: 1px solid var(--color-border)">
+              <div style="display: flex; justify-content: space-between; gap: 12px">
+                <span class="small"><strong>Q{{ q.numero }}.</strong> {{ q.enonce }}</span>
+                @if (q.nbReponses > 0) {
+                  <span [class]="'pill ' + ton(100 - q.tauxErreur)">{{ q.tauxErreur }} % d’erreurs</span>
+                }
+              </div>
+              <span class="muted small">{{ q.competence ?? 'Compétence non précisée' }} · {{ q.nbReponses }} réponse(s)</span>
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+}

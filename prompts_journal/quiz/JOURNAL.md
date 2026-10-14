@@ -7,6 +7,30 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 12 — 2026-10-14 — quiz-service complet et front branché sur l'API (fin des données de démo)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5)
+- **Objectif** : terminer ce qui manquait dans le module par rapport au plan : back-end réel, puis toutes les pages du front branchées sur `/api/quiz/**`.
+- **Contexte fourni** : le plan de l'étape 0, CONTRATS_API.md, le code de `quiz-service` et les pages du front qui lisaient encore `core/demo`.
+- **Prompt** :
+  > vasyon commence, on doit finir tout asap
+- **Résultat** :
+  - back : commit `7cdf3fc`. Il couvre les questions, les tentatives corrigées côté serveur, la remédiation IA et le rattrapage, les certificats et les statistiques. Les tests passent.
+  - front :
+    - `QuizService` couvre toutes les routes ;
+    - `CoursTitresService` affiche le titre des cours, avec « Cours n° id » si le titre est introuvable ;
+    - les pages branchées sur l'API sont : studio, éditeur, générateur, lecteur de quiz (correction après envoi, puis « Travailler cette erreur » qui appelle la remédiation), examen final (chronomètre, tentatives limitées, certificat), évaluations, certificats, vérification et certificats admin ;
+    - plus aucun import de `core/demo` dans `features/quiz` ;
+    - le certificat n'affiche le nom que pour son titulaire connecté : la vérification publique ne montre ni nom ni identifiant.
+- **Vérification** : `npx ng build` sans erreur, `mvnw test` vert sur quiz-service, `grep core/demo` vide.
+- **Gardé / modifié / rejeté** : gardé. Choix assumé : la correction n'est plus montrée question par question, mais après l'envoi, parce que les bonnes réponses ne quittent plus le serveur avant la soumission.
+- **Reste hors de mon module (PR du socle à ouvrir)** :
+  - gateway : ajouter `/api/quiz/certificats/*` aux `public-paths` pour qu'un recruteur vérifie un certificat sans compte ;
+  - CONTRATS_API.md : passer le contrat 3 (notions ratées) de « prévu » à « en place ».
+- **Leçon** : brancher le front page par page sur un service unique a fait ressortir des écarts de forme (identifiants d'option au lieu d'index, tentatives illimitées à `null`) que la démo cachait.
+
+---
+
 ### 11 — 2026-10-13 — Vrais modèles branchés, captures refaites avec le rôle de l'IA, notebook relu et corrigé
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5). Modèles appelés par l'application : Gemini `gemini-3.8-flash` (principal) et Groq `openai/gpt-oss-120b` (secours).

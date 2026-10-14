@@ -1,66 +1,73 @@
-import { DestroyRef, Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { DestroyRef, Component, computed, effect, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { QUESTIONS, coursParId } from '../../../../core/demo/demo-data';
-import { CERTIFICATS, Certificat, ETAT_EXAMEN, ajouterCertificat } from '../../../../core/demo/demo-plus';
-import { BwButton, EmptyState } from '../../../../shared';
+import { AiLoading, BwButton, EmptyState } from '../../../../shared';
+import { Certificat, Passage, Quiz, TentativeResultat } from '../../models/quiz.model';
+import { CoursTitresService } from '../../services/cours-titres.service';
+import { QuizService } from '../../services/quiz.service';
 
-type Phase = 'intro' | 'examen' | 'resultat';
+type Phase = 'chargement' | 'introuvable' | 'intro' | 'examen' | 'envoi' | 'resultat';
 
 /**
- * Examen final d'un cours. Il se débloque quand tous les chapitres sont terminés.
- * Différences avec un quiz de chapitre : chronomètre, pas de correction question par question,
- * nombre de tentatives limité, et un certificat créé si le score atteint le seuil.
- * À brancher : QuizService.examenFinal(coursId), POST de la tentative, puis certificat créé par quiz-service.
+ * Examen final d'un cours. Différences avec un quiz de chapitre : chronomètre, pas de correction question par
+ * question, nombre de tentatives limité. quiz-service corrige la tentative et crée le certificat si le score
+ * atteint le seuil.
  */
 @Component({
   selector: 'app-examen-final',
-  imports: [RouterLink, MatIconModule, BwButton, EmptyState],
+  imports: [RouterLink, MatIconModule, AiLoading, BwButton, EmptyState],
   templateUrl: './examen-final.html',
   styleUrls: ['../quiz-player/quiz-player.scss', './examen-final.scss'],
 })
 export class ExamenFinalPage {
+  private readonly quizService = inject(QuizService);
+  protected readonly catalogue = inject(CoursTitresService);
+
   readonly coursId = input(0, { transform: numberAttribute });
 
-  protected readonly cours = computed(() => coursParId(this.coursId()));
-  protected readonly questions = QUESTIONS;
-  protected readonly lettres = ['A', 'B', 'C', 'D'];
-  protected readonly etat = computed(() => ETAT_EXAMEN[this.coursId()] ?? { tentativesFaites: 0, meilleurScore: null });
-  protected readonly dejaCertifie = computed(() => CERTIFICATS.find((c) => c.coursId === this.coursId()));
-  protected readonly restants = computed(() => this.cours()?.chapitres.filter((ch) => !ch.fait).length ?? 0);
-  protected readonly tentativesRestantes = computed(() => (this.cours()?.examen.tentatives ?? 0) - this.etat().tentativesFaites - this.tentativesSession());
+  protected readonly titreCours = computed(() => this.catalogue.titre(this.coursId()));
+  protected readonly examen = signal<Quiz | null>(null);
+  protected readonly passage = signal<Passage | null>(null);
+  protected readonly dejaCertifie = signal<Certificat | null>(null);
+  protected readonly questions = computed(() => this.passage()?.questions ?? []);
+  protected readonly lettres = ['A', 'B', 'C', 'D', 'E', 'F'];
+  /** null = tentatives illimitées. */
+  protected readonly tentativesRestantes = computed(() => this.passage()?.tentativesRestantes ?? null);
 
-  protected readonly phase = signal<Phase>('intro');
+  protected readonly phase = signal<Phase>('chargement');
+  protected readonly erreurEnvoi = signal('');
   protected readonly index = signal(0);
   protected readonly reponses = signal<(number | null)[]>([]);
   protected readonly secondes = signal(0);
-  private readonly tentativesSession = signal(0);
-  protected readonly certificat = signal<Certificat | null>(null);
+  protected readonly resultat = signal<TentativeResultat | null>(null);
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  protected readonly question = computed(() => this.questions[this.index()]);
+  protected readonly question = computed(() => this.questions()[this.index()]);
   protected readonly repondues = computed(() => this.reponses().filter((r) => r !== null).length);
-  protected readonly score = computed(() => {
-    const justes = this.reponses().filter((r, i) => r === this.questions[i].bonne).length;
-    return Math.round((justes / this.questions.length) * 100);
-  });
-  protected readonly reussi = computed(() => this.score() >= (this.cours()?.examen.seuil ?? 70));
   protected readonly chrono = computed(() => {
-    const s = this.secondes();
+    const s = Math.max(0, this.secondes());
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   });
-  /** Notions ratées, pour dire quoi revoir avant une nouvelle tentative. */
-  protected readonly aRevoir = computed(() => [...new Set(this.questions.filter((q, i) => this.reponses()[i] !== q.bonne).map((q) => q.notion))]);
+  /** Compétences ratées, pour dire quoi revoir avant une nouvelle tentative. */
+  protected readonly aRevoir = computed(() => [
+    ...new Set((this.resultat()?.corrections ?? []).filter((c) => !c.correcte && c.competence).map((c) => c.competence as string)),
+  ]);
 
   constructor() {
+    this.catalogue.charger();
     inject(DestroyRef).onDestroy(() => this.arreter());
+    effect(() => this.charger(this.coursId()));
   }
 
   protected commencer(): void {
-    this.reponses.set(this.questions.map(() => null));
+    const p = this.passage();
+    if (!p) return;
+    this.reponses.set(p.questions.map(() => null));
     this.index.set(0);
-    this.secondes.set((this.cours()?.examen.duree ?? 30) * 60);
+    this.erreurEnvoi.set('');
+    this.secondes.set(p.quiz.dureeMinutes * 60);
     this.phase.set('examen');
     this.arreter();
     this.timer = setInterval(() => {
@@ -69,8 +76,8 @@ export class ExamenFinalPage {
     }, 1000);
   }
 
-  protected choisir(i: number): void {
-    this.reponses.update((r) => r.map((v, k) => (k === this.index() ? i : v)));
+  protected choisir(optionId: number): void {
+    this.reponses.update((r) => r.map((v, k) => (k === this.index() ? optionId : v)));
   }
 
   protected aller(i: number): void {
@@ -78,12 +85,64 @@ export class ExamenFinalPage {
   }
 
   protected terminer(): void {
+    const p = this.passage();
+    if (!p || this.phase() !== 'examen') return;
     this.arreter();
-    this.tentativesSession.update((n) => n + 1);
-    if (this.reussi() && !this.dejaCertifie()) {
-      this.certificat.set(ajouterCertificat(this.coursId(), this.score()));
+    this.phase.set('envoi');
+    this.quizService
+      .soumettre(p.quiz.id, { reponses: p.questions.map((q, i) => ({ questionId: q.id, optionId: this.reponses()[i] ?? null })) })
+      .subscribe({
+        next: (r) => {
+          this.resultat.set(r);
+          this.passage.update((x) => (x && x.tentativesRestantes != null ? { ...x, tentativesRestantes: Math.max(0, x.tentativesRestantes - 1) } : x));
+          this.phase.set('resultat');
+        },
+        error: (err: HttpErrorResponse) => {
+          // Le temps est peut-être écoulé : on laisse l'apprenant renvoyer ses réponses.
+          this.erreurEnvoi.set(err.error?.message ?? 'Envoi impossible, réessaie.');
+          this.phase.set('examen');
+        },
+      });
+  }
+
+  protected retourConsignes(): void {
+    this.resultat.set(null);
+    this.phase.set('intro');
+  }
+
+  private charger(coursId: number): void {
+    this.phase.set('chargement');
+    this.resultat.set(null);
+    if (!coursId) {
+      this.phase.set('introuvable');
+      return;
     }
-    this.phase.set('resultat');
+    this.quizService.mesCertificats().subscribe({
+      next: (l) => this.dejaCertifie.set(l.find((c) => c.coursId === coursId) ?? null),
+      error: () => this.dejaCertifie.set(null),
+    });
+    this.quizService.findAll(coursId, 'EXAMEN').subscribe({
+      next: (liste) => {
+        const examen = liste.find((q) => q.statut === 'PUBLIE') ?? null;
+        this.examen.set(examen);
+        if (!examen) {
+          this.phase.set('introuvable');
+          return;
+        }
+        this.quizService.passage(examen.id).subscribe({
+          next: (p) => {
+            this.passage.set(p);
+            this.phase.set('intro');
+          },
+          // Plus de tentative ou examen retiré : on affiche les consignes sans bouton « Commencer ».
+          error: () => {
+            this.passage.set(null);
+            this.phase.set('intro');
+          },
+        });
+      },
+      error: () => this.phase.set('introuvable'),
+    });
   }
 
   private arreter(): void {

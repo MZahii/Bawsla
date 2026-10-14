@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -10,7 +11,6 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 
-import { COURS } from '../../../../core/demo/demo-data';
 import { AiBox, AiLoading, BwButton, EmptyState } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
 import {
@@ -24,9 +24,12 @@ import {
   NiveauBloom,
   libelleBloom,
   libelleDifficulte,
+  QuestionQcm,
   matiereDuCours,
 } from '../../models/quiz-ia.model';
+import { CoursTitresService } from '../../services/cours-titres.service';
 import { QuizIaService, messageErreurIa } from '../../services/quiz-ia.service';
+import { QuizService } from '../../services/quiz.service';
 
 type Etat = 'vide' | 'generation' | 'resultat' | 'erreur';
 type Decision = 'acceptee' | 'rejetee' | 'attente';
@@ -41,6 +44,8 @@ interface QuestionAffichee {
   /** Raison donnée par la vérification Self-Consistency quand la question est écartée. */
   rejetee?: string;
   decision: Decision;
+  /** Question telle que proposée par l'IA (erreurs associées et niveau de Bloom), envoyée à quiz-service. */
+  source: QuestionQcm;
 }
 
 const MAX_COMPETENCES = 8;
@@ -51,7 +56,7 @@ const MAX_LONGUEUR_COMPETENCE = 150;
  * contenu d'un chapitre. Le formateur choisit la matière (ou « Autre » avec une précision, transmise à l'IA), le cours, les niveaux de Bloom, l'un des 5 niveaux
  * de difficulté et le nombre de questions, puis accepte ou rejette chaque question proposée. Les questions
  * incohérentes sont déjà écartées par la vérification Self-Consistency.
- * À brancher : QuizService.create() avec les questions acceptées (quiz-service).
+ * Les questions acceptées sont enregistrées en brouillon par quiz-service (POST /api/quiz).
  */
 @Component({
   selector: 'app-quiz-generateur',
@@ -66,6 +71,8 @@ export class QuizGenerateur {
   private readonly snack = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly ia = inject(QuizIaService);
+  private readonly quizService = inject(QuizService);
+  private readonly catalogue = inject(CoursTitresService);
 
   // Liste générale de disciplines ; on ne propose que les cours de la matière choisie (déduite de leur catégorie).
   protected readonly matieres = MATIERES;
@@ -73,8 +80,9 @@ export class QuizGenerateur {
   protected readonly maxLongueurMatiere = MAX_LONGUEUR_MATIERE;
   protected readonly matiere = signal('Informatique');
   protected readonly precision = signal('');
-  protected readonly cours = computed(() => COURS.filter((c) => matiereDuCours(c.categorie) === this.matiere()));
-  protected readonly coursId = signal<number | null>(this.cours()[0]?.id ?? null);
+  protected readonly cours = computed(() => this.catalogue.cours().filter((c) => matiereDuCours(c.categorie) === this.matiere()));
+  protected readonly coursId = signal<number | null>(null);
+  protected readonly envoi = signal(false);
   /** Matière envoyée à l'IA : la précision pour « Autre ». */
   protected readonly matiereEnvoyee = computed(() => (this.matiere() === MATIERE_AUTRE ? this.precision().trim() : this.matiere()));
 
@@ -121,6 +129,10 @@ export class QuizGenerateur {
     return r ? libelleDifficulte(r.difficulte) : '';
   });
 
+  constructor() {
+    this.catalogue.charger();
+  }
+
   protected choisirMatiere(m: string): void {
     this.matiere.set(m);
     this.coursId.set(this.cours()[0]?.id ?? null);
@@ -157,6 +169,7 @@ export class QuizGenerateur {
               explication: q.explication,
               rejetee: q.statut === 'REJETEE' ? (q.raisonRejet ?? 'Réponses divergentes à la vérification.') : undefined,
               decision: q.statut === 'REJETEE' ? 'rejetee' : 'attente',
+              source: q,
             })),
           );
           this.etat.set('resultat');
@@ -177,7 +190,35 @@ export class QuizGenerateur {
   }
 
   protected enregistrer(): void {
-    this.snack.open(`Quiz enregistré en brouillon avec ${this.acceptees()} questions`, 'OK', { duration: 3000 });
-    this.router.navigateByUrl('/studio/quiz');
+    const coursId = this.coursId();
+    const acceptees = this.questions().filter((q) => q.decision === 'acceptee');
+    if (coursId === null || acceptees.length === 0 || this.envoi()) return;
+    this.envoi.set(true);
+    this.quizService
+      .create({
+        titre: this.theme().trim(),
+        description: 'Généré avec l’IA puis relu par le formateur.',
+        coursId,
+        theme: this.theme().trim(),
+        matiere: this.matiereEnvoyee(),
+        difficulte: this.reponse()?.difficulte ?? this.difficulte(),
+        questions: acceptees.map((q) => ({
+          enonce: q.enonce,
+          niveauBloom: q.source.niveauBloom,
+          competence: q.competence,
+          explication: q.explication,
+          choix: q.source.choix.map((c) => ({ texte: c.texte, estCorrecte: c.estCorrecte, erreurAssociee: c.erreurAssociee })),
+        })),
+      })
+      .subscribe({
+        next: (quiz) => {
+          this.snack.open(`Quiz « ${quiz.titre} » enregistré en brouillon avec ${quiz.nbQuestions} questions`, 'OK', { duration: 3000 });
+          this.router.navigateByUrl('/studio/quiz');
+        },
+        error: (e: HttpErrorResponse) => {
+          this.envoi.set(false);
+          this.snack.open(e.error?.message ?? 'Enregistrement impossible.', 'OK', { duration: 5000 });
+        },
+      });
   }
 }
