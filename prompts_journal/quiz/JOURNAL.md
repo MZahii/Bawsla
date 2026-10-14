@@ -7,6 +7,41 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 13 — 2026-10-14 — PR #3 fusionnée, tests boîte noire et boîte blanche, deux défauts corrigés
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5)
+- **Objectif** : après l'approbation de la PR #3 par Djappa, finir ce qui restait, tester le module de bout en bout, refaire les captures et préparer la branche d'intégration Quiz + Cours.
+- **Contexte fourni** : la réponse de relecture de la PR #3, la stack Docker de la branche `integration/quiz-cours` (quiz-service, cours-service, gateway, ai-service avec un vrai modèle).
+- **Prompt** :
+  > le PR 3 est approuve par Djappa [...] fais un end to end test block box et puis white box refait les test necessaires, refait aussi les screenshots necessaire et le journal de suivi des prompt une fois tout termine commite et push sur git et prepare la branche d integration qui va pour le moment avoir ma branche Quiz et celle de Djappa Cours.
+- **Résultat** :
+  - **boîte noire** : le script `ai-service/tests/quiz/boite_noire/e2e_quiz_service.py` passe uniquement par la gateway, avec les comptes de démonstration. Il couvre ce parcours :
+    - un formateur crée un cours dans cours-service et le publie ;
+    - il crée un quiz et un examen ;
+    - un apprenant passe le quiz, obtient la remédiation de l'IA réelle puis répond au rattrapage ;
+    - il réussit l'examen et obtient son certificat ;
+    - un visiteur sans compte vérifie ce certificat ;
+    - le script contrôle enfin les accès (401, 403, 409, en-têtes `X-User-*` forgés).
+    Résultat : **27/27 étapes**.
+  - **boîte blanche** :
+    - `mvnw test` sur quiz-service : 15/15 ;
+    - `pytest` sur ai-service : 410 réussis, 1 ignoré ;
+    - `ng build` sans erreur.
+  - **défauts trouvés par ces tests et corrigés** :
+    1. la vérification publique renvoyait `"etudiantId": null`. Le champ ne contenait pas de valeur, mais il révélait la structure. Correction : `@JsonInclude(NON_NULL)` sur `CertificatResponse`, et le test vérifie maintenant que la clé est absente (`not(hasKey(...))`), car `doesNotExist()` laissait passer une valeur null.
+    2. la page publique `/verifier` renvoyait le visiteur vers `/login`. Elle chargeait le catalogue `/api/cours`, réservé aux connectés ; la réponse 401 déclenchait la déconnexion. Correction :
+       - le certificat garde une copie du titre du cours au moment de l'émission. Le titre vient de cours-service par Feign ; si cours-service ne répond pas, le certificat est délivré quand même, sans titre ;
+       - la page ne charge le catalogue que pour un utilisateur connecté.
+  - **captures** : les fichiers `captures/2026-10-14_12_*.png` montrent le parcours complet. On y voit les évaluations, le quiz, le résultat, la remédiation par l'IA (badge « Généré par l'IA », source limitée à la question et à la réponse de l'apprenant), le rattrapage corrigé, l'examen, le certificat, la vérification publique sans compte et un numéro inconnu. Elles montrent aussi le studio du formateur, l'éditeur verrouillé après une tentative et la liste des certificats côté admin.
+  - **git** :
+    - PR #3 fusionnée dans `develop` ;
+    - `integration/quiz-cours` regroupe `feature/quiz`, `feature/cours`, `develop` et la branche gateway `chore/gateway-verification-certificat`.
+- **Vérification** : la stack Docker d'intégration a été reconstruite, puis le script E2E relancé (27/27). Les captures ont été relues une à une.
+- **Gardé / modifié / rejeté** : gardé. Le titre du cours est une copie figée : si le cours est renommé plus tard, le certificat garde le titre obtenu. C'est le comportement attendu d'un diplôme.
+- **Leçon** : seul le test boîte noire, fait sans compte et à travers la gateway, a révélé le renvoi vers `/login`. Les tests unitaires et le build ne pouvaient pas le voir, parce que le défaut venait de l'interaction entre une page publique, une route protégée d'un autre module et l'intercepteur d'authentification.
+
+---
+
 ### 12 — 2026-10-14 — quiz-service complet et front branché sur l'API (fin des données de démo)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5)
