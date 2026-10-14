@@ -109,8 +109,9 @@ export class QuizService {
     return this.get<Certificat[]>(`${this.url}/certificats`);
   }
 
+  /** Route publique : appelable sans compte (public-paths de la gateway). */
   verifierCertificat(numero: string): Observable<Certificat> {
-    return this.get<Certificat>(`${this.url}/certificats/${encodeURIComponent(numero)}`);
+    return this.get<Certificat>(`${this.url}/certificats/verification/${encodeURIComponent(numero)}`);
   }
 
   private get<T>(url: string, params?: HttpParams): Observable<T> {

@@ -32,7 +32,11 @@ public class CertificatController {
         return ApiResponse.ok(certificatService.tous(user));
     }
 
-    @GetMapping("/{numero}")
+    /**
+     * Vérification publique (sans compte) : seule route de quiz-service déclarée dans les public-paths de la gateway.
+     * Aucun X-User-* n'est transmis ; la réponse ne contient ni nom ni identifiant d'apprenant.
+     */
+    @GetMapping("/verification/{numero}")
     public ApiResponse<CertificatResponse> verifier(@PathVariable String numero) {
         return ApiResponse.ok(certificatService.verifier(numero));
     }
