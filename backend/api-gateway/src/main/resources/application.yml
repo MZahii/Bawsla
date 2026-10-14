@@ -45,7 +45,7 @@ bawsla:
     secret: ${JWT_SECRET:change-me-dev-secret-bawsla-au-moins-32-caracteres-svp}
   # Listes séparées par des virgules (lues via @Value -> List<String>)
   security:
-    public-paths: /api/auth/**,/api/*/health
+    public-paths: /api/auth/**,/api/*/health,/api/quiz/certificats/verification/*
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
