@@ -262,12 +262,12 @@ class QuizApiTest {
 
         mvc.perform(en(get("/api/quiz/certificats/mes"), apprenant, "ETUDIANT"))
                 .andExpect(jsonPath("$.data[0].numero").value(numero));
-        // vérification publique : sans l'identifiant de l'apprenant
-        mvc.perform(en(get("/api/quiz/certificats/" + numero.toLowerCase()), 999L, "ETUDIANT"))
+        // vérification publique : sans compte (aucun X-User-*) et sans l'identifiant de l'apprenant
+        mvc.perform(get("/api/quiz/certificats/verification/" + numero.toLowerCase()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(100))
                 .andExpect(jsonPath("$.data.etudiantId").doesNotExist());
-        mvc.perform(en(get("/api/quiz/certificats/BW-0000-INCONNU"), 999L, "ETUDIANT")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/quiz/certificats/verification/BW-0000-INCONNU")).andExpect(status().isNotFound());
 
         // un seul certificat par cours
         mvc.perform(en(post("/api/quiz/" + id + "/tentatives"), apprenant, "ETUDIANT").content(reponsesJson(p, p.bonnes)))
