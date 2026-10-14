@@ -76,7 +76,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | Fournisseur | quiz-service |
 | Consommateurs | user-service / ai-service (recommandations), cours-service, front (tableau de bord) |
 | Rôles | l'étudiant lui-même (`X-User-Id == etudiantId`), `ENSEIGNANT`, `ADMIN` |
-| Statut | **prévu** : agrégé à partir des tentatives (une ligne par apprenant, cours et notion). Renvoie encore `[]` avec `message: "stub"` en attendant l'implémentation du module Quiz |
+| Statut | **en place** : agrégé à partir des tentatives (une ligne par apprenant, cours et notion) |
 
 `200` :
 ```json
