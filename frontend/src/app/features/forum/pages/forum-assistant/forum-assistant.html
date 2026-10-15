@@ -50,7 +50,7 @@
       <div class="ligne">
         <textarea name="texte" dir="auto" rows="2" maxlength="2000" [ngModel]="texte()" (ngModelChange)="texte.set($event)"
                   (keydown.enter)="entree($any($event))" placeholder="Ta question (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)" aria-label="Ta question"></textarea>
-        <button type="submit" bwButton="ia" [disabled]="!texte().trim() || envoi()"><mat-icon aria-hidden="true">send</mat-icon> Envoyer</button>
+        <button type="submit" bwButton="ia" [disabled]="!texte().trim() || envoi()">Envoyer</button>
       </div>
     </form>
   </section>

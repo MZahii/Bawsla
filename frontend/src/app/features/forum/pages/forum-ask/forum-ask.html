@@ -122,7 +122,7 @@
       <h2 class="h">Améliorer ma question</h2>
       <p class="small muted">La Vigie propose un titre plus clair, ce qui manque, et des étiquettes déjà utilisées. Tu choisis ce que tu gardes.</p>
       <button type="button" bwButton="ia" [bwLoading]="ameliorationEnCours()" [disabled]="ameliorationEnCours()" (click)="ameliorer()">
-        <mat-icon aria-hidden="true">explore</mat-icon> Améliorer ma question
+        Améliorer ma question
       </button>
       @if (ameliorationEnCours()) { <bw-ai-loading message="La Vigie relit ta question…" /> }
       @if (amelioration(); as a) {

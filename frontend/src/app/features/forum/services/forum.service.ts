@@ -26,6 +26,7 @@ import {
   Reputation,
   SignalementRequest,
   Signalement,
+  Similaire,
   SimilairesRequest,
   SimilairesResponse,
   TypeReaction,
@@ -104,7 +105,7 @@ export class ForumService {
     return this.post(`${this.url}/discussions/similaires`, corps);
   }
 
-  liees(id: number): Observable<SimilairesResponse> {
+  liees(id: number): Observable<Similaire[]> {
     return this.get(`${this.url}/discussions/${id}/liees`);
   }
 

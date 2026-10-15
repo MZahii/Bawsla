@@ -126,7 +126,7 @@ export class ForumThread {
     });
     this.chargerVigie(id);
     this.vigieApi.resume(id).subscribe({ next: (r) => this.resume.set(r), error: () => this.resume.set(null) });
-    this.forum.liees(id).subscribe({ next: (r) => this.liees.set(r.similaires), error: () => this.liees.set([]) });
+    this.forum.liees(id).subscribe({ next: (r) => this.liees.set(r ?? []), error: () => this.liees.set([]) });
   }
 
   private recharger(): void {

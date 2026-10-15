@@ -7,6 +7,47 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 10 — 2026-10-16 — Lot 10 : boîte noire, captures d'écran, finitions
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : `e2e_forum.py` (httpx, uniquement via la gateway) qui rejoue le scénario de démo et les contrôles
+  d'accès ; captures de chaque écran (clair, sombre, mobile) ; textes des PR (plan §9.3, §11 lot 10, §12).
+- **Contexte fourni** : plan §12 ; `docker-compose.yml` ; API d'inscription (user-service) et de création de cours
+  (cours-service), lues sans les modifier.
+- **Prompt** : suite du prompt de l'entrée 05.
+- **Résultat** :
+  - Pile complète lancée avec Docker (`.env` local copié de `.env.example`, valeurs factices, non versionné,
+    plus `FORUM_RAG_TEXTE_DEMO=true`). L'ai-service tourne en `stub` : aucune clé disponible.
+  - `ai-service/tests/forum/e2e_forum.py` : crée ses comptes et son cours, puis 8 parties (services, accès,
+    similaires, La Vigie, modération, formatrice, admin, apprenants). **26 contrôles réussis, 0 échec**, 5 étapes
+    notées « sans LLM » (réponse sourcée, réponse générale, reformulation derja, similaires sémantiques).
+  - 17 captures réelles, prises par un Edge sans interface piloté par le protocole DevTools (jeton et thème
+    injectés) : accueil, nouvelle question, fil, abstention de La Vigie, assistant, activité, notifications,
+    studio, admin, en clair, sombre et mobile.
+  - `PR_FORUM.md` : textes de la PR socle et de la PR `feature/forum` → `develop`, **non ouvertes** (le plan
+    demande l'accord de Malek). `develop` n'a pas bougé : aucune fusion nécessaire.
+- **Vérification** : e2e 26/26 ; `ng build` sans avertissement ; `mvnw test` 141 verts ; `pytest` forum 101 verts.
+- **Gardé / modifié / rejeté** : les captures ont révélé ce que build et tests unitaires ne voyaient pas.
+  - **Défaut** : la page d'un fil s'affichait sans titre, contenu, éditeur ni La Vigie. La console montrait
+    « Cannot read properties of undefined (reading 'length') » : `GET /discussions/{id}/liees` renvoie une liste,
+    le service front attendait `{ similaires }`. Corrigé. Tous les types de retour des contrôleurs ont ensuite été
+    comparés aux services front : c'était le seul écart (mon script du lot 8 ne comparait que les modèles).
+  - Boussole en double sur les boutons IA (la directive `bwButton="ia"` l'ajoute déjà), libellé « Meilleure
+    réponse » en double sur le badge, sélecteur de cours vide sans placeholder, graphique en courbe vide avec une
+    seule semaine (passé en barres) : corrigés.
+  - Premier essai e2e : 1 échec sur les similaires sémantiques. Mesuré : vecteurs du stub (`stub-hachage-768`),
+    cosinus sous le seuil de 0,75 calibré pour un vrai modèle. Ce n'est pas un défaut du forum : le script lit le
+    fournisseur sur `/api/ai/health` et marque ce cas « sans LLM », et un contrôle « Mots exacts » (sans modèle) a
+    été ajouté.
+  - La construction parallèle des 8 images a fait tomber BuildKit (mémoire) : construites une par une.
+- **Décisions non couvertes par le plan** : e2e placé dans `ai-service/tests/forum/` sans préfixe `test_` (pytest
+  ne le lance pas, il demande la pile) ; outil de captures gardé hors du dépôt (outil de poste, pas du produit).
+- **Captures** : `captures/2026-10-16_11_ecran-*.png` (17 écrans), `captures/2026-10-16_12_lot10-e2e.png`
+- **Leçon** : un écran réel vaut tous les tests de compilation ; la vérification visuelle a trouvé un défaut
+  bloquant en quelques secondes.
+
+---
+
 ### 09 — 2026-10-16 — Lot 9 : évaluation (jeux de données, script, seuils)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

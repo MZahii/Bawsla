@@ -23,7 +23,7 @@
   <aside class="filtres card" aria-label="Filtres">
     <div class="bloc">
       <label class="titre-bloc" for="cours">Cours</label>
-      <mat-select id="cours" class="sel" [value]="filtres().coursId ?? null" (valueChange)="changer({ coursId: $event ?? undefined })" aria-label="Filtrer par cours">
+      <mat-select id="cours" class="sel" [value]="filtres().coursId ?? null" (valueChange)="changer({ coursId: $event ?? undefined })" aria-label="Filtrer par cours" placeholder="Tous les cours">
         <mat-option [value]="null">Tous les cours</mat-option>
         @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
       </mat-select>
@@ -138,4 +138,4 @@
   </aside>
 </div>
 
-<a class="fab" bwButton="ia" routerLink="/app/forum/assistant"><mat-icon aria-hidden="true">explore</mat-icon> Demander au cours</a>
+<a class="fab" bwButton="ia" routerLink="/app/forum/assistant">Demander au cours</a>

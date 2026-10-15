@@ -21,7 +21,7 @@
             <bw-kpi label="Signalements ouverts" [value]="s.signalementsOuverts" icon="flag" />
           </div>
           @if (s.global.parSemaine.length) {
-            <bw-chart type="line" [labels]="semaines(s)" [series]="serieSemaines(s)" [height]="220" ariaLabel="Questions par semaine" />
+            <bw-chart type="bar" [labels]="semaines(s)" [series]="serieSemaines(s)" [height]="220" ariaLabel="Questions par semaine" />
           }
           <div class="grid-2">
             <section>
