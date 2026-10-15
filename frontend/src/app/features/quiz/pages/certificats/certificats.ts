@@ -1,61 +1,62 @@
-import { Component } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { COURS, coursParId } from '../../../../core/demo/demo-data';
-import { CERTIFICATS, meta } from '../../../../core/demo/demo-plus';
-import { BwButton, EmptyState } from '../../../../shared';
+import { AiLoading, BwButton, EmptyState } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
+import { Certificat, HistoriqueLigne } from '../../models/quiz.model';
+import { CoursTitresService } from '../../services/cours-titres.service';
+import { QuizService } from '../../services/quiz.service';
 
-/**
- * Mes certificats : ceux obtenus, et les cours en route vers un certificat.
- * À brancher : QuizService.mesCertificats().
- */
+/** Mes certificats : ceux obtenus, et les examens déjà tentés mais pas encore réussis. */
 @Component({
   selector: 'app-certificats',
-  imports: [RouterLink, MatIconModule, BwButton, EmptyState, PageHeader],
+  imports: [DatePipe, RouterLink, MatIconModule, AiLoading, BwButton, EmptyState, PageHeader],
   template: `
-    <bw-page-header title="Mes certificats" subtitle="Un certificat par cours terminé et examen final réussi. Chacun a un numéro que tout le monde peut vérifier." />
+    <bw-page-header title="Mes certificats" subtitle="Un certificat par examen final réussi. Chacun a un numéro que tout le monde peut vérifier." />
 
-    @if (certificats.length) {
-      <div class="grid">
-        @for (c of certificats; track c.numero) {
-          <a class="card cert" [routerLink]="['/app/certificats', c.numero]">
-            <img [src]="image(c.coursId)" alt="" />
-            <div class="b">
-              <span class="k"><mat-icon aria-hidden="true">workspace_premium</mat-icon> Certificat</span>
-              <h2>{{ titre(c.coursId) }}</h2>
-              <p class="muted small">Obtenu le {{ c.date }}, score {{ c.score }} %</p>
-              <p class="muted small num">N° {{ c.numero }}</p>
-            </div>
-          </a>
-        }
-      </div>
+    @if (chargement()) {
+      <bw-ai-loading message="Chargement de tes certificats…" />
+    } @else if (erreur()) {
+      <bw-empty-state icon="error" title="Certificats indisponibles" message="Réessaie dans un instant." />
     } @else {
-      <bw-empty-state icon="workspace_premium" title="Pas encore de certificat" message="Termine un cours et réussis son examen final pour obtenir ton premier certificat." />
-    }
-
-    <h2 class="sec">En route vers un certificat</h2>
-    <ul class="card list">
-      @for (c of enCours; track c.id) {
-        <li>
-          <span class="t"><strong>{{ c.titre }}</strong>
-            <span class="muted small">{{ c.progression === 100 ? 'Tous les chapitres sont terminés : l’examen final est disponible.' : c.progression + ' % du cours terminé' }}</span>
-          </span>
-          @if (c.progression === 100) {
-            <a bwButton="principal" [routerLink]="['/app/evaluations/examen', c.id]">Passer l’examen</a>
-          } @else {
-            <a bwButton="fantome" [routerLink]="['/app/cours', c.id, 'lecture']">Continuer</a>
+      @if (certificats().length) {
+        <div class="grid">
+          @for (c of certificats(); track c.numero) {
+            <a class="card cert" [routerLink]="['/app/certificats', c.numero]">
+              <div class="b">
+                <span class="k"><mat-icon aria-hidden="true">workspace_premium</mat-icon> Certificat</span>
+                <h2>{{ c.titreCours ?? cours.titre(c.coursId) }}</h2>
+                <p class="muted small">Obtenu le {{ c.dateEmission | date: 'dd/MM/yyyy' }}, score {{ c.score }} %</p>
+                <p class="muted small num">N° {{ c.numero }}</p>
+              </div>
+            </a>
           }
-        </li>
+        </div>
+      } @else {
+        <bw-empty-state icon="workspace_premium" title="Pas encore de certificat" message="Termine un cours et réussis son examen final pour obtenir ton premier certificat." />
       }
-    </ul>
+
+      @if (enCours().length) {
+        <h2 class="sec">En route vers un certificat</h2>
+        <ul class="card list">
+          @for (h of enCours(); track h.coursId) {
+            <li>
+              <span class="t"><strong>{{ cours.titre(h.coursId) }}</strong>
+                <span class="muted small">Meilleur score à l’examen : {{ h.pourcentage }} %</span>
+              </span>
+              <a bwButton="fantome" [routerLink]="['/app/evaluations/examen', h.coursId]">Retenter l’examen</a>
+            </li>
+          }
+        </ul>
+      }
+    }
   `,
   styles: `
     .grid { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     .cert { display: flex; flex-direction: column; overflow: hidden; color: inherit; text-decoration: none; border-top: 3px solid var(--color-gold-500); }
     .cert:hover h2 { text-decoration: underline; }
-    .cert img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; }
     .b { padding: var(--space-4); }
     .b p { margin: 2px 0 0; }
     .k { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--color-gold-700); }
@@ -69,12 +70,38 @@ import { PageHeader } from '../../../../shared/ui';
   `,
 })
 export class Certificats {
-  protected readonly certificats = CERTIFICATS;
-  protected readonly enCours = COURS.filter((c) => c.inscrit && !CERTIFICATS.some((x) => x.coursId === c.id));
-  protected titre(id: number): string {
-    return coursParId(id)?.titre ?? '';
-  }
-  protected image(id: number): string {
-    return meta(id).image;
+  private readonly quizService = inject(QuizService);
+  protected readonly cours = inject(CoursTitresService);
+
+  protected readonly certificats = signal<Certificat[]>([]);
+  private readonly historique = signal<HistoriqueLigne[]>([]);
+  protected readonly chargement = signal(true);
+  protected readonly erreur = signal(false);
+
+  /** Examens tentés sans certificat : meilleur score par cours. */
+  protected readonly enCours = computed(() => {
+    const obtenus = new Set(this.certificats().map((c) => c.coursId));
+    const meilleurs = new Map<number, HistoriqueLigne>();
+    for (const h of this.historique()) {
+      if (h.type !== 'EXAMEN' || obtenus.has(h.coursId)) continue;
+      const m = meilleurs.get(h.coursId);
+      if (!m || h.pourcentage > m.pourcentage) meilleurs.set(h.coursId, h);
+    }
+    return [...meilleurs.values()];
+  });
+
+  constructor() {
+    this.cours.charger();
+    this.quizService.mesCertificats().subscribe({
+      next: (c) => {
+        this.certificats.set(c);
+        this.chargement.set(false);
+      },
+      error: () => {
+        this.erreur.set(true);
+        this.chargement.set(false);
+      },
+    });
+    this.quizService.historique().subscribe({ next: (h) => this.historique.set(h), error: () => this.historique.set([]) });
   }
 }

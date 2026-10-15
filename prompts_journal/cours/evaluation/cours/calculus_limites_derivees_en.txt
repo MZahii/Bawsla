@@ -1,0 +1,394 @@
+Calculus I — Limits and Derivatives
+Page 1 / 10
+Calculus I — Limits and Derivatives
+Introductory course, first year of undergraduate studies — 10 lessons
+1. Introduction: why calculus?
+Calculus is the branch of mathematics that studies change. Algebra tells us how to work
+with fixed quantities, while calculus gives us tools to describe quantities that vary
+continuously, such as the position of a moving car, the temperature of a cup of coffee as
+it cools, or the size of a population over time. It was developed independently by Isaac
+Newton and Gottfried Wilhelm Leibniz in the second half of the seventeenth century.
+Calculus has two central ideas. The first is the derivative, which measures how fast a
+quantity changes at a given instant. The second is the integral, which measures the
+accumulation of a quantity over an interval. This course focuses on the first idea. Both
+ideas rest on a common foundation: the concept of a limit.
+The derivative answers a question that elementary algebra cannot answer directly. If a
+car travels 120 kilometres in 2 hours, its average speed is 60 kilometres per hour. But
+what is its speed exactly at 10:30? An instant has no duration, so the formula distance
+divided by time gives 0 divided by 0. The limit is the tool that resolves this difficulty: we
+compute the average speed over shorter and shorter intervals and observe the value it
+approaches.
+Course objectives
+At the end of this course, the student should be able to: compute limits of functions using
+the limit laws; decide whether a function is continuous; compute derivatives from the
+definition and with the differentiation rules; apply the chain rule to composite functions;
+find the equation of a tangent line; and use derivatives to solve rate of change and
+optimization problems.
+Prerequisites
+The student is expected to be comfortable with algebraic manipulation (factoring,
+expanding, simplifying fractions), with the notion of a function, and with the basic
+functions: polynomials, rational functions, square roots, exponential and logarithmic
+functions, and the trigonometric functions sine and cosine.
+How to use this course
+Each lesson introduces a concept, gives the key formulas, and shows worked examples.
+Read the examples with a pencil in hand and redo the computations yourself. The last
+lesson contains a summary and exercises with answers.
+
+Calculus I — Limits and Derivatives
+Page 2 / 10
+Lesson 2 — Functions: a quick review
+A function f is a rule that assigns to each input x of a set called the domain exactly one
+output f(x). The set of all outputs is called the range. For example, the function f(x) = x²
+assigns to each real number its square; its domain is the set of all real numbers and its
+range is the set of non-negative real numbers.
+The graph of a function is the set of points (x, f(x)) in the plane. Reading a graph is an
+essential skill in calculus, because limits and derivatives have a clear geometric
+meaning: a limit describes the height the graph approaches, and a derivative describes
+the steepness of the graph.
+Important families of functions
+A linear function has the form f(x) = mx + b. Its graph is a straight line with slope m
+and vertical intercept b. The slope measures the change in output for each unit change in
+input. It is constant: a linear function changes at the same rate everywhere. Calculus
+generalizes the idea of slope to curves whose steepness varies from point to point.
+ slope = (change in y) / (change in x) = (f(x₂) − f(x₁)) / (x₂ − x₁)
+A polynomial is a sum of terms of the form a·xⁿ, where n is a non-negative integer, for
+example p(x) = 3x³ − 2x + 7. A rational function is a quotient of two polynomials, such
+as r(x) = (x + 1) / (x − 2); it is not defined where the denominator equals zero, here at x
+= 2.
+The exponential function f(x) = eˣ, where e ≈ 2.718, grows faster than any polynomial.
+Its inverse is the natural logarithm ln(x), defined for x > 0. The trigonometric
+functions sin(x) and cos(x) are periodic with period 2π; in calculus, angles are always
+measured in radians.
+Composition of functions
+The composition of two functions f and g, written f∘g, is the function defined by (f∘g)(x)
+= f(g(x)). We first apply g, then apply f to the result. For example, if f(x) = √x and g(x) =
+x² + 1, then f(g(x)) = √(x² + 1). Recognising a function as a composition will be essential
+when we study the chain rule in Lesson 7.
+The average rate of change
+The average rate of change of f between x = a and x = b is the slope of the line joining
+the points (a, f(a)) and (b, f(b)). This line is called a secant line. The whole idea of the
+derivative is to let b get closer and closer to a and to see what happens to the slope of
+the secant line.
+ average rate of change = (f(b) − f(a)) / (b − a)
+Example
+For f(x) = x², the average rate of change between x = 1 and x = 3 is (9 − 1) / (3 − 1) = 8
+/ 2 = 4. Between x = 1 and x = 2 it is (4 − 1) / 1 = 3, and between x = 1 and x = 1.1 it is
+(1.21 − 1) / 0.1 = 2.1. The values seem to approach 2: this will be the derivative of x² at
+x = 1.
+
+Calculus I — Limits and Derivatives
+Page 3 / 10
+Lesson 3 — The concept of a limit
+We write limx→a f(x) = L and say that the limit of f(x) as x approaches a is L if the
+values of f(x) can be made as close to L as we like by taking x sufficiently close to a, but
+not equal to a. The value of f at a itself does not matter: the function does not even need
+to be defined at a.
+This last point is the heart of the concept. Consider f(x) = (x² − 1) / (x − 1). This function
+is not defined at x = 1, because the denominator is zero. However, for every x different
+from 1 we can factor the numerator: x² − 1 = (x − 1)(x + 1), so f(x) = x + 1. As x
+approaches 1, f(x) approaches 2. Therefore the limit exists and equals 2, even though
+f(1) does not exist.
+ lim (x→1) (x² − 1) / (x − 1) = lim (x→1) (x + 1) = 2
+Estimating a limit numerically
+A limit can be estimated with a table of values. For the function above, f(0.9) = 1.9,
+f(0.99) = 1.99 and f(0.999) = 1.999 from the left, while f(1.1) = 2.1, f(1.01) = 2.01 and
+f(1.001) = 2.001 from the right. Both sides approach 2. A table can suggest the value of a
+limit, but it is not a proof; the algebraic methods of the next lesson give exact answers.
+One-sided limits
+Sometimes a function behaves differently on each side of a point. The left-hand limit
+limx→a⁻ f(x) only uses values x < a, and the right-hand limit limx→a⁺ f(x) only uses
+values x > a. The two-sided limit exists if and only if both one-sided limits exist and are
+equal.
+For example, the function f(x) = |x| / x equals −1 for x < 0 and +1 for x > 0. Its left-hand
+limit at 0 is −1 and its right-hand limit at 0 is +1. Since they are different, the limit of f(x)
+as x approaches 0 does not exist. The graph has a jump at x = 0.
+Infinite limits and limits at infinity
+If f(x) grows without bound as x approaches a, we write limx→a f(x) = ∞. For example, 1/x²
+becomes arbitrarily large as x approaches 0, so its limit at 0 is +∞, and the line x = 0 is a
+vertical asymptote. Similarly, limx→∞ 1/x = 0 means that 1/x approaches 0 when x
+becomes very large; the line y = 0 is a horizontal asymptote.
+Key idea
+A limit describes the behaviour of a function NEAR a point, not AT the point. Two
+functions that differ only at x = a have the same limit at a.
+
+Calculus I — Limits and Derivatives
+Page 4 / 10
+Lesson 4 — Computing limits and
+continuity
+The limit laws
+Suppose that limx→a f(x) = L and limx→a g(x) = M both exist. Then the limit of a sum is the
+sum of the limits, the limit of a product is the product of the limits, and the limit of a
+quotient is the quotient of the limits, provided that M is not zero. In symbols:
+ lim (f + g) = L + M lim (f · g) = L · M lim (f / g) = L / M (M ≠ 0)
+A direct consequence is the direct substitution property: if f is a polynomial or a
+rational function and a is in the domain of f, then limx→a f(x) = f(a). For example, the limit
+of 2x² − 3x + 4 as x approaches 2 is 2·4 − 6 + 4 = 6.
+Indeterminate forms
+Direct substitution sometimes produces the expression 0/0. This is called an
+indeterminate form: it does not mean the limit fails to exist, only that more work is
+needed. The standard techniques are factoring and cancelling a common factor,
+multiplying by a conjugate when square roots are involved, and simplifying compound
+fractions.
+Example: using a conjugate
+Compute lim (x→0) (√(x + 9) − 3) / x. Substitution gives 0/0. Multiply the numerator and
+the denominator by the conjugate √(x + 9) + 3. The numerator becomes (x + 9) − 9 = x,
+so the expression equals 1 / (√(x + 9) + 3) for x ≠ 0. Its limit as x approaches 0 is 1 / (3 +
+3) = 1/6.
+An important trigonometric limit
+The limit limx→0 sin(x) / x = 1 cannot be obtained by algebra; it is proved geometrically
+with the squeeze theorem. It is the key result that allows us to compute the derivatives
+of the trigonometric functions.
+Continuity
+A function f is continuous at a if three conditions hold: f(a) is defined, the limit of f(x) as
+x approaches a exists, and this limit equals f(a). Intuitively, a continuous function has a
+graph that can be drawn without lifting the pencil. Polynomials, exponential functions,
+sine and cosine are continuous everywhere; rational functions, square roots and
+logarithms are continuous on their domains.
+A function can fail to be continuous in three ways: it may have a removable
+discontinuity (a hole, as in the example of Lesson 3), a jump discontinuity (as for |x| /
+x at 0), or an infinite discontinuity (a vertical asymptote, as for 1/x at 0).
+The Intermediate Value Theorem
+If f is continuous on the closed interval [a, b] and N is any number between f(a) and f(b),
+then there exists a number c in (a, b) such that f(c) = N. A practical consequence: if f(a)
+and f(b) have opposite signs, the equation f(x) = 0 has at least one solution between a
+and b. For example, x³ + x − 1 is negative at 0 and positive at 1, so it has a root in (0, 1).
+
+Calculus I — Limits and Derivatives
+Page 5 / 10
+Lesson 5 — The derivative
+From secant lines to the tangent line
+Let P = (a, f(a)) be a point on the graph of f, and let Q = (a + h, f(a + h)) be a nearby
+point. The slope of the secant line PQ is the difference quotient (f(a + h) − f(a)) / h. As
+h approaches 0, the point Q slides along the curve towards P, and the secant line
+approaches a limiting position called the tangent line at P.
+Definition
+The derivative of f at a, written f′(a), is the limit of the difference quotient when it
+exists:
+ f′(a) = lim (h→0) [ f(a + h) − f(a) ] / h
+Geometrically, f′(a) is the slope of the tangent line to the graph of f at the point (a, f(a)).
+Physically, if f(t) is the position of an object at time t, then f′(a) is its instantaneous
+velocity at time a. In general, the derivative is the instantaneous rate of change of f
+with respect to x.
+Example: derivative of x² at a = 1
+f(1 + h) − f(1) = (1 + h)² − 1 = 2h + h². Dividing by h gives 2 + h, for h ≠ 0. As h
+approaches 0, this approaches 2. Therefore f′(1) = 2, which confirms the numerical
+estimate of Lesson 2.
+The derivative as a function
+If we compute the derivative at every point x where the limit exists, we obtain a new
+function f′, called the derivative function. Other common notations are dy/dx, df/dx
+and Df, the notation dy/dx being due to Leibniz. For f(x) = x², the same computation as
+above with a general x gives f′(x) = 2x.
+ f(x) = x² ⇒ f′(x) = lim (h→0) (2xh + h²) / h = lim (h→0) (2x + h) =
+2x
+Differentiability and continuity
+A function is differentiable at a if f′(a) exists. Every differentiable function is
+continuous, but the converse is false. The absolute value function |x| is continuous at 0
+but not differentiable there: its graph has a corner, and the slope is −1 on the left and
++1 on the right. A function is also not differentiable where its tangent line is vertical or at
+a discontinuity.
+Interpreting the sign of the derivative
+The sign of the derivative tells us whether the function is going up or down. If f′(x) > 0 on
+an interval, f is increasing on that interval; if f′(x) < 0, f is decreasing. Where f′(x) = 0,
+the tangent line is horizontal; such points are candidates for maximum and minimum
+values, as we will see in Lesson 9.
+
+Calculus I — Limits and Derivatives
+Page 6 / 10
+Lesson 6 — Basic differentiation rules
+Computing every derivative from the definition would be slow. Fortunately, a small
+number of rules, each proved once from the definition, allow us to differentiate almost
+any function quickly.
+Constants and powers
+The derivative of a constant function is zero, because its graph is a horizontal line. The
+power rule states that for any real number n, the derivative of xⁿ is n·xⁿ⁻¹. For example,
+the derivative of x⁵ is 5x⁴, the derivative of √x = x^(1/2) is (1/2)·x^(−1/2) = 1 / (2√x),
+and the derivative of 1/x = x⁻¹ is −x⁻² = −1/x².
+ d/dx (c) = 0 d/dx (xⁿ) = n · xⁿ⁻¹
+Constant multiple, sum and difference
+The derivative of a constant times a function is the constant times the derivative, and the
+derivative of a sum or a difference is the sum or difference of the derivatives. Together
+with the power rule, these rules let us differentiate any polynomial term by term.
+ d/dx [c·f(x)] = c·f′(x) d/dx [f(x) ± g(x)] = f′(x) ± g′(x)
+Example
+If p(x) = 4x³ − 5x² + 7x − 2, then p′(x) = 12x² − 10x + 7. At x = 1, p′(1) = 12 − 10 + 7 =
+9: the graph of p rises with slope 9 at that point.
+Exponential and logarithmic functions
+The number e is defined precisely so that the exponential function is its own derivative:
+the derivative of eˣ is eˣ. This remarkable property explains why eˣ appears in every
+model of natural growth and decay. The derivative of the natural logarithm ln(x) is 1/x for
+x > 0. For another base b > 0, the derivative of bˣ is bˣ·ln(b).
+ d/dx (eˣ) = eˣ d/dx (ln x) = 1/x d/dx (bˣ) = bˣ · ln b
+Trigonometric functions
+Using the limit sin(x)/x → 1 from Lesson 4, one proves that the derivative of sin(x) is
+cos(x) and that the derivative of cos(x) is −sin(x). The other trigonometric derivatives
+follow from the quotient rule of the next lesson; for instance, the derivative of tan(x) is
+1/cos²(x).
+ d/dx (sin x) = cos x d/dx (cos x) = −sin x
+Higher derivatives
+The derivative of f′ is called the second derivative and written f″. If f(t) is a position, f′(t)
+is the velocity and f″(t) is the acceleration. For f(x) = x⁴ we have f′(x) = 4x³, f″(x) = 12x²
+and f‴(x) = 24x. The second derivative also describes the concavity of the graph: if f″ >
+0 the graph is concave up, like a cup; if f″ < 0 it is concave down.
+
+Calculus I — Limits and Derivatives
+Page 7 / 10
+Lesson 7 — Product, quotient and chain
+rules
+The product rule
+The derivative of a product is NOT the product of the derivatives. The correct formula is
+the product rule: the derivative of the first function times the second, plus the first
+function times the derivative of the second.
+ (f · g)′ = f′ · g + f · g′
+Example
+Differentiate h(x) = x²·sin(x). With f = x² and g = sin(x): h′(x) = 2x·sin(x) + x²·cos(x).
+The quotient rule
+For a quotient, the quotient rule gives the derivative as the derivative of the numerator
+times the denominator, minus the numerator times the derivative of the denominator, all
+divided by the square of the denominator. It is valid wherever the denominator is not
+zero.
+ (f / g)′ = (f′ · g − f · g′) / g²
+Example
+For r(x) = (x + 1) / (x − 2): r′(x) = [1·(x − 2) − (x + 1)·1] / (x − 2)² = −3 / (x − 2)². The
+derivative is always negative, so r is decreasing on each interval of its domain.
+The chain rule
+The chain rule is the rule for differentiating a composition f(g(x)). It says that the
+derivative is the derivative of the outer function, evaluated at the inner function,
+multiplied by the derivative of the inner function. In Leibniz notation, if y = f(u) and u =
+g(x), then dy/dx = (dy/du)·(du/dx), which looks like a simplification of fractions and is
+easy to remember.
+ [f(g(x))]′ = f′(g(x)) · g′(x) dy/dx = (dy/du) · (du/dx)
+The chain rule is the most frequently used rule in calculus, and forgetting the factor g′(x)
+is the most common mistake made by students. A good habit is to identify the outer and
+inner functions explicitly before differentiating.
+Examples
+1. y = (3x² + 1)⁵. Outer: u⁵, inner: u = 3x² + 1. Then y′ = 5(3x² + 1)⁴ · 6x = 30x(3x² + 1)⁴.
+2. y = √(x² + 1). Outer: √u, inner: x² + 1. Then y′ = (1 / (2√(x² + 1))) · 2x = x / √(x² + 1).
+3. y = e^(−2x). Then y′ = e^(−2x) · (−2) = −2e^(−2x).
+4. y = sin(x³). Then y′ = cos(x³) · 3x².
+Rules can be combined. To differentiate x·e^(x²), use the product rule first, then the
+chain rule for the second factor: the result is e^(x²) + x·e^(x²)·2x = e^(x²)(1 + 2x²).
+
+Calculus I — Limits and Derivatives
+Page 8 / 10
+Lesson 8 — Tangent lines and rates of
+change
+Equation of the tangent line
+Since f′(a) is the slope of the tangent line at (a, f(a)), the point-slope form of a line gives
+its equation directly. Near the point of tangency, the tangent line is a very good
+approximation of the curve; this is called the linear approximation of f at a.
+ y = f(a) + f′(a) · (x − a)
+Example
+Find the tangent line to f(x) = √x at a = 4. We have f(4) = 2 and f′(x) = 1 / (2√x), so f′(4)
+= 1/4. The tangent line is y = 2 + (1/4)(x − 4). Using it to approximate √4.1 gives 2 +
+0.1/4 = 2.025, very close to the true value 2.0248.
+Velocity and acceleration
+If an object moves along a line and its position at time t is s(t), its velocity is v(t) = s′(t)
+and its acceleration is a(t) = v′(t) = s″(t). A positive velocity means the object moves
+forward, a negative velocity means it moves backward, and the object is momentarily at
+rest when v(t) = 0.
+Example
+A ball is thrown upward and its height in metres after t seconds is s(t) = 20t − 5t². Its
+velocity is v(t) = 20 − 10t. It reaches its highest point when v(t) = 0, that is at t = 2
+seconds, at a height of s(2) = 40 − 20 = 20 metres. Its acceleration is a(t) = −10 m/s²,
+the effect of gravity.
+Rates of change in other sciences
+The derivative appears wherever a quantity depends on another. In economics, if C(x) is
+the cost of producing x units, C′(x) is the marginal cost, the approximate cost of
+producing one more unit. In biology, if P(t) is the size of a population, P′(t) is its growth
+rate. In chemistry, the derivative of a concentration with respect to time is the rate of a
+reaction.
+Related rates
+In related rates problems, two quantities are linked by an equation and both change with
+time. Differentiating the equation with respect to time, using the chain rule, links their
+rates of change. For example, if the radius r of a circle grows at 2 cm/s, its area A = πr²
+changes at the rate dA/dt = 2πr · dr/dt. When r = 5 cm, the area grows at 2π·5·2 = 20π
+cm²/s, about 62.8 cm² per second.
+The general method has four steps: draw a diagram and name the variables; write an
+equation relating them; differentiate both sides with respect to time; substitute the
+known values and solve for the unknown rate. Substituting numerical values before
+differentiating is a classic error, because it turns variable quantities into constants.
+
+Calculus I — Limits and Derivatives
+Page 9 / 10
+Lesson 9 — Extreme values and
+optimization
+Critical points
+A function f has a local maximum at c if f(c) is greater than or equal to f(x) for all x near
+c, and a local minimum if f(c) is less than or equal to f(x) for all x near c. Fermat's
+theorem states that if f has a local extremum at c and f′(c) exists, then f′(c) = 0. A
+number c where f′(c) = 0 or where f′(c) does not exist is called a critical point.
+Not every critical point is an extremum: f(x) = x³ has f′(0) = 0, but 0 is neither a
+maximum nor a minimum, because the function keeps increasing. We therefore need
+tests to classify critical points.
+The first and second derivative tests
+First derivative test: if f′ changes from positive to negative at c, f has a local maximum
+at c; if f′ changes from negative to positive, f has a local minimum at c. Second
+derivative test: if f′(c) = 0 and f″(c) > 0, f has a local minimum at c; if f′(c) = 0 and f″(c)
+< 0, f has a local maximum at c; if f″(c) = 0, the test is inconclusive.
+Absolute extrema on a closed interval
+The Extreme Value Theorem guarantees that a continuous function on a closed
+interval [a, b] attains an absolute maximum and an absolute minimum. To find them,
+evaluate f at the critical points inside the interval and at the two endpoints, then
+compare: the largest value is the absolute maximum and the smallest value is the
+absolute minimum.
+Optimization problems
+Optimization means finding the best value of a quantity: the largest area, the smallest
+cost, the shortest time. The method is to express the quantity to optimize as a function of
+one variable, using the constraints of the problem, then to find its absolute maximum or
+minimum on the relevant interval.
+Example: the largest rectangular field
+A farmer has 100 metres of fence to enclose a rectangular field. What dimensions give
+the largest area? If the sides are x and y, then 2x + 2y = 100, so y = 50 − x and the area
+is A(x) = x(50 − x) = 50x − x², for 0 ≤ x ≤ 50. A′(x) = 50 − 2x = 0 gives x = 25. A(0) =
+A(50) = 0 and A(25) = 625. The largest field is a square of 25 m by 25 m, with an area of
+625 m².
+The Mean Value Theorem
+If f is continuous on [a, b] and differentiable on (a, b), there exists a number c in (a, b)
+such that f′(c) = (f(b) − f(a)) / (b − a). In words, at some instant the instantaneous rate of
+change equals the average rate of change. For example, if a car travels 120 km in 2
+hours, at some moment its speedometer showed exactly 60 km/h. This theorem is the
+theoretical basis of the fact that a function with a positive derivative is increasing.
+
+Calculus I — Limits and Derivatives
+Page 10 / 10
+Lesson 10 — Summary and exercises
+This course introduced the two foundations of differential calculus. The limit describes
+the behaviour of a function near a point, and the derivative, defined as a limit of
+difference quotients, measures the instantaneous rate of change and the slope of the
+tangent line. The table below gathers the essential results.
+Concept
+Key formula or fact
+Limit
+lim (x→a) f(x) = L: f(x) gets close to L as x gets close to a (x ≠ a)
+Continuity
+f is continuous at a if lim (x→a) f(x) = f(a)
+Derivative
+f′(a) = lim (h→0) [f(a + h) − f(a)] / h = slope of the tangent line
+Power rule
+(xⁿ)′ = n·xⁿ⁻¹
+Product /
+quotient
+(fg)′ = f′g + fg′ (f/g)′ = (f′g − fg′) / g²
+Chain rule
+[f(g(x))]′ = f′(g(x))·g′(x)
+Exp, log, trig
+(eˣ)′ = eˣ (ln x)′ = 1/x (sin x)′ = cos x (cos x)′ = −sin x
+Tangent line
+y = f(a) + f′(a)(x − a)
+Extrema
+critical points: f′(c) = 0 or f′(c) undefined; compare with endpoints
+Exercises
+1. Compute lim (x→3) (x² − 9) / (x − 3).
+2. Compute lim (x→0) (√(x + 4) − 2) / x.
+3. Is f(x) = (x² − 4) / (x − 2) continuous at x = 2? Justify.
+4. Using the definition, compute the derivative of f(x) = 3x + 5.
+5. Differentiate p(x) = 2x⁴ − 3x² + x − 8.
+6. Differentiate h(x) = x³·eˣ and r(x) = x / (x² + 1).
+7. Differentiate y = (2x − 1)⁶ and y = ln(x² + 1).
+8. Find the equation of the tangent line to y = x³ at x = 2.
+9. Find the dimensions of the rectangle with perimeter 40 m and maximum area.
+Answers
+1. 6. 2. 1/4. 3. No: f(2) is not defined (removable discontinuity); the limit is 4. 4. f′(x) = 3.
+5. p′(x) = 8x³ − 6x + 1. 6. h′(x) = eˣ(3x² + x³); r′(x) = (1 − x²) / (x² + 1)². 7. y′ = 12(2x −
+1)⁵; y′ = 2x / (x² + 1). 8. y = 8 + 12(x − 2), that is y = 12x − 16. 9. A square of 10 m by
+10 m.

@@ -2,66 +2,61 @@
   <a bwButton="secondaire" routerLink="/app/explorer"><mat-icon>explore</mat-icon> Trouver un cours</a>
 </bw-page-header>
 
-<mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
-  <mat-tab [label]="'En cours (' + enCours.length + ')'">
-    <div class="list">
-      @for (c of enCours; track c.id) {
-        <article class="row card">
-          <img [src]="img(c.id)" alt="" />
-          <div class="info">
-            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
-            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
-            <p class="next"><mat-icon>play_circle</mat-icon> Prochain chapitre : <strong>{{ prochain(c) }}</strong></p>
-            <p class="muted small">Encore {{ reste(c) }} pour finir</p>
-          </div>
-          <bw-progress-ring [value]="c.progression" [size]="64" label="Progression" />
-          <a bwButton="secondaire" [routerLink]="['/app/cours', c.id, 'lecture']">Reprendre</a>
-        </article>
-      }
+@switch (etat()) {
+  @case ('chargement') {
+    <div aria-busy="true" aria-label="Chargement de tes cours">
+      <bw-skeleton height="96px" />
+      <div style="height: 12px"></div>
+      <bw-skeleton height="96px" />
     </div>
-  </mat-tab>
-
-  <mat-tab [label]="'Terminés (' + termines.length + ')'">
-    <div class="list">
-      @for (c of termines; track c.id) {
-        <article class="row card">
-          <img [src]="img(c.id)" alt="" />
-          <div class="info">
-            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
-            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
-            @if (certificat(c.id); as cert) {
-              <p class="done"><mat-icon>workspace_premium</mat-icon> Certificat obtenu le {{ cert.date }}, score {{ cert.score }} %</p>
-            } @else {
-              <p class="next"><mat-icon>assignment</mat-icon> Tous les chapitres sont terminés : <strong>l’examen final est débloqué</strong></p>
-            }
-          </div>
-          <a bwButton="fantome" [routerLink]="['/app/cours', c.id, 'lecture']">Revoir</a>
-          @if (certificat(c.id); as cert) {
-            <a bwButton="secondaire" [routerLink]="['/app/certificats', cert.numero]"><mat-icon>workspace_premium</mat-icon> Certificat</a>
-          } @else {
-            <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', c.id]"><mat-icon>assignment</mat-icon> Passer l’examen</a>
+  }
+  @case ('erreur') {
+    <bw-empty-state icon="error" title="Impossible de charger tes cours." message="Vérifie ta connexion, puis réessaie." actionLabel="Réessayer" (action)="charger()" />
+  }
+  @default {
+    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+      <mat-tab [label]="'En cours (' + enCours().length + ')'">
+        <div class="list">
+          @for (l of enCours(); track l.cours.id) {
+            <article class="row card">
+              <img [src]="l.cours | coursImage | async" alt="" />
+              <div class="info">
+                <p class="cat muted small">{{ l.matiere }}@if (l.niveau) {, {{ l.niveau }} }</p>
+                <h2><a [routerLink]="['/app/explorer', l.cours.id]">{{ l.cours.titre }}</a></h2>
+                <p class="next"><mat-icon>play_circle</mat-icon> {{ l.pourcentage === 0 ? 'Tu n’as pas encore commencé' : 'Tu as terminé ' + l.pourcentage + ' % du cours' }}</p>
+                <p class="muted small">
+                  {{ l.cours.nbChapitres }} chapitre{{ l.cours.nbChapitres > 1 ? 's' : '' }}@if (duree(l.cours.dureeTotaleMinutes)) {, {{ duree(l.cours.dureeTotaleMinutes) }} }
+                </p>
+              </div>
+              <bw-progress-ring [value]="l.pourcentage" [size]="64" label="Progression" />
+              <a bwButton="secondaire" [routerLink]="['/app/cours', l.cours.id, 'lecture']">{{ l.pourcentage === 0 ? 'Commencer' : 'Reprendre' }}</a>
+            </article>
+          } @empty {
+            <bw-empty-state icon="school" title="Aucun cours en cours" message="Inscris-toi à un cours depuis le catalogue pour le retrouver ici.">
+              <a bwButton="principal" routerLink="/app/explorer">Trouver un cours</a>
+            </bw-empty-state>
           }
-        </article>
-      }
-    </div>
-  </mat-tab>
+        </div>
+      </mat-tab>
 
-  <mat-tab [label]="'Enregistrés (' + enregistres().length + ')'">
-    <div class="list">
-      @for (c of enregistres(); track c.id) {
-        <article class="row card">
-          <img [src]="img(c.id)" alt="" />
-          <div class="info">
-            <p class="cat muted small">{{ c.categorie }}, {{ c.enseignant }}</p>
-            <h2><a [routerLink]="['/app/explorer', c.id]">{{ c.titre }}</a></h2>
-            <p class="muted small">{{ c.chapitres.length }} chapitres, {{ total(c) }}, <strong>{{ prix(c.prix) }}</strong></p>
-          </div>
-          <button type="button" bwButton="fantome" (click)="retirer(c.id)">Retirer</button>
-          <a bwButton="secondaire" [routerLink]="['/app/explorer', c.id]">{{ c.prix ? 'Voir le prix' : 'S’inscrire' }}</a>
-        </article>
-      } @empty {
-        <bw-empty-state icon="bookmark" title="Aucun cours enregistré" message="Enregistre un cours depuis le catalogue pour le retrouver ici." />
-      }
-    </div>
-  </mat-tab>
-</mat-tab-group>
+      <mat-tab [label]="'Terminés (' + termines().length + ')'">
+        <div class="list">
+          @for (l of termines(); track l.cours.id) {
+            <article class="row card">
+              <img [src]="l.cours | coursImage | async" alt="" />
+              <div class="info">
+                <p class="cat muted small">{{ l.matiere }}@if (l.niveau) {, {{ l.niveau }} }</p>
+                <h2><a [routerLink]="['/app/explorer', l.cours.id]">{{ l.cours.titre }}</a></h2>
+                <p class="done"><mat-icon>check_circle</mat-icon> Tous les chapitres sont terminés</p>
+              </div>
+              <a bwButton="fantome" [routerLink]="['/app/cours', l.cours.id, 'lecture']">Revoir</a>
+              <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', l.cours.id]"><mat-icon>assignment</mat-icon> Passer l’examen</a>
+            </article>
+          } @empty {
+            <bw-empty-state icon="workspace_premium" title="Aucun cours terminé" message="Termine tous les chapitres d’un cours : il apparaîtra ici." />
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  }
+}

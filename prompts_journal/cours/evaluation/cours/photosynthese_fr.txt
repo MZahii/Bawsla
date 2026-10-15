@@ -1,0 +1,15 @@
+La photosynthèse
+
+La photosynthèse est le processus par lequel les plantes, les algues et certaines bactéries transforment l'énergie lumineuse en énergie chimique. Elle se déroule dans les chloroplastes, des organites présents dans les cellules vertes des feuilles. Les chloroplastes contiennent la chlorophylle, un pigment vert qui absorbe surtout la lumière rouge et la lumière bleue et qui réfléchit la lumière verte, ce qui explique la couleur des feuilles.
+
+Pour fabriquer ses molécules organiques, la plante a besoin de trois ingrédients : de l'eau, du dioxyde de carbone et de la lumière. L'eau est absorbée par les racines et monte dans la tige jusqu'aux feuilles. Le dioxyde de carbone entre dans la feuille par de petites ouvertures appelées stomates, situées surtout sous la face inférieure. La lumière est captée par la chlorophylle.
+
+Le bilan de la photosynthèse s'écrit de la façon suivante : six molécules de dioxyde de carbone et six molécules d'eau, en présence de lumière, donnent une molécule de glucose et six molécules de dioxygène. Le glucose est un sucre que la plante utilise comme source d'énergie et comme matière première pour construire sa propre matière, comme la cellulose de ses parois. Le dioxygène est rejeté dans l'air.
+
+La photosynthèse se déroule en deux grandes étapes. Pendant la phase lumineuse, qui a lieu dans les membranes des thylakoïdes à l'intérieur du chloroplaste, la lumière sert à casser des molécules d'eau. Cette réaction libère du dioxygène et produit de l'énergie sous forme d'ATP et de NADPH. Pendant la phase sombre, appelée cycle de Calvin et qui a lieu dans le stroma du chloroplaste, cette énergie permet de fixer le dioxyde de carbone et de fabriquer du glucose. Cette seconde phase ne dépend pas directement de la lumière, mais elle a besoin des produits de la première.
+
+Plusieurs facteurs font varier l'intensité de la photosynthèse. Plus la lumière est intense, plus la photosynthèse augmente, jusqu'à un palier où la plante ne peut plus utiliser davantage de lumière. La température joue aussi un rôle : la photosynthèse est maximale dans une plage modérée et diminue quand il fait trop froid ou trop chaud. Enfin, la concentration en dioxyde de carbone et la quantité d'eau disponible limitent la production de glucose.
+
+À ne pas confondre avec la respiration. La plante respire aussi, jour et nuit : elle consomme du dioxygène et rejette du dioxyde de carbone pour libérer l'énergie du glucose. De jour, la photosynthèse est en général plus forte que la respiration, et la plante rejette donc plus de dioxygène qu'elle n'en consomme.
+
+Points à retenir. La photosynthèse transforme l'énergie lumineuse en énergie chimique dans les chloroplastes. Elle consomme de l'eau et du dioxyde de carbone, et elle produit du glucose et du dioxygène. Elle comprend une phase lumineuse et un cycle de Calvin. Elle dépend de la lumière, de la température, du dioxyde de carbone et de l'eau.

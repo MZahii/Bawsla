@@ -1,54 +1,96 @@
-import { Component } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
-import { COURS, QUIZ } from '../../../../core/demo/demo-data';
-import { CERTIFICATS, ETAT_EXAMEN, HISTORIQUE_QUIZ, meta } from '../../../../core/demo/demo-plus';
-import { BwButton } from '../../../../shared';
+import { BwButton, EmptyState } from '../../../../shared';
 import { BwChart, Kpi, PageHeader } from '../../../../shared/ui';
-
-type EtatExamen = 'verrouille' | 'disponible' | 'reussi';
+import { Certificat, HistoriqueLigne, Quiz } from '../../models/quiz.model';
+import { CoursTitresService } from '../../services/cours-titres.service';
+import { QuizService } from '../../services/quiz.service';
 
 /**
- * Espace apprenant : « Évaluations ». Pour chaque cours suivi, les quiz de chapitre puis l'examen final,
- * qui se débloque quand tous les chapitres sont terminés et donne le certificat.
- * La comparaison se fait avec les autres apprenants du même cours (pas de classe).
- * À brancher : QuizService.findForApprenant(), l'historique des tentatives et l'état des examens finaux.
+ * Espace apprenant : « Évaluations ». Pour chaque cours, les quiz de chapitre publiés puis l'examen final,
+ * qui donne le certificat. La comparaison se fait avec les autres apprenants du même cours (pas de classe).
  */
 @Component({
   selector: 'app-quiz-list',
-  imports: [RouterLink, MatIconModule, BwButton, PageHeader, Kpi, BwChart],
+  imports: [DatePipe, RouterLink, MatIconModule, BwButton, EmptyState, PageHeader, Kpi, BwChart],
   templateUrl: './quiz-list.html',
   styleUrl: './quiz-list.scss',
 })
 export class QuizList {
-  protected readonly parcours = COURS.filter((c) => c.inscrit).map((c) => {
-    const restants = c.chapitres.filter((ch) => !ch.fait).length;
-    const examen = ETAT_EXAMEN[c.id] ?? { tentativesFaites: 0, meilleurScore: null };
-    const certificat = CERTIFICATS.find((x) => x.coursId === c.id);
-    const etat: EtatExamen = certificat ? 'reussi' : restants === 0 ? 'disponible' : 'verrouille';
+  private readonly quizService = inject(QuizService);
+  protected readonly catalogue = inject(CoursTitresService);
+
+  protected readonly chargement = signal(true);
+  protected readonly erreur = signal(false);
+  private readonly quiz = signal<Quiz[]>([]);
+  private readonly examens = signal<Quiz[]>([]);
+  protected readonly historique = signal<HistoriqueLigne[]>([]);
+  private readonly certificats = signal<Certificat[]>([]);
+
+  /** Meilleur score de l'apprenant par quiz. */
+  private readonly meilleurs = computed(() => {
+    const m = new Map<number, number>();
+    for (const h of this.historique()) m.set(h.quizId, Math.max(m.get(h.quizId) ?? 0, h.pourcentage));
+    return m;
+  });
+
+  protected readonly parcours = computed(() => {
+    const coursIds = [...new Set([...this.quiz(), ...this.examens()].map((q) => q.coursId))];
+    return coursIds.map((coursId) => {
+      const quiz = this.quiz()
+        .filter((q) => q.coursId === coursId)
+        .map((q) => ({ ...q, score: this.meilleurs().get(q.id) ?? null }));
+      const examen = this.examens().find((q) => q.coursId === coursId) ?? null;
+      const certificat = this.certificats().find((c) => c.coursId === coursId) ?? null;
+      const tentatives = examen ? this.historique().filter((h) => h.quizId === examen.id).length : 0;
+      const restantes = examen && examen.tentativesMax > 0 ? Math.max(0, examen.tentativesMax - tentatives) : null;
+      return { coursId, quiz, faits: quiz.filter((q) => q.score !== null).length, examen, certificat, restantes };
+    });
+  });
+
+  protected readonly moyenne = computed(() => {
+    const h = this.historique();
+    return h.length ? Math.round(h.reduce((t, x) => t + x.pourcentage, 0) / h.length) : null;
+  });
+  protected readonly examensDispo = computed(() => this.parcours().filter((p) => p.examen && !p.certificat && p.restantes !== 0).length);
+  protected readonly nbCertificats = computed(() => this.certificats().length);
+  /** Dernières tentatives des quiz pour lesquels une moyenne des autres apprenants existe. */
+  protected readonly comparaison = computed(() => {
+    const lignes = this.historique().filter((h) => h.moyenneAutres != null).slice(0, 8).reverse();
     return {
-      cours: c,
-      image: meta(c.id).image,
-      faits: c.chapitres.length - restants,
-      restants,
-      quiz: QUIZ.filter((q) => q.coursId === c.id),
-      examen: { ...c.examen, ...examen, etat, restantes: c.examen.tentatives - examen.tentativesFaites },
-      certificat,
+      labels: lignes.map((h) => h.titre),
+      series: [
+        { label: 'Toi', data: lignes.map((h) => h.pourcentage) },
+        { label: 'Autres apprenants du cours', data: lignes.map((h) => h.moyenneAutres as number) },
+      ],
     };
   });
 
-  protected readonly historique = HISTORIQUE_QUIZ;
-  protected readonly moyenne = Math.round(HISTORIQUE_QUIZ.reduce((t, h) => t + h.score, 0) / HISTORIQUE_QUIZ.length);
-  protected readonly examensDispo = this.parcours.filter((p) => p.examen.etat === 'disponible').length;
-  protected readonly nbCertificats = CERTIFICATS.length;
-  protected readonly comparaison = {
-    labels: HISTORIQUE_QUIZ.map((h) => h.titre),
-    series: [
-      { label: 'Toi', data: HISTORIQUE_QUIZ.map((h) => h.score) },
-      { label: 'Autres apprenants du cours', data: HISTORIQUE_QUIZ.map((h) => h.autres) },
-    ],
-  };
+  constructor() {
+    this.catalogue.charger();
+    forkJoin({
+      quiz: this.quizService.findAll(undefined, 'QUIZ'),
+      examens: this.quizService.findAll(undefined, 'EXAMEN'),
+      historique: this.quizService.historique(),
+      certificats: this.quizService.mesCertificats(),
+    }).subscribe({
+      next: (r) => {
+        this.quiz.set(r.quiz.filter((q) => q.statut === 'PUBLIE'));
+        this.examens.set(r.examens.filter((q) => q.statut === 'PUBLIE'));
+        this.historique.set(r.historique);
+        this.certificats.set(r.certificats);
+        this.chargement.set(false);
+      },
+      error: () => {
+        this.erreur.set(true);
+        this.chargement.set(false);
+      },
+    });
+  }
 
   protected ton(score: number | null): string {
     if (score === null) return '';

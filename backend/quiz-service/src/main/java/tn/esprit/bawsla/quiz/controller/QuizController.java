@@ -17,11 +17,15 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import tn.esprit.bawsla.quiz.common.ApiResponse;
 import tn.esprit.bawsla.quiz.common.security.CurrentUser;
-import tn.esprit.bawsla.quiz.dto.NotionRateeDto;
+import tn.esprit.bawsla.quiz.dto.QuizDetailResponse;
 import tn.esprit.bawsla.quiz.dto.QuizRequest;
 import tn.esprit.bawsla.quiz.dto.QuizResponse;
+import tn.esprit.bawsla.quiz.dto.StatistiquesQuiz;
+import tn.esprit.bawsla.quiz.dto.StudioLigne;
+import tn.esprit.bawsla.quiz.entity.TypeQuiz;
 import tn.esprit.bawsla.quiz.service.QuizService;
 
+/** Gestion des quiz par le formateur : brouillon, édition, publication, statistiques. */
 @RestController
 @RequestMapping("/api/quiz")
 public class QuizController {
@@ -32,32 +36,55 @@ public class QuizController {
         this.quizService = quizService;
     }
 
+    /** Quiz visibles : publiés pour tous, plus les brouillons de leur auteur (et tout pour l'admin). */
     @GetMapping
-    public ApiResponse<List<QuizResponse>> findAll(@RequestParam(required = false) Long coursId, CurrentUser user) {
-        return ApiResponse.ok(quizService.findAll(coursId));
+    public ApiResponse<List<QuizResponse>> findAll(@RequestParam(required = false) Long coursId,
+                                                   @RequestParam(required = false) TypeQuiz type, CurrentUser user) {
+        return ApiResponse.ok(quizService.findAll(coursId, type, user));
     }
 
-    /** Contrat inter-modules (module User / ML). STUB : renvoie une liste vide. */
-    @GetMapping("/notions-ratees")
-    public ApiResponse<List<NotionRateeDto>> notionsRatees(@RequestParam Long etudiantId, CurrentUser user) {
-        return ApiResponse.ok(quizService.notionsRatees(etudiantId, user), "stub");
+    /** Studio du formateur : ses quiz avec tentatives, moyenne et taux de réussite. */
+    @GetMapping("/mes-quiz")
+    public ApiResponse<List<StudioLigne>> mesQuiz(CurrentUser user) {
+        return ApiResponse.ok(quizService.mesQuiz(user));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<QuizResponse> findById(@PathVariable Long id, CurrentUser user) {
-        return ApiResponse.ok(quizService.findById(id));
+        return ApiResponse.ok(quizService.findById(id, user));
+    }
+
+    /** Quiz complet avec les bonnes réponses : auteur ou admin uniquement. */
+    @GetMapping("/{id}/detail")
+    public ApiResponse<QuizDetailResponse> detail(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(quizService.detail(id, user));
+    }
+
+    @GetMapping("/{id}/statistiques")
+    public ApiResponse<StatistiquesQuiz> statistiques(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(quizService.statistiques(id, user));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<QuizResponse> create(@Valid @RequestBody QuizRequest request, CurrentUser user) {
-        return ApiResponse.ok(quizService.create(request, user), "Quiz créé");
+        return ApiResponse.ok(quizService.create(request, user), "Quiz enregistré en brouillon");
     }
 
     @PutMapping("/{id}")
     public ApiResponse<QuizResponse> update(@PathVariable Long id, @Valid @RequestBody QuizRequest request,
                                             CurrentUser user) {
         return ApiResponse.ok(quizService.update(id, request, user), "Quiz modifié");
+    }
+
+    @PostMapping("/{id}/publier")
+    public ApiResponse<QuizResponse> publier(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(quizService.publier(id, user), "Quiz publié");
+    }
+
+    @PostMapping("/{id}/depublier")
+    public ApiResponse<QuizResponse> depublier(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(quizService.depublier(id, user), "Quiz repassé en brouillon");
     }
 
     @DeleteMapping("/{id}")

@@ -10,6 +10,8 @@ target/
 !**/.mvn/wrapper/maven-wrapper.jar
 *.log
 hs_err_pid*
+# Sortie de compilation des IDE Java (Eclipse, VS Code)
+backend/*/bin/
 
 # --- Node / Angular ---
 node_modules/

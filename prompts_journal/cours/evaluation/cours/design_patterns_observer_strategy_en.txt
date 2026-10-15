@@ -1,0 +1,15 @@
+Two behavioral design patterns: Observer and Strategy
+
+A design pattern is a general, reusable solution to a problem that appears again and again in software design. It is not a finished piece of code that can be copied into a program. It is a description of how classes and objects can be organized to solve a family of problems. Behavioral patterns focus on how objects communicate and how they share responsibilities.
+
+The Observer pattern defines a one-to-many dependency between objects, so that when one object changes state, all of its dependents are notified and updated automatically. The object that changes is called the subject. The objects that react are called observers. A typical example is a spreadsheet: when the user edits a cell, every chart that depends on this cell is redrawn. The subject keeps a list of observers and offers methods to register and remove them. When its state changes, it calls the update method of each observer in the list.
+
+The main benefit of the Observer pattern is loose coupling. The subject knows only that its observers implement a common interface. It does not need to know their concrete classes, so new observers can be added without changing the subject. The main risk is unexpected updates: if observers modify the subject in response to a notification, a chain of updates can become hard to follow, and a forgotten observer that is never removed can keep objects alive in memory.
+
+The Strategy pattern defines a family of algorithms, encapsulates each one in its own class, and makes them interchangeable. The algorithm can then vary independently from the clients that use it. Imagine an online shop that has to compute shipping costs. Instead of writing one long method full of conditions for standard delivery, express delivery and pickup in store, the shop defines a shipping strategy interface with a single method. Each delivery mode becomes a class that implements this interface, and the order simply uses the strategy it has been given.
+
+Strategy replaces conditional statements with polymorphism. Adding a new delivery mode means adding a new class, not modifying the existing code, which follows the open-closed principle: software entities should be open for extension but closed for modification. The cost is a larger number of small classes, and the client must know which strategies exist in order to choose one.
+
+The two patterns are often confused because both rely on interfaces. The difference is the intent. Observer is about notifying many objects of a change. Strategy is about choosing one algorithm among several.
+
+Key points. Observer links one subject to many observers and keeps them updated automatically. Strategy encapsulates interchangeable algorithms behind a common interface. Both reduce coupling by depending on interfaces instead of concrete classes. Use Observer when a change must be broadcast, and Strategy when a behavior must be selected.

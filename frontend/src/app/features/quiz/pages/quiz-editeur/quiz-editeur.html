@@ -1,0 +1,106 @@
+<bw-page-header [title]="quizId ? 'Modifier le quiz' : 'Nouveau quiz'" subtitle="Écris tes questions toi-même. Le quiz reste en brouillon jusqu’à sa publication." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Quiz', link: '/studio/quiz' }, { label: quizId ? 'Modifier' : 'Nouveau' }]" />
+
+<div class="edit">
+  @if (erreur(); as e) {
+    <p class="card card-pad" role="alert" style="color: var(--color-error)">{{ e }}</p>
+  }
+  <section class="card card-pad infos" aria-labelledby="infos-titre">
+    <h2 id="infos-titre">Informations</h2>
+    <mat-form-field appearance="outline">
+      <mat-label>Titre du quiz</mat-label>
+      <input matInput [ngModel]="titre()" (ngModelChange)="titre.set($event)" maxlength="150" required />
+    </mat-form-field>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>Matière</mat-label>
+        <mat-select [ngModel]="matiere()" (ngModelChange)="choisirMatiere($event)">
+          @for (m of matieres; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+        </mat-select>
+      </mat-form-field>
+      @if (matiere() === matiereAutre) {
+        <mat-form-field appearance="outline">
+          <mat-label>Précise la matière</mat-label>
+          <input matInput required [ngModel]="precision()" (ngModelChange)="precision.set($event)" [maxlength]="maxLongueurMatiere" placeholder="Ex. : Œnologie" />
+        </mat-form-field>
+      }
+      @if (cours().length > 0) {
+        <mat-form-field appearance="outline">
+          <mat-label>Cours</mat-label>
+          <mat-select [ngModel]="coursId()" (ngModelChange)="coursId.set($event)">
+            @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+      } @else {
+        <p class="muted small" role="status">Aucun cours publié dans cette matière pour l’instant : crée d’abord le cours dans le studio.</p>
+      }
+    </div>
+    <fieldset>
+      <legend>Type</legend>
+      <mat-button-toggle-group [ngModel]="type()" (ngModelChange)="type.set($event)" hideSingleSelectionIndicator aria-label="Type d’évaluation">
+        <mat-button-toggle value="QUIZ">Quiz de chapitre</mat-button-toggle>
+        <mat-button-toggle value="EXAMEN">Examen final (certificat)</mat-button-toggle>
+      </mat-button-toggle-group>
+    </fieldset>
+    <fieldset>
+      <legend>Difficulté</legend>
+      <mat-button-toggle-group
+        class="niveaux"
+        [ngModel]="difficulte()"
+        (ngModelChange)="difficulte.set($event)"
+        hideSingleSelectionIndicator
+        aria-label="Difficulté"
+      >
+        @for (d of difficultes; track d.code) {
+          <mat-button-toggle [value]="d.code">{{ d.libelle }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+    </fieldset>
+  </section>
+
+  @for (q of questions(); track $index; let i = $index) {
+    <article class="card card-pad q" [class.incomplete]="!completes()[i]" [attr.aria-labelledby]="'qt-' + i">
+      <header>
+        <h3 [id]="'qt-' + i">Question {{ i + 1 }}</h3>
+        <span class="grow"></span>
+        <button type="button" bwButton="fantome" [disabled]="questions().length === 1" (click)="supprimer(i)" [attr.aria-label]="'Supprimer la question ' + (i + 1)">
+          <mat-icon>delete</mat-icon> Supprimer
+        </button>
+      </header>
+      <mat-form-field appearance="outline">
+        <mat-label>Énoncé</mat-label>
+        <textarea matInput rows="2" [ngModel]="q.enonce" (ngModelChange)="modifier(i, { enonce: $event })" required></textarea>
+      </mat-form-field>
+
+      <mat-radio-group class="choix" [ngModel]="q.bonne" (ngModelChange)="modifier(i, { bonne: $event })" [attr.aria-label]="'Bonne réponse de la question ' + (i + 1)">
+        @for (c of q.choix; track $index; let k = $index) {
+          <div class="choix-ligne">
+            <mat-radio-button [value]="k" [aria-label]="'Le choix ' + lettres[k] + ' est la bonne réponse'" />
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Choix {{ lettres[k] }}</mat-label>
+              <input matInput [ngModel]="c" (ngModelChange)="modifierChoix(i, k, $event)" required />
+            </mat-form-field>
+          </div>
+        }
+      </mat-radio-group>
+      <p class="muted small">Coche le bouton à gauche de la bonne réponse. Les choix doivent être différents.</p>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Compétence évaluée (sert au suivi des notions ratées)</mat-label>
+        <input matInput maxlength="150" [ngModel]="q.competence" (ngModelChange)="modifier(i, { competence: $event })" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Explication (affichée après la réponse)</mat-label>
+        <textarea matInput rows="2" [ngModel]="q.explication" (ngModelChange)="modifier(i, { explication: $event })"></textarea>
+      </mat-form-field>
+    </article>
+  }
+
+  <footer class="card card-pad actions">
+    <button type="button" bwButton="secondaire" [disabled]="questions().length >= maxQuestions" (click)="ajouter()">
+      <mat-icon>add</mat-icon> Ajouter une question
+    </button>
+    <span class="grow"></span>
+    <button type="button" bwButton="principal" [disabled]="!valide() || envoi()" (click)="enregistrer()">{{ envoi() ? 'Enregistrement…' : 'Enregistrer le brouillon' }}</button>
+  </footer>
+</div>
