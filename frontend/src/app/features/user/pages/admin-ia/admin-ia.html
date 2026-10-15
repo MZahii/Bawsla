@@ -1,80 +1,121 @@
-<bw-page-header title="Supervision IA" subtitle="Qualité des modèles, volume d’appels, quota et incidents." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Supervision IA' }]">
-  <button type="button" bwButton="secondaire"><mat-icon>download</mat-icon> Rapport mensuel</button>
+<bw-page-header title="Supervision IA" subtitle="Modèles de Machine Learning du module User, évalués sur des apprenants qu’ils n’ont jamais vus." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Supervision IA' }]">
+  <button type="button" bwButton="principal" (click)="reentrainer()" [disabled]="entrainement() || !m()">
+    <mat-icon>model_training</mat-icon> {{ entrainement() ? 'Entraînement en cours…' : 'Réentraîner' }}
+  </button>
 </bw-page-header>
 
-<div class="grid-4">
-  <bw-kpi label="Requêtes (14 jours)" [value]="total" icon="bolt" [delta]="21" deltaLabel="vs période précédente" [trend]="requetes.series[0].data" />
-  <bw-kpi label="Temps de réponse médian" value="2,4 s" icon="timer" [delta]="-8" deltaLabel="vs période précédente" />
-  <bw-kpi label="Taux d’erreur" value="0,9 %" icon="error" />
-  <bw-kpi label="Coût estimé ce mois" [value]="quota.cout + ' €'" icon="payments" />
-</div>
-
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head">
-      <div><h2>Requêtes par module</h2><span class="sub">par jour, 14 derniers jours</span></div>
-      <mat-button-toggle-group [value]="vue()" (change)="vue.set($event.value)" hideSingleSelectionIndicator aria-label="Type de graphique">
-        <mat-button-toggle value="stacked" aria-label="Barres empilées"><mat-icon>stacked_bar_chart</mat-icon></mat-button-toggle>
-        <mat-button-toggle value="line" aria-label="Courbes"><mat-icon>show_chart</mat-icon></mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
-    <div class="card-body">
-      <bw-chart [type]="vue()" [labels]="requetes.labels" [series]="requetes.series" [height]="280" ariaLabel="Requêtes IA par module et par jour" />
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Quota mensuel</h2></div>
-    <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
-      <bw-progress-ring [value]="quotaPct" [size]="140" label="Quota utilisé" />
-      <p style="margin: 0"><strong class="num">{{ quota.utilise }}</strong> requêtes sur {{ quota.limite }}</p>
-      <p class="muted small" style="margin: 0">Au rythme actuel, le quota sera atteint le 27 octobre.</p>
-      <button type="button" bwButton="fantome">Modifier le quota</button>
-    </div>
-  </section>
-</div>
-
-<section class="card mt">
-  <div class="card-head"><h2>Qualité des modèles</h2><span class="sub">mesurée sur un échantillon de test, un modèle par module</span></div>
-  <div class="grid-4 card-body">
-    @for (m of modeles; track m.module) {
-      <article class="card card-pad">
-        <div style="display: flex; justify-content: space-between; align-items: center">
-          <span class="pill plain">{{ m.module }}</span>
-          <span class="pill" [class.ok]="m.etat === 'ok'" [class.warn]="m.etat !== 'ok'">{{ m.etat === 'ok' ? 'Stable' : 'À surveiller' }}</span>
-        </div>
-        <h3 style="margin: 12px 0 2px; font: 600 16px var(--font-heading)">{{ m.usage }}</h3>
-        <p class="muted small" style="margin: 0 0 12px">{{ m.modele }}</p>
-        <p style="margin: 0; font: 600 28px var(--font-heading)" class="num">{{ m.valeur }} %</p>
-        <p class="muted small" style="margin: 0">{{ m.metrique }}, {{ m.echantillon }}</p>
-      </article>
-    }
+@if (erreur()) {
+  <section class="card"><bw-empty-state icon="cloud_off" title="Métriques indisponibles" [message]="erreur()!" actionLabel="Réessayer" (action)="charger()" /></section>
+} @else if (!m()) {
+  <div class="grid-4" aria-busy="true" aria-label="Chargement des métriques (le premier appel entraîne les modèles, jusqu’à une minute)">
+    @for (i of [1, 2, 3, 4]; track i) { <bw-skeleton height="110px" /> }
   </div>
-</section>
+  <p class="muted small">Premier chargement : les modèles s’entraînent, cela peut prendre jusqu’à une minute.</p>
+} @else {
+  @let met = m()!;
+  @let rf = met.risque;
 
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head"><h2>Erreurs récentes</h2><span class="pill ko">{{ erreurs.length }}</span></div>
+  <section class="card source" [class.simulee]="met.donneesSimulees" role="note">
+    <mat-icon aria-hidden="true">{{ met.donneesSimulees ? 'science' : 'verified' }}</mat-icon>
+    <div>
+      <strong>{{ met.donneesSimulees ? 'Données simulées' : 'Données réelles' }}</strong>
+      <span class="small">{{ met.source }}</span>
+      <span class="small muted">Entraîné le {{ dateEntrainement() }} en {{ nombre(met.dureeSecondes, 1) }} s · Python {{ met.versions['python'] }} · scikit-learn {{ met.versions['scikit-learn'] }}</span>
+    </div>
+  </section>
+
+  <div class="grid-4 mt">
+    <bw-kpi label="Risque d’échec : accuracy (test)" [value]="pct(rf.test.accuracy)" icon="target" />
+    <bw-kpi label="Échecs repérés (rappel)" [value]="pct(rf.test.rappel, 0)" icon="notification_important" />
+    <bw-kpi label="AUC du Random Forest" [value]="nombre(rf.test.auc)" icon="monitoring" />
+    <bw-kpi label="Recommandation : trouvé dans le top 3" [value]="pct(met.recommandation.evaluation.hybride.reussiteA3, 0)" icon="recommend" />
+  </div>
+
+  <!-- ===== Risque d'échec : Random Forest ===== -->
+  <section class="card mt">
+    <div class="card-head">
+      <div><h2>Risque d’échec : Random Forest</h2>
+        <span class="sub">Apprentissage supervisé. {{ rf.nbEntrainement }} apprenants pour l’entraînement, {{ rf.nbTest }} gardés pour le test ; validation croisée à 5 plis.</span></div>
+    </div>
+    <div class="grid-main card-body">
+      <div>
+        <h3 class="h3">Comparaison avec deux références (validation croisée, en %)</h3>
+        @if (comparaison(); as c) {
+          <bw-chart type="bar" [labels]="c.labels" [series]="c.series" [height]="260" [max]="100" unit=" %" ariaLabel="Accuracy, F1 et AUC du Random Forest, de la régression logistique et de la classe majoritaire" />
+        }
+      </div>
+      <div>
+        <h3 class="h3">Matrice de confusion (test, seuil {{ nombre(rf.seuilDecision) }})</h3>
+        <table class="matrice" aria-label="Matrice de confusion du Random Forest sur le jeu de test">
+          <thead><tr><th scope="col"></th><th scope="col">Prédit : réussite</th><th scope="col">Prédit : échec</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Réel : réussite</th><td class="ok num">{{ rf.test.matriceConfusion[0][0] }}</td><td class="ko num">{{ rf.test.matriceConfusion[0][1] }}<span class="small">fausses alertes</span></td></tr>
+            <tr><th scope="row">Réel : échec</th><td class="ko num">{{ rf.test.matriceConfusion[1][0] }}<span class="small">ratés</span></td><td class="ok num">{{ rf.test.matriceConfusion[1][1] }}<span class="small">repérés</span></td></tr>
+          </tbody>
+        </table>
+        <dl class="chiffres">
+          <div><dt>Précision</dt><dd>{{ pct(rf.test.precision, 0) }}</dd></div>
+          <div><dt>F1</dt><dd>{{ nombre(rf.test.f1) }}</dd></div>
+          <div><dt>Rappel au seuil 0,5</dt><dd>{{ pct(rf.testSeuil05.rappel, 0) }}</dd></div>
+          <div><dt>Profondeur max</dt><dd>{{ rf.hyperparametres.max_depth ?? 'libre' }}</dd></div>
+        </dl>
+        <p class="muted small">Seuil choisi pour repérer davantage d’apprenants en difficulté : un échec raté coûte plus cher qu’une fausse alerte.</p>
+      </div>
+    </div>
+    <div class="card-body sep">
+      <h3 class="h3">Variables les plus importantes</h3>
+      @if (importances(); as imp) {
+        <bw-chart type="hbar" [labels]="imp.labels" [series]="imp.series" [height]="280" unit=" %" ariaLabel="Importance des variables dans le Random Forest" />
+      }
+    </div>
+  </section>
+
+  <!-- ===== Profils : K-Means ===== -->
+  <section class="card mt">
+    <div class="card-head">
+      <div><h2>Profils d’apprenants : K-Means</h2>
+        <span class="sub">Apprentissage non supervisé. k = {{ met.profils.k }} ({{ met.profils.regleChoixK }}), silhouette {{ nombre(met.profils.silhouette, 3) }}@if (met.profils.accordProfilsCaches !== undefined) {, accord avec les profils simulés (ARI) {{ nombre(met.profils.accordProfilsCaches) }}}.</span></div>
+    </div>
+    <div class="grid-2 card-body">
+      <div>
+        <h3 class="h3">Méthode du coude (inertie)</h3>
+        @if (coude(); as c) { <bw-chart type="line" [labels]="c.labels" [series]="c.series" [height]="220" ariaLabel="Inertie du K-Means selon le nombre de groupes" /> }
+      </div>
+      <div>
+        <h3 class="h3">Score de silhouette</h3>
+        @if (silhouette(); as s) { <bw-chart type="line" [labels]="s.labels" [series]="s.series" [height]="220" ariaLabel="Score de silhouette selon le nombre de groupes" /> }
+      </div>
+    </div>
     <div class="table-wrap">
-      <table mat-table [dataSource]="erreurs" class="bw-table dense">
-        <ng-container matColumnDef="quand"><th mat-header-cell *matHeaderCellDef>Date</th><td mat-cell *matCellDef="let e" class="num muted">{{ e.quand }}</td></ng-container>
-        <ng-container matColumnDef="module"><th mat-header-cell *matHeaderCellDef>Module</th><td mat-cell *matCellDef="let e">{{ e.module }}</td></ng-container>
-        <ng-container matColumnDef="type"><th mat-header-cell *matHeaderCellDef>Type</th><td mat-cell *matCellDef="let e"><span class="pill" [class.warn]="e.type !== 'Quota'" [class.ko]="e.type === 'Quota'">{{ e.type }}</span></td></ng-container>
-        <ng-container matColumnDef="detail"><th mat-header-cell *matHeaderCellDef>Détail</th><td mat-cell *matCellDef="let e" class="small">{{ e.detail }}</td></ng-container>
-        <tr mat-header-row *matHeaderRowDef="colErreurs"></tr>
-        <tr mat-row *matRowDef="let row; columns: colErreurs"></tr>
+      <table class="bw-table dense groupes">
+        <thead><tr><th>Groupe</th><th class="num">Apprenants</th><th class="num">Échec</th><th class="num">Note moyenne</th><th class="num">Jours actifs</th><th>Description</th></tr></thead>
+        <tbody>
+          @for (g of met.profils.groupes; track g.id) {
+            <tr>
+              <td><strong>{{ g.nom }}</strong></td>
+              <td class="num">{{ g.taille }}</td>
+              <td class="num">{{ pourcentEchec(g.nom) }}</td>
+              <td class="num">{{ pct(g.centre['noteMoyenne'], 0) }}</td>
+              <td class="num">{{ nombre(g.centre['joursActifs30j'], 0) }}</td>
+              <td class="small">{{ g.description }}</td>
+            </tr>
+          }
+        </tbody>
       </table>
     </div>
   </section>
-  <section class="card">
-    <div class="card-head"><h2>Fonctionnalités</h2></div>
-    <ul style="list-style: none; margin: 0; padding: 0">
-      @for (f of fonctions; track f.nom) {
-        <li style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--color-border)">
-          <span style="flex: 1"><strong class="small">{{ f.nom }}</strong><br /><span class="muted small">Module {{ f.module }}</span></span>
-          <mat-slide-toggle [checked]="f.actif" [aria-label]="f.nom" />
-        </li>
+
+  <!-- ===== Recommandation ===== -->
+  <section class="card mt">
+    <div class="card-head">
+      <div><h2>Recommandation de cours : filtrage collaboratif</h2>
+        <span class="sub">Un cours suivi est caché pour {{ met.recommandation.evaluation.nbApprenantsEvalues }} apprenants ({{ met.recommandation.evaluation.tirages }} tirages) : le modèle le retrouve-t-il ? Matrice {{ met.recommandation.nbApprenants }} × {{ met.recommandation.nbCours }}, remplie à {{ pct(met.recommandation.densite, 0) }}.</span></div>
+    </div>
+    <div class="card-body">
+      @if (recommandation(); as r) {
+        <bw-chart type="bar" [labels]="r.labels" [series]="r.series" [height]="260" [max]="100" unit=" %" ariaLabel="Taux de réussite et couverture des trois méthodes de recommandation" />
       }
-    </ul>
-    <p class="card-body muted small" style="margin: 0">Désactiver une fonctionnalité masque ses boutons pour tous les utilisateurs. Les clés API restent dans le fichier .env du serveur.</p>
+      <p class="muted small">Hybride retenu : collaboratif {{ pct(met.recommandation.poids['collaboratif'], 0) }}, popularité {{ pct(met.recommandation.poids['popularite'], 0) }}, domaines déclarés {{ pct(met.recommandation.poids['domaines'], 0) }} ({{ met.recommandation.kVoisins }} voisins).</p>
+    </div>
   </section>
-</div>
+}
