@@ -1,0 +1,120 @@
+{"id": "m01", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "LEFT JOIN se comporte comme un INNER JOIN, pourquoi ?", "meme": true, "langue": "fr"}
+{"id": "m02", "a": "Comment garder les lignes sans correspondance dans une jointure ?", "b": "Je perds les lignes qui n'ont pas de match quand je joins deux tables", "meme": true, "langue": "fr"}
+{"id": "m03", "a": "Différence entre WHERE et HAVING ?", "b": "Quand utiliser HAVING au lieu de WHERE ?", "meme": true, "langue": "fr"}
+{"id": "m04", "a": "Mon COUNT compte des clients en double après la jointure", "b": "Comment compter les clients une seule fois quand ils ont plusieurs commandes ?", "meme": true, "langue": "fr"}
+{"id": "m05", "a": "Comment annuler une transaction ?", "b": "Comment revenir en arrière sur toutes les modifications d'une transaction ?", "meme": true, "langue": "fr"}
+{"id": "m06", "a": "Mon index composite n'est pas utilisé", "b": "Pourquoi MySQL ignore mon index sur deux colonnes ?", "meme": true, "langue": "fr"}
+{"id": "m07", "a": "Comment voir si une requête utilise un index ?", "b": "Comment vérifier le plan d'exécution d'une requête SQL ?", "meme": true, "langue": "fr"}
+{"id": "m08", "a": "C'est quoi une clé étrangère ?", "b": "À quoi sert une foreign key dans une table ?", "meme": true, "langue": "fr"}
+{"id": "m09", "a": "Comment faire un FULL OUTER JOIN en MySQL ?", "b": "MySQL ne connaît pas FULL JOIN, comment faire ?", "meme": true, "langue": "fr"}
+{"id": "m10", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "J'ai fait b = a et en modifiant b, a est modifiée aussi", "meme": true, "langue": "fr"}
+{"id": "m11", "a": "Ma fonction garde les valeurs des appels précédents dans sa liste par défaut", "b": "Problème avec une liste vide comme paramètre par défaut d'une fonction", "meme": true, "langue": "fr"}
+{"id": "m12", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "Lire une clé absente d'un dict sans faire planter le programme", "meme": true, "langue": "fr"}
+{"id": "m13", "a": "Pourquoi le slicing n'inclut pas le dernier indice ?", "b": "notes[1:3] ne renvoie que deux éléments, c'est normal ?", "meme": true, "langue": "fr"}
+{"id": "m14", "a": "UnicodeDecodeError en lisant un fichier", "b": "Erreur d'encodage quand j'ouvre un fichier texte avec des accents", "meme": true, "langue": "fr"}
+{"id": "m15", "a": "Différence entre break et continue dans une boucle", "b": "Quand utiliser continue plutôt que break ?", "meme": true, "langue": "fr"}
+{"id": "m16", "a": "À quoi sert finally dans un try ?", "b": "Le bloc finally est-il exécuté même s'il y a une exception ?", "meme": true, "langue": "fr"}
+{"id": "m17", "a": "Différence entre 401 et 403", "b": "Quand renvoyer Forbidden plutôt que Unauthorized ?", "meme": true, "langue": "fr"}
+{"id": "m18", "a": "Pourquoi le navigateur bloque mon appel vers une autre API ?", "b": "Erreur CORS quand mon front appelle mon backend", "meme": true, "langue": "fr"}
+{"id": "m19", "a": "Différence entre PUT et PATCH ?", "b": "Faut-il utiliser PATCH ou PUT pour modifier un champ ?", "meme": true, "langue": "fr"}
+{"id": "m20", "a": "C'est quoi une méthode idempotente ?", "b": "Pourquoi dit-on que GET est idempotent et pas POST ?", "meme": true, "langue": "fr"}
+{"id": "m21", "a": "À quoi sert l'attribut HttpOnly d'un cookie ?", "b": "Comment empêcher le JavaScript de lire un cookie de session ?", "meme": true, "langue": "fr"}
+{"id": "m22", "a": "Le cadenas HTTPS veut-il dire que le site est sûr ?", "b": "Un site en HTTPS peut-il être une arnaque ?", "meme": true, "langue": "fr"}
+{"id": "m23", "a": "Quel code HTTP après une création ?", "b": "Faut-il renvoyer 200 ou 201 après un POST qui crée une ressource ?", "meme": true, "langue": "fr"}
+{"id": "m24", "a": "Comment le serveur se souvient d'un utilisateur connecté ?", "b": "HTTP est sans état, alors comment marche une session ?", "meme": true, "langue": "fr"}
+{"id": "m25", "a": "Comment le navigateur trouve l'adresse IP d'un site ?", "b": "Rôle du DNS quand je tape une adresse web", "meme": true, "langue": "fr"}
+{"id": "m26", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "Why does my LEFT JOIN behave like an INNER JOIN?", "meme": true, "langue": "en"}
+{"id": "m27", "a": "Différence entre WHERE et HAVING ?", "b": "What is the difference between WHERE and HAVING in SQL?", "meme": true, "langue": "en"}
+{"id": "m28", "a": "Comment annuler une transaction ?", "b": "How do I undo all changes made in a transaction?", "meme": true, "langue": "en"}
+{"id": "m29", "a": "C'est quoi une clé étrangère ?", "b": "What is a foreign key?", "meme": true, "langue": "en"}
+{"id": "m30", "a": "Comment voir si une requête utilise un index ?", "b": "How can I check whether my query uses an index?", "meme": true, "langue": "en"}
+{"id": "m31", "a": "Mon COUNT compte des clients en double après la jointure", "b": "COUNT returns duplicated customers after a join", "meme": true, "langue": "en"}
+{"id": "m32", "a": "Comment faire un FULL OUTER JOIN en MySQL ?", "b": "How to do a full outer join in MySQL?", "meme": true, "langue": "en"}
+{"id": "m33", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "Why does my original list change when I modify the copy?", "meme": true, "langue": "en"}
+{"id": "m34", "a": "Ma fonction garde les valeurs des appels précédents dans sa liste par défaut", "b": "Mutable default argument keeps values between calls", "meme": true, "langue": "en"}
+{"id": "m35", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "How to avoid a KeyError when reading a dictionary?", "meme": true, "langue": "en"}
+{"id": "m36", "a": "À quoi sert finally dans un try ?", "b": "What is the finally block used for?", "meme": true, "langue": "en"}
+{"id": "m37", "a": "Différence entre break et continue dans une boucle", "b": "Difference between break and continue in a loop", "meme": true, "langue": "en"}
+{"id": "m38", "a": "UnicodeDecodeError en lisant un fichier", "b": "UnicodeDecodeError when reading a text file with accents", "meme": true, "langue": "en"}
+{"id": "m39", "a": "Différence entre 401 et 403", "b": "What is the difference between 401 Unauthorized and 403 Forbidden?", "meme": true, "langue": "en"}
+{"id": "m40", "a": "Erreur CORS quand mon front appelle mon backend", "b": "The browser blocks my request to another domain because of CORS", "meme": true, "langue": "en"}
+{"id": "m41", "a": "Différence entre PUT et PATCH ?", "b": "PUT vs PATCH: which one for a partial update?", "meme": true, "langue": "en"}
+{"id": "m42", "a": "C'est quoi une méthode idempotente ?", "b": "What does idempotent mean for HTTP methods?", "meme": true, "langue": "en"}
+{"id": "m43", "a": "À quoi sert l'attribut HttpOnly d'un cookie ?", "b": "What does the HttpOnly cookie flag do?", "meme": true, "langue": "en"}
+{"id": "m44", "a": "Comment le serveur se souvient d'un utilisateur connecté ?", "b": "How does a server keep a session if HTTP is stateless?", "meme": true, "langue": "en"}
+{"id": "m45", "a": "Quel code HTTP après une création ?", "b": "Which status code should a successful POST that creates a resource return?", "meme": true, "langue": "en"}
+{"id": "m46", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "kifech nfiltri b LEFT JOIN bla ma nkhasser les lignes ?", "meme": true, "langue": "ar"}
+{"id": "m47", "a": "Différence entre WHERE et HAVING ?", "b": "chnowa el far9 bin WHERE w HAVING ?", "meme": true, "langue": "ar"}
+{"id": "m48", "a": "Comment annuler une transaction ?", "b": "kifech nraja3 les modifications mta3 transaction ?", "meme": true, "langue": "ar"}
+{"id": "m49", "a": "C'est quoi une clé étrangère ?", "b": "ما هو المفتاح الأجنبي في قاعدة البيانات؟", "meme": true, "langue": "ar"}
+{"id": "m50", "a": "Mon COUNT compte des clients en double après la jointure", "b": "COUNT y7seb el clients marrtin ba3d el jointure, 3lech ?", "meme": true, "langue": "ar"}
+{"id": "m51", "a": "Comment voir si une requête utilise un index ?", "b": "kifech na3ref ken el requête testa3mel index ?", "meme": true, "langue": "ar"}
+{"id": "m52", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "3lech ki nbadel el copie, el liste el asliya tetbadel zeda ?", "meme": true, "langue": "ar"}
+{"id": "m53", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "كيف أتجنب خطأ KeyError عند قراءة قاموس في بايثون؟", "meme": true, "langue": "ar"}
+{"id": "m54", "a": "Différence entre break et continue dans une boucle", "b": "chnowa el far9 bin break w continue fil boucle ?", "meme": true, "langue": "ar"}
+{"id": "m55", "a": "UnicodeDecodeError en lisant un fichier", "b": "3andi UnicodeDecodeError ki n9ra fichier fih accents", "meme": true, "langue": "ar"}
+{"id": "m56", "a": "Différence entre 401 et 403", "b": "ما الفرق بين الخطأ 401 والخطأ 403؟", "meme": true, "langue": "ar"}
+{"id": "m57", "a": "Erreur CORS quand mon front appelle mon backend", "b": "el navigateur ybloki el requête mte3i 3la jal CORS", "meme": true, "langue": "ar"}
+{"id": "m58", "a": "Différence entre PUT et PATCH ?", "b": "chnowa el far9 bin PUT w PATCH ?", "meme": true, "langue": "ar"}
+{"id": "m59", "a": "Comment le serveur se souvient d'un utilisateur connecté ?", "b": "kifech el serveur ya3ref eli ana connecté ken HTTP sans état ?", "meme": true, "langue": "ar"}
+{"id": "m60", "a": "Comment le navigateur trouve l'adresse IP d'un site ?", "b": "كيف يجد المتصفح عنوان IP لموقع ما؟", "meme": true, "langue": "ar"}
+{"id": "d01", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "Comment faire un RIGHT JOIN en MySQL ?", "meme": false, "langue": "fr"}
+{"id": "d02", "a": "Différence entre WHERE et HAVING ?", "b": "Comment trier un résultat avec ORDER BY ?", "meme": false, "langue": "fr"}
+{"id": "d03", "a": "Comment annuler une transaction ?", "b": "Que signifie le I de ACID ?", "meme": false, "langue": "fr"}
+{"id": "d04", "a": "Mon index composite n'est pas utilisé", "b": "Comment créer une clé primaire composée ?", "meme": false, "langue": "fr"}
+{"id": "d05", "a": "C'est quoi une clé étrangère ?", "b": "Comment supprimer une table qui a des clés étrangères ?", "meme": false, "langue": "fr"}
+{"id": "d06", "a": "Mon COUNT compte des clients en double après la jointure", "b": "Comment calculer la moyenne des commandes par client ?", "meme": false, "langue": "fr"}
+{"id": "d07", "a": "Comment faire un FULL OUTER JOIN en MySQL ?", "b": "Comment faire un UNION de deux requêtes avec des colonnes différentes ?", "meme": false, "langue": "fr"}
+{"id": "d08", "a": "Comment voir si une requête utilise un index ?", "b": "Comment sauvegarder une base MySQL avec mysqldump ?", "meme": false, "langue": "fr"}
+{"id": "d09", "a": "Pourquoi les insertions sont lentes avec beaucoup d'index ?", "b": "Comment insérer plusieurs lignes en une seule requête ?", "meme": false, "langue": "fr"}
+{"id": "d10", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "Comment trier une liste de dictionnaires par une clé ?", "meme": false, "langue": "fr"}
+{"id": "d11", "a": "Ma fonction garde les valeurs des appels précédents dans sa liste par défaut", "b": "Comment passer un nombre variable d'arguments à une fonction ?", "meme": false, "langue": "fr"}
+{"id": "d12", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "Comment parcourir les clés et les valeurs d'un dictionnaire ?", "meme": false, "langue": "fr"}
+{"id": "d13", "a": "Pourquoi le slicing n'inclut pas le dernier indice ?", "b": "Comment inverser une chaîne de caractères ?", "meme": false, "langue": "fr"}
+{"id": "d14", "a": "UnicodeDecodeError en lisant un fichier", "b": "Comment lire un fichier CSV ligne par ligne ?", "meme": false, "langue": "fr"}
+{"id": "d15", "a": "Différence entre break et continue dans une boucle", "b": "Comment écrire une boucle while qui s'arrête après 10 essais ?", "meme": false, "langue": "fr"}
+{"id": "d16", "a": "À quoi sert finally dans un try ?", "b": "Comment créer sa propre classe d'exception ?", "meme": false, "langue": "fr"}
+{"id": "d17", "a": "Comment fonctionne une compréhension de liste ?", "b": "Comment fonctionne un générateur avec yield ?", "meme": false, "langue": "fr"}
+{"id": "d18", "a": "Que renvoie une fonction sans return ?", "b": "Comment documenter une fonction avec une docstring ?", "meme": false, "langue": "fr"}
+{"id": "d19", "a": "Différence entre 401 et 403", "b": "Que signifie le code 404 ?", "meme": false, "langue": "fr"}
+{"id": "d20", "a": "Erreur CORS quand mon front appelle mon backend", "b": "Comment configurer un certificat TLS sur Nginx ?", "meme": false, "langue": "fr"}
+{"id": "d21", "a": "Différence entre PUT et PATCH ?", "b": "Comment envoyer un fichier avec une requête POST ?", "meme": false, "langue": "fr"}
+{"id": "d22", "a": "C'est quoi une méthode idempotente ?", "b": "C'est quoi une API GraphQL ?", "meme": false, "langue": "fr"}
+{"id": "d23", "a": "À quoi sert l'attribut HttpOnly d'un cookie ?", "b": "Combien de temps dure un cookie par défaut ?", "meme": false, "langue": "fr"}
+{"id": "d24", "a": "Le cadenas HTTPS veut-il dire que le site est sûr ?", "b": "Comment obtenir un certificat gratuit avec Let's Encrypt ?", "meme": false, "langue": "fr"}
+{"id": "d25", "a": "Quel code HTTP après une création ?", "b": "Quel code HTTP pour une redirection permanente ?", "meme": false, "langue": "fr"}
+{"id": "d26", "a": "Comment le serveur se souvient d'un utilisateur connecté ?", "b": "Comment hacher un mot de passe avec BCrypt ?", "meme": false, "langue": "fr"}
+{"id": "d27", "a": "Comment le navigateur trouve l'adresse IP d'un site ?", "b": "Comment fonctionne le cache du navigateur pour les images ?", "meme": false, "langue": "fr"}
+{"id": "d28", "a": "Pourquoi utiliser des noms au pluriel dans une API REST ?", "b": "Comment versionner une API REST ?", "meme": false, "langue": "fr"}
+{"id": "d29", "a": "Comment paginer les résultats d'une API ?", "b": "Comment limiter le nombre de requêtes par utilisateur ?", "meme": false, "langue": "fr"}
+{"id": "d30", "a": "Que signifie le code 503 ?", "b": "Que signifie le code 502 Bad Gateway ?", "meme": false, "langue": "fr"}
+{"id": "d31", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "How do I create an index on two columns?", "meme": false, "langue": "en"}
+{"id": "d32", "a": "Différence entre WHERE et HAVING ?", "b": "How do I rename a column in MySQL?", "meme": false, "langue": "en"}
+{"id": "d33", "a": "Comment annuler une transaction ?", "b": "What isolation level does MySQL use by default?", "meme": false, "langue": "en"}
+{"id": "d34", "a": "C'est quoi une clé étrangère ?", "b": "What is a database view?", "meme": false, "langue": "en"}
+{"id": "d35", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "How do I remove duplicates from a list?", "meme": false, "langue": "en"}
+{"id": "d36", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "How do I merge two dictionaries?", "meme": false, "langue": "en"}
+{"id": "d37", "a": "UnicodeDecodeError en lisant un fichier", "b": "How do I write JSON to a file?", "meme": false, "langue": "en"}
+{"id": "d38", "a": "Différence entre 401 et 403", "b": "What does a 301 redirect do?", "meme": false, "langue": "en"}
+{"id": "d39", "a": "Erreur CORS quand mon front appelle mon backend", "b": "How do I send a JWT in the Authorization header?", "meme": false, "langue": "en"}
+{"id": "d40", "a": "Différence entre PUT et PATCH ?", "b": "What is the maximum size of a GET request?", "meme": false, "langue": "en"}
+{"id": "d41", "a": "À quoi sert l'attribut HttpOnly d'un cookie ?", "b": "What is a SameSite cookie?", "meme": false, "langue": "en"}
+{"id": "d42", "a": "Comment le navigateur trouve l'adresse IP d'un site ?", "b": "What is the difference between TCP and UDP?", "meme": false, "langue": "en"}
+{"id": "d43", "a": "Que renvoie une fonction sans return ?", "b": "What is a lambda function in Python?", "meme": false, "langue": "en"}
+{"id": "d44", "a": "Différence entre break et continue dans une boucle", "b": "How do I iterate over two lists at the same time?", "meme": false, "langue": "en"}
+{"id": "d45", "a": "Comment voir si une requête utilise un index ?", "b": "How do I export a table to CSV in MySQL?", "meme": false, "langue": "en"}
+{"id": "d46", "a": "Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?", "b": "kifech nasna3 index 3al deux colonnes ?", "meme": false, "langue": "ar"}
+{"id": "d47", "a": "Différence entre WHERE et HAVING ?", "b": "kifech nratteb el résultat b ORDER BY ?", "meme": false, "langue": "ar"}
+{"id": "d48", "a": "Comment annuler une transaction ?", "b": "ما معنى العزل في خصائص ACID؟", "meme": false, "langue": "ar"}
+{"id": "d49", "a": "C'est quoi une clé étrangère ?", "b": "kifech nfasa5 table fiha données ?", "meme": false, "langue": "ar"}
+{"id": "d50", "a": "Pourquoi ma liste change quand je modifie sa copie ?", "b": "kifech nratteb liste mta3 dictionnaires ?", "meme": false, "langue": "ar"}
+{"id": "d51", "a": "Comment éviter une KeyError dans un dictionnaire ?", "b": "كيف أدمج قاموسين في بايثون؟", "meme": false, "langue": "ar"}
+{"id": "d52", "a": "UnicodeDecodeError en lisant un fichier", "b": "kifech nekteb JSON fi fichier ?", "meme": false, "langue": "ar"}
+{"id": "d53", "a": "Différence entre 401 et 403", "b": "chnowa ma3neha erreur 404 ?", "meme": false, "langue": "ar"}
+{"id": "d54", "a": "Erreur CORS quand mon front appelle mon backend", "b": "كيف أرسل رمز JWT في الترويسة؟", "meme": false, "langue": "ar"}
+{"id": "d55", "a": "Différence entre PUT et PATCH ?", "b": "kifech nab3ath fichier b POST ?", "meme": false, "langue": "ar"}
+{"id": "d56", "a": "Comment le serveur se souvient d'un utilisateur connecté ?", "b": "kifech nhachi mot de passe b BCrypt ?", "meme": false, "langue": "ar"}
+{"id": "d57", "a": "Comment le navigateur trouve l'adresse IP d'un site ?", "b": "ما الفرق بين TCP و UDP؟", "meme": false, "langue": "ar"}
+{"id": "d58", "a": "Que renvoie une fonction sans return ?", "b": "chnowa hiya lambda fi python ?", "meme": false, "langue": "ar"}
+{"id": "d59", "a": "Différence entre break et continue dans une boucle", "b": "kifech na3mel boucle 3la zouz listes fi nafs el wa9t ?", "meme": false, "langue": "ar"}
+{"id": "d60", "a": "Comment voir si une requête utilise un index ?", "b": "kifech nexporti table l CSV fi MySQL ?", "meme": false, "langue": "ar"}

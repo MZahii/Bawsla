@@ -7,6 +7,49 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 09 — 2026-10-16 — Lot 9 : évaluation (jeux de données, script, seuils)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : jeux d'évaluation, script `evaluer_forum.py` (options `--dry-run`, `--oui`, `--versions`,
+  `--sortie`, comme le module Cours), résultats commis, choix des seuils justifiés (plan §9.1, §9.2).
+- **Contexte fourni** : plan §9 ; script d'évaluation du module Cours (lu sur `origin/feature/cours`, sans rien
+  modifier) ; `Similarite.java` et `RagService.java` pour reproduire exactement les calculs de forum-service.
+- **Prompt** : suite du prompt de l'entrée 05.
+- **Résultat** :
+  - Jeux de données (dans `ai-service/app/modules/forum/evaluation/`) : `paires_questions.jsonl` (60 paires de même
+    sens, dont 20 avec l'anglais et 15 avec l'arabe, la derja ou l'arabizi, et 60 de sens différent, surtout des
+    pièges sur le même sujet), `rag_questions.jsonl` (40 questions sur 3 cours de test, passage attendu cité mot
+    pour mot, et 15 hors cours), `cours/` (bases de données, Python, HTTP), `injections.jsonl` (20 injections,
+    10 messages avec données personnelles), `moderation.jsonl` (60 messages, toutes les catégories).
+  - Script : mots significatifs, score lexical et RRF repris de forum-service ; pipeline réel de l'ai-service
+    (`rag.repondre`, `moderation.moderer`, `nlp.reformuler`) ; précision, rappel et F1 selon le seuil, Recall@k,
+    MRR, matrice de confusion ; règles de choix des seuils (meilleur F1 ; précision ≥ 0,95 pour un doublon ;
+    exactitude « répondre / s'abstenir » et **seuil sûr** sans aucune question hors cours servie) ; faux LLM
+    déterministe pour `--dry-run` ; confirmation avant tout appel réel.
+  - Résultats commis : `resultats/` (9 CSV, `RESULTATS.md` généré, `ANALYSE.md` écrit à la main avec les décisions).
+- **Vérification** : `pytest tests/forum` 101 verts, couverture de branches 97 % (script d'évaluation 96 %) ; un
+  test vérifie que chaque passage attendu figure bien dans son cours.
+- **Résultats réels (sans LLM)** : 20 injections sur 20 neutralisées avant le LLM ; 12 éléments personnels sur 12
+  masqués ; 10 messages sur 10 signalés à l'auteur ; règles de modération seules : exactitude 0,517 (elles tranchent
+  les cas évidents, le LLM le reste) ; repli lexical des similaires au seuil 0,5 : précision 0,92, rappel 0,38.
+- **Gardé / modifié / rejeté** :
+  - **Limite assumée** : aucune clé d'API sur le poste, donc l'exécution commise est un `--dry-run`. Les mesures
+    sémantiques et de génération y vérifient la chaîne de calcul mais ne mesurent pas un vrai modèle : c'est écrit
+    en tête de `RESULTATS.md` et dans `ANALYSE.md`, et les seuils sémantiques (0,75, 0,9, 0,55) restent
+    provisoires. La commande pour les fixer avec la clé est dans `ANALYSE.md`.
+  - Gardé : le seuil lexical 0,5 choisi au lot 4 est confirmé par la mesure (précision 0,92 ; le meilleur F1, à
+    0,15, n'aurait qu'une précision de 0,74).
+  - Ajouté après lecture des premiers chiffres : le « seuil sûr », car l'exactitude seule acceptait des réponses
+    hors cours, contraire à l'objectif « 0 réponse inventée » du plan.
+  - Affichage corrigé : « **1** sur 20 » (un taux) remplacé par des décomptes « 20 / 20 ».
+  - Un premier essai a écrit sa sortie hors du dépôt (`Documents/scratch_eval`, chemin relatif mal choisi). La
+    suppression récursive étant interdite par les réglages de l'agent, le dossier est à effacer à la main.
+- **Captures** : `captures/2026-10-16_10_lot9-evaluation.png`
+- **Leçon** : écrire dans le rapport lui-même ce qui est mesuré et ce qui ne l'est pas ; un chiffre de dry-run
+  sorti de son contexte serait trompeur.
+
+---
+
 ### 08 — 2026-10-15 — Lot 8 : front du forum (apprenant, formateur, admin)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
