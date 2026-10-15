@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 14 — 2026-10-15 — user-service appelle l'IA, recommandations sur le vrai catalogue (étape F2b)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : relier user-service au ML (profil, risque, recommandations) pour un vrai apprenant, sans jamais prédire sur des données incomplètes
+- **Contexte fourni** : indicateurs de l'entrée 13, contrat 5, client IA de cours-service (appel par la gateway avec le jeton de l'utilisateur)
+- **Prompt** :
+  > Yes
+  (réponse à « Shall I start F2b? »)
+- **Résultat** :
+  - ai-service : champ facultatif `coursDisponibles` (vrai catalogue) ; un cours inconnu du modèle est classé sur les domaines, le niveau et les notions ratées ; raison « Nouveau dans le catalogue ».
+  - user-service : `AiClient` (Feign, par la gateway, jeton relayé, délai de 180 s car le premier appel peut réentraîner les modèles), `IaApprenantService`, `GET /api/users/me/ia` (profil et recommandations, jamais le risque) et `GET /api/users/{id}/ia` (formateur, admin : risque et profil).
+  - Règle : recommandations dès que le catalogue existe ; profil et risque seulement si toutes les sources ont répondu, sinon « Pas encore assez de données » ; IA ou catalogue arrêtés : message clair, jamais d'erreur 500.
+  - `CONTRATS_API.md` (commit socle) : `coursDisponibles` et routes internes `indicateurs` / `ia`.
+  - Tests : 7 dans user-service (79 au total), 7 dans ai-service.
+- **Vérification** : `mvnw test` (79/79), `pytest tests/user` (75/75) ; via la gateway avec 3 vrais cours créés par un formateur : recommandations « Dans un domaine qui t'intéresse : Données » pour l'apprenant, profil et risque refusés faute de données (quiz et inscriptions pas encore disponibles), 403 entre apprenants ; premier appel 85 s (réentraînement dans le conteneur).
+- **Gardé / modifié / rejeté** :
+  - Bug trouvé au test réel : le vrai cours 3 (« Introduction à React », jamais suivi) héritait de la popularité du cours simulé 3, car les deux ont le même numéro. Corrigé : l'historique (popularité, voisins) ne s'applique qu'à un cours identique dans le modèle (même identifiant et même titre). Test de non-régression ajouté.
+  - Modifié : pour un nouvel apprenant, la pénalité de niveau (0,15 par niveau) annulait exactement le bonus de domaine (0,30) : un cours avancé de son domaine passait après un cours débutant hors domaine. Pénalité ramenée à 0,10.
+  - Gardé : erreurs de l'IA (y compris connexion refusée) attrapées partie par partie, pour qu'une page reste utilisable si l'IA est arrêtée.
+- **Captures** : _(à ajouter : réponse de /api/users/me/ia)_
+- **Leçon** : les identifiants d'un jeu simulé et ceux de la vraie base se recouvrent ; il faut vérifier l'identité d'un objet, pas seulement son numéro.
+
 ### 13 — 2026-10-15 — Indicateurs d'un apprenant rassemblés par user-service (étape F2a)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

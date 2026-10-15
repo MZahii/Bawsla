@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
 import tn.esprit.bawsla.user.dto.DesactivationRequest;
+import tn.esprit.bawsla.user.dto.IaApprenantResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse;
 import tn.esprit.bawsla.user.dto.ParcoursDto;
 import tn.esprit.bawsla.user.dto.MotDePasseRequest;
@@ -27,6 +29,7 @@ import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.StatutRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
+import tn.esprit.bawsla.user.service.IaApprenantService;
 import tn.esprit.bawsla.user.service.IndicateursService;
 import tn.esprit.bawsla.user.service.UserService;
 
@@ -36,10 +39,13 @@ public class UserController {
 
     private final UserService userService;
     private final IndicateursService indicateursService;
+    private final IaApprenantService iaApprenantService;
 
-    public UserController(UserService userService, IndicateursService indicateursService) {
+    public UserController(UserService userService, IndicateursService indicateursService,
+                          IaApprenantService iaApprenantService) {
         this.userService = userService;
         this.indicateursService = indicateursService;
+        this.iaApprenantService = iaApprenantService;
     }
 
     @GetMapping("/me")
@@ -80,6 +86,20 @@ public class UserController {
     @GetMapping("/me/indicateurs")
     public ApiResponse<IndicateursResponse> mesIndicateurs(CurrentUser user) {
         return ApiResponse.ok(indicateursService.lesMiens(user));
+    }
+
+    /** Mon profil (K-Means) et mes cours recommandés ; jamais mon risque d'échec. */
+    @GetMapping("/me/ia")
+    public ApiResponse<IaApprenantResponse> monIa(CurrentUser user,
+                                                  @RequestHeader(value = "Authorization", required = false) String jeton) {
+        return ApiResponse.ok(iaApprenantService.pourMoi(user, jeton));
+    }
+
+    /** ENSEIGNANT ou ADMIN : risque d'échec (Random Forest) et profil d'un apprenant. */
+    @GetMapping("/{id}/ia")
+    public ApiResponse<IaApprenantResponse> iaDUnApprenant(@PathVariable Long id, CurrentUser user,
+                                                           @RequestHeader(value = "Authorization", required = false) String jeton) {
+        return ApiResponse.ok(iaApprenantService.pourUnApprenant(user, id, jeton));
     }
 
     /** ENSEIGNANT ou ADMIN : indicateurs d'un apprenant. */

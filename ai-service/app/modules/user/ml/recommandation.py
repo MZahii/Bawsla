@@ -23,7 +23,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 K_VOISINS = 20
 POIDS = {"collaboratif": 0.5, "popularite": 0.2, "domaines": 0.3}
 BONUS_REVISION = 0.4
-PENALITE_NIVEAU_DEBUT = 0.15  # par niveau au-dessus de DEBUTANT, pour un apprenant sans historique
+PENALITE_NIVEAU_DEBUT = 0.10  # par niveau au-dessus de DEBUTANT, sans historique (reste < poids des domaines)
 NIVEAUX = ["DEBUTANT", "INTERMEDIAIRE", "AVANCE"]
 GRAINES_EVALUATION = (42, 7, 123)
 
@@ -68,10 +68,15 @@ class ModeleRecommandation:
         if not candidats:
             return []
 
-        collaboratif, nb_voisins = self._collaboratif(suivis, exclure)
-        collaboratif = collaboratif.reindex(cours.index, fill_value=0.0)
-        nb_voisins = nb_voisins.reindex(cours.index, fill_value=0)
-        popularite = self.popularite.reindex(cours.index, fill_value=0.0)
+        # Un cours du vrai catalogue n'a d'historique que s'il est vraiment connu du modèle : même identifiant ET même
+        # titre. Sinon (modèle entraîné sur le catalogue simulé, ids 1 à 15), deux cours différents partageraient
+        # un numéro, et le vrai cours hériterait à tort de la popularité et des voisins du cours simulé.
+        connus = [c for c in cours.index
+                  if c in self.cours.index and str(self.cours.loc[c, "titre"]) == str(cours.loc[c, "titre"])]
+        collaboratif, nb_voisins = self._collaboratif({c for c in suivis if c in connus}, exclure)
+        collaboratif = collaboratif.reindex(connus).reindex(cours.index, fill_value=0.0).fillna(0.0)
+        nb_voisins = nb_voisins.reindex(connus).reindex(cours.index, fill_value=0).fillna(0)
+        popularite = self.popularite.reindex(connus).reindex(cours.index, fill_value=0.0).fillna(0.0)
         dans_domaines = cours["categorie"].isin(domaines).astype(float)
         revision = _revision(cours, cours_en_difficulte or [], suivis)
         score = (POIDS["collaboratif"] * collaboratif + POIDS["popularite"] * popularite

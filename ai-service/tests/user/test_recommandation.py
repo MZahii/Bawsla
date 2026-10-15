@@ -117,3 +117,23 @@ def test_vrai_catalogue_cours_nouveau_sans_popularite(modele):
     recos = modele.recommander([101, 102, 103], [], n=1, cours_disponibles=VRAI_CATALOGUE)
     assert recos[0].coursId == 104
     assert recos[0].raison == "Nouveau dans le catalogue"
+
+
+def test_meme_numero_autre_cours_aucun_heritage_d_historique(modele):
+    """Le vrai cours 3 n'est pas le cours simulé 3 (titres différents) : pas de popularité ni de voisins hérités."""
+    vrais = pd.DataFrame([
+        {"coursId": 3, "titre": "Introduction à React", "categorie": "Web", "niveau": "DEBUTANT"},
+        {"coursId": 7, "titre": "Bases de données SQL", "categorie": "Back-end", "niveau": "DEBUTANT"},
+    ]).set_index("coursId")
+    recos = {r.coursId: r for r in modele.recommander([], [], n=2, cours_disponibles=vrais)}
+    assert recos[3].raison == "Nouveau dans le catalogue"
+    # Le cours 7 est le même que dans le modèle (même titre) : il garde sa popularité.
+    assert recos[7].raison == "Parmi les cours les plus suivis"
+
+
+def test_demarrage_a_froid_un_cours_avance_de_son_domaine_passe_avant_un_cours_hors_domaine(modele):
+    vrais = pd.DataFrame([
+        {"coursId": 201, "titre": "Optimiser ses requêtes", "categorie": "Données", "niveau": "AVANCE"},
+        {"coursId": 202, "titre": "Introduction à React", "categorie": "Web", "niveau": "DEBUTANT"},
+    ]).set_index("coursId")
+    assert [r.coursId for r in modele.recommander([], ["Données"], n=2, cours_disponibles=vrais)] == [201, 202]
