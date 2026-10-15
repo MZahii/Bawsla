@@ -123,3 +123,20 @@ def test_entrainer_admin(client, monkeypatch):
     r = client.post("/api/ai/user/entrainer", headers=ADMIN)
     assert r.status_code == 200
     assert r.json()["message"].startswith("Modèles réentraînés")
+
+
+def test_recommandations_sur_le_vrai_catalogue(client):
+    corps = {"domaines": ["Données"], "nombre": 2, "coursDisponibles": [
+        {"coursId": 101, "titre": "SQL pour débutants", "categorie": "Données", "niveau": "DEBUTANT"},
+        {"coursId": 103, "titre": "Introduction à React", "categorie": "Web", "niveau": "DEBUTANT"},
+    ]}
+    r = client.post("/api/ai/user/recommandations", json=corps, headers=APPRENANT)
+    assert r.status_code == 200
+    recos = r.json()["data"]["recommandations"]
+    assert [x["coursId"] for x in recos] == [101, 103]
+    assert recos[0]["titre"] == "SQL pour débutants"
+
+
+def test_vrai_catalogue_refuse_les_champs_inattendus(client):
+    corps = {"coursDisponibles": [{"coursId": 1, "titre": "x", "enseignantEmail": "a@b.com"}]}
+    assert client.post("/api/ai/user/recommandations", json=corps, headers=APPRENANT).status_code == 400

@@ -51,38 +51,48 @@ class ModeleRecommandation:
         n: int = 3,
         catalogue: list[int] | None = None,
         exclure: str | None = None,
+        cours_disponibles: pd.DataFrame | None = None,
     ) -> list[Recommandation]:
         """n cours à recommander, jamais un cours déjà suivi.
 
-        catalogue : cours recommandables (par exemple les cours publiés de cours-service) ; tous par défaut.
+        catalogue : identifiants des cours recommandables parmi ceux du modèle ; tous par défaut.
         exclure : identifiant de l'apprenant dans la matrice, pour ne pas se compter soi-même parmi ses voisins.
+        cours_disponibles : vrai catalogue (index coursId ; titre, categorie, niveau), par exemple les cours publiés
+            de cours-service. Un cours inconnu du modèle (aucune inscription vue à l'entraînement) n'a ni score
+            collaboratif ni popularité : il est classé sur les domaines, le niveau et les notions ratées.
         """
+        cours = self.cours if cours_disponibles is None else cours_disponibles
         domaines = set(domaines or [])
         suivis = set(cours_suivis)
-        candidats = [c for c in (catalogue or self.cours.index) if c in self.cours.index and c not in suivis]
+        candidats = [c for c in (catalogue or cours.index) if c in cours.index and c not in suivis]
         if not candidats:
             return []
 
         collaboratif, nb_voisins = self._collaboratif(suivis, exclure)
-        dans_domaines = self.cours["categorie"].isin(domaines).astype(float)
-        revision = self._revision(cours_en_difficulte or [], suivis)
-        score = (POIDS["collaboratif"] * collaboratif + POIDS["popularite"] * self.popularite
+        collaboratif = collaboratif.reindex(cours.index, fill_value=0.0)
+        nb_voisins = nb_voisins.reindex(cours.index, fill_value=0)
+        popularite = self.popularite.reindex(cours.index, fill_value=0.0)
+        dans_domaines = cours["categorie"].isin(domaines).astype(float)
+        revision = _revision(cours, cours_en_difficulte or [], suivis)
+        score = (POIDS["collaboratif"] * collaboratif + POIDS["popularite"] * popularite
                  + POIDS["domaines"] * dans_domaines + BONUS_REVISION * revision)
         if not suivis:
             # Démarrage à froid : on commence par les niveaux accessibles plutôt que par un cours avancé.
-            score = score - PENALITE_NIVEAU_DEBUT * self.cours["niveau"].map(NIVEAUX.index)
+            score = score - PENALITE_NIVEAU_DEBUT * cours["niveau"].map(_rang_niveau)
 
         resultats = []
-        for c in score[candidats].sort_values(ascending=False).index[:n]:
-            ligne = self.cours.loc[c]
+        for c in score[candidats].sort_values(ascending=False, kind="stable").index[:n]:
+            ligne = cours.loc[c]
             if revision[c] > 0:
                 raison = f"Pour revoir les bases en {ligne['categorie']}"
             elif nb_voisins[c] >= 2 and POIDS["collaboratif"] * collaboratif[c] >= POIDS["domaines"] * dans_domaines[c]:
                 raison = f"{int(nb_voisins[c])} apprenants au profil proche du tien ont suivi ce cours"
             elif dans_domaines[c]:
                 raison = f"Dans un domaine qui t'intéresse : {ligne['categorie']}"
-            else:
+            elif popularite[c] > 0:
                 raison = "Parmi les cours les plus suivis"
+            else:
+                raison = "Nouveau dans le catalogue"
             resultats.append(Recommandation(int(c), str(ligne["titre"]), round(float(score[c]), 3), raison))
         return resultats
 
@@ -104,17 +114,22 @@ class ModeleRecommandation:
         return score.reindex(self.cours.index, fill_value=0.0), (
             matrice.loc[voisins.index].sum().reindex(self.cours.index, fill_value=0))
 
-    def _revision(self, cours_en_difficulte: list[int], suivis: set[int]) -> pd.Series:
-        """1 pour les cours plus faciles de la même catégorie qu'un cours où des notions ont été ratées."""
-        bonus = pd.Series(0.0, index=self.cours.index)
-        for c in cours_en_difficulte:
-            if c not in self.cours.index:
-                continue
-            categorie, niveau = self.cours.loc[c, "categorie"], NIVEAUX.index(self.cours.loc[c, "niveau"])
-            plus_faciles = self.cours[(self.cours["categorie"] == categorie)
-                                      & (self.cours["niveau"].map(NIVEAUX.index) < niveau)].index
-            bonus[[x for x in plus_faciles if x not in suivis]] = 1.0
-        return bonus
+
+def _rang_niveau(niveau) -> int:
+    """0 (débutant) à 2 (avancé) ; un niveau absent ou inconnu compte comme intermédiaire."""
+    return NIVEAUX.index(niveau) if niveau in NIVEAUX else 1
+
+
+def _revision(cours: pd.DataFrame, cours_en_difficulte: list[int], suivis: set[int]) -> pd.Series:
+    """1 pour les cours plus faciles de la même catégorie qu'un cours où des notions ont été ratées."""
+    bonus = pd.Series(0.0, index=cours.index)
+    rangs = cours["niveau"].map(_rang_niveau)
+    for c in cours_en_difficulte:
+        if c not in cours.index:
+            continue
+        plus_faciles = cours[(cours["categorie"] == cours.loc[c, "categorie"]) & (rangs < rangs[c])].index
+        bonus[[x for x in plus_faciles if x not in suivis]] = 1.0
+    return bonus
 
 
 def construire(inscriptions: pd.DataFrame, cours: pd.DataFrame) -> ModeleRecommandation:

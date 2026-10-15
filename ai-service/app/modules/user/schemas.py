@@ -58,6 +58,15 @@ class RisqueResponse(CamelModel):
     donnees_simulees: bool
 
 
+class CoursCatalogue(EntreeStricte):
+    """Un cours du vrai catalogue (cours-service, contrat 1) : jamais de donnée sur l'apprenant."""
+
+    cours_id: int
+    titre: str = Field(min_length=1, max_length=200)
+    categorie: str | None = Field(default=None, max_length=100)
+    niveau: str | None = Field(default=None, max_length=20, description="DEBUTANT, INTERMEDIAIRE ou AVANCE")
+
+
 class RecommandationsRequest(EntreeStricte):
     cours_suivis: list[int] = Field(default_factory=list, max_length=500)
     domaines: list[str] = Field(default_factory=list, max_length=20, description="Domaines du parcours de l'apprenant")
@@ -65,6 +74,9 @@ class RecommandationsRequest(EntreeStricte):
                                            description="coursId des notions ratées (quiz-service, contrat 3)")
     catalogue: list[int] | None = Field(default=None, max_length=5_000,
                                         description="Cours recommandables (ex. : cours publiés) ; tous par défaut")
+    cours_disponibles: list[CoursCatalogue] | None = Field(
+        default=None, max_length=5_000,
+        description="Vrai catalogue (cours publiés) ; à défaut, le catalogue du modèle (simulé)")
     nombre: int = Field(default=3, ge=1, le=10)
 
 

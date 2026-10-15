@@ -88,3 +88,32 @@ def test_construire_accepte_un_catalogue_indexe(donnees):
     m = reco.construire(inscriptions, cours.set_index("coursId"))
     assert list(m.cours.index) == list(cours["coursId"])
     assert isinstance(m.matrice, pd.DataFrame)
+
+
+# ---------- Vrai catalogue (cours-service), inconnu du modèle ----------
+
+VRAI_CATALOGUE = pd.DataFrame([
+    {"coursId": 101, "titre": "SQL pour débutants", "categorie": "Données", "niveau": "DEBUTANT"},
+    {"coursId": 102, "titre": "Optimiser ses requêtes", "categorie": "Données", "niveau": "AVANCE"},
+    {"coursId": 103, "titre": "Introduction à React", "categorie": "Web", "niveau": "DEBUTANT"},
+    {"coursId": 104, "titre": "Sans niveau", "categorie": None, "niveau": None},
+]).set_index("coursId")
+
+
+def test_vrai_catalogue_classe_par_domaines_et_niveau(modele):
+    recos = modele.recommander([], ["Données"], n=4, cours_disponibles=VRAI_CATALOGUE)
+    assert [r.coursId for r in recos][:2] == [101, 102]  # domaine d'abord, niveau accessible en tête
+    assert recos[0].raison == "Dans un domaine qui t'intéresse : Données"
+    assert {r.coursId for r in recos} <= set(VRAI_CATALOGUE.index)
+
+
+def test_vrai_catalogue_notions_ratees(modele):
+    recos = modele.recommander([102], [], cours_en_difficulte=[102], n=2, cours_disponibles=VRAI_CATALOGUE)
+    assert recos[0].coursId == 101
+    assert recos[0].raison == "Pour revoir les bases en Données"
+
+
+def test_vrai_catalogue_cours_nouveau_sans_popularite(modele):
+    recos = modele.recommander([101, 102, 103], [], n=1, cours_disponibles=VRAI_CATALOGUE)
+    assert recos[0].coursId == 104
+    assert recos[0].raison == "Nouveau dans le catalogue"

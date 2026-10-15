@@ -85,8 +85,16 @@ async def recommandations(
 ) -> ApiResponse[RecommandationsResponse]:
     def calculer() -> RecommandationsResponse:
         modeles = entrainement.obtenir()
+        disponibles = None
+        if body.cours_disponibles is not None:
+            disponibles = pd.DataFrame(
+                [{"coursId": c.cours_id, "titre": c.titre, "categorie": c.categorie, "niveau": c.niveau}
+                 for c in body.cours_disponibles],
+                columns=["coursId", "titre", "categorie", "niveau"],
+            ).drop_duplicates("coursId").set_index("coursId")
         recos = modeles.recommandation.recommander(
             body.cours_suivis, body.domaines, body.cours_en_difficulte, n=body.nombre, catalogue=body.catalogue,
+            cours_disponibles=disponibles,
         )
         return RecommandationsResponse(
             recommandations=[CoursRecommande(cours_id=r.coursId, titre=r.titre, score=r.score, raison=r.raison)
