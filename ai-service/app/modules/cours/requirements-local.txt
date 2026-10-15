@@ -12,5 +12,14 @@ protobuf==7.36.2
 huggingface_hub==0.36.2
 # transformers 5.x casse le tokenizer de BARThez (TypeError : 'dict' object is not an instance of 'Sequence') : rester sur < 5.
 
+# Lecture d'images LOCALE de secours (Florence-2, vision/local.py). Le code distant du modèle importe einops et timm (timm exige torchvision,
+# installé depuis l'index CPU de PyTorch comme torch). Le modèle (463 Mo pour Florence-2-base) se télécharge au premier usage.
+einops==0.8.2
+timm==1.0.30
+torchvision==0.29.1
+pillow==12.3.0
+
 # Test lent uniquement (RUN_SLOW=1) : lecture du PDF de diaporama.
 pypdf==6.20.1
+# Mesure de la RAM dans le test lent de la vision locale (facultatif).
+psutil==7.2.2

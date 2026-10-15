@@ -25,7 +25,7 @@ interface BrouillonFiche {
 /**
  * Fiche de révision générée par l'IA (formateur / ADMIN) : génération en arrière-plan avec suivi des étapes, relecture, correction
  * (le serveur recalcule le score de fidélité), régénération et validation. Extrait tel quel de l'éditeur du studio : mêmes appels HTTP,
- * même suivi (interrogation toutes les 2 s, bornée à 5 minutes, arrêtée à la fin, à l'annulation et à la destruction du composant).
+ * même suivi (interrogation toutes les 2 s, bornée à 6 minutes, arrêtée à la fin, à l'annulation et à la destruction du composant).
  */
 @Component({
   selector: 'app-fiche-studio',
@@ -220,7 +220,7 @@ export class FicheStudio implements OnInit {
     });
   }
 
-  /** Interroge le serveur toutes les 2 s jusqu'à la fin du traitement (au plus 5 min), puis recharge la fiche. */
+  /** Interroge le serveur toutes les 2 s jusqu'à la fin du traitement (au plus 6 min : l'ai-service limite la fiche à 300 s), puis recharge la fiche. */
   private suivre(): void {
     this.arreterSuivi();
     this.attente.set(true);
@@ -228,7 +228,7 @@ export class FicheStudio implements OnInit {
       .pipe(
         switchMap(() => this.service.traitement(this.coursId()).pipe(catchError(() => of(null)))),
         takeWhile((t) => t === null || t.enCours, true),
-        take(150),
+        take(180),
       )
       .subscribe({
         next: (t) => {

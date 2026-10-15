@@ -48,6 +48,25 @@ class CoursAiSettings(BaseSettings):
     openai_tts_voice_prof: str = "marin"
     openai_tts_voice_etudiant: str = "cedar"
 
+    # ---- Délais de la fiche de révision (démo : réponse en quelques secondes, jamais de blocage de plusieurs minutes)
+    # Délai de CHAQUE appel au LLM. Sur 504 ou délai dépassé : pas de relance, bascule directe sur le secours.
+    fiche_timeout_seconds: float = 120.0
+    # Budget total d'une fiche (tous les appels, secours compris) : au-delà, erreur « l'IA met trop de temps à répondre ».
+    fiche_budget_seconds: float = 300.0
+
+    # ---- Lecture d'images par vision (Gemini seul : le secours ne lit pas les images)
+    vision_timeout_seconds: float = 90.0
+    vision_image_max_octets: int = 8 * 1024 * 1024
+    # Lecture d'images LOCALE de secours (Florence-2 sur CPU), quand Gemini est en quota, en délai dépassé ou indisponible.
+    # Dépendances : requirements-local.txt. Interrupteur : false = le message « Lecture des images indisponible » comme avant.
+    vision_locale_active: bool = False
+    # Seuls les modèles de vision/local.py (révision épinglée) sont acceptés : microsoft/Florence-2-base ou microsoft/Florence-2-large.
+    vision_locale_modele: str = "microsoft/Florence-2-base"
+    # Pour tester : saute Gemini et lit directement en local.
+    vision_forcer_local: bool = False
+    # Délai d'une page lue en local (le premier appel charge le modèle).
+    vision_locale_timeout_seconds: float = 120.0
+
     # ---- Résumé automatique LOCAL (modèles Hugging Face sur CPU, sans clé API). Dépendances : requirements-local.txt.
     # Interrupteur : false = la route répond 503 « Résumé local indisponible sur ce serveur ».
     resume_local_actif: bool = False

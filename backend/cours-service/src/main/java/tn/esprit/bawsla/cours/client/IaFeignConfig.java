@@ -38,6 +38,7 @@ public class IaFeignConfig {
                 case 400 -> new BadRequestException(message != null ? message : "Requête refusée par l'IA");
                 case 401, 403 -> new ServiceUnavailableException(
                         "L'IA a refusé l'accès (session expirée ?). Reconnecte-toi puis réessaie.");
+                case 504 -> message != null ? new IaTimeoutException(message) : new IaTimeoutException();
                 case 429 -> new ServiceUnavailableException(
                         message != null ? message : "Le quota de l'IA est atteint, réessaie dans quelques minutes.");
                 default -> new ServiceUnavailableException(

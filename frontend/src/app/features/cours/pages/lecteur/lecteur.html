@@ -13,6 +13,12 @@
         <span class="muted small">Chapitre {{ index() + 1 }} sur {{ chapitres().length }}</span>
       }
     </div>
+    @if (progression(); as p) {
+      <div class="progression" role="progressbar" aria-label="Progression dans le cours" [attr.aria-valuenow]="pourcent(p.progression)" aria-valuemin="0" aria-valuemax="100">
+        <span class="piste"><span class="rempli" [style.width.%]="p.progression * 100"></span></span>
+        <span class="small"><strong>{{ pourcent(p.progression) }}</strong>, {{ nbTermines() }} chapitre{{ nbTermines() > 1 ? 's' : '' }} sur {{ chapitres().length }}</span>
+      </div>
+    }
     <button type="button" class="toggle" (click)="planOuvert.set(!planOuvert())" [attr.aria-expanded]="planOuvert()">
       <mat-icon>{{ planOuvert() ? 'left_panel_close' : 'left_panel_open' }}</mat-icon> Plan
     </button>
@@ -29,8 +35,15 @@
           @for (item of chapitres(); track item.id; let i = $index) {
             <li>
               <button type="button" [class.on]="i === index()" (click)="ouvrir(i)" [attr.aria-current]="i === index() ? 'step' : null">
-                <mat-icon aria-hidden="true">{{ i === index() ? 'play_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span class="t"><span>{{ i + 1 }}. {{ item.titre }}</span><small>{{ item.dureeMinutes }} min</small></span>
+                @if (termines().has(item.id)) {
+                  <mat-icon class="fait" aria-hidden="true">check_circle</mat-icon>
+                } @else {
+                  <mat-icon aria-hidden="true">{{ i === index() ? 'play_circle' : 'radio_button_unchecked' }}</mat-icon>
+                }
+                <span class="t">
+                  <span>{{ i + 1 }}. {{ item.titre }}</span>
+                  <small>{{ item.dureeMinutes }} min@if (termines().has(item.id)) { , terminé }</small>
+                </span>
               </button>
             </li>
           }
@@ -50,11 +63,22 @@
           <div class="nav">
             <button type="button" bwButton="secondaire" [disabled]="index() === 0" (click)="ouvrir(index() - 1)"><mat-icon>chevron_left</mat-icon> Précédent</button>
             <button type="button" bwButton="secondaire" [disabled]="index() === chapitres().length - 1" (click)="ouvrir(index() + 1)">Suivant <mat-icon>chevron_right</mat-icon></button>
-            <span class="bientot" matTooltip="Disponible bientôt" tabindex="0" role="note" aria-label="Marquer comme terminé : disponible bientôt">
-              <button type="button" bwButton="principal" disabled tabindex="-1"><mat-icon>check</mat-icon> Marquer comme terminé</button>
-            </span>
+            @if (progression()) {
+              @if (chapitreTermine()) {
+                <button type="button" bwButton="secondaire" [disabled]="action()" (click)="basculerTermine()"><mat-icon>undo</mat-icon> Annuler : chapitre terminé</button>
+              } @else {
+                <button type="button" bwButton="principal" [disabled]="action()" (click)="basculerTermine()"><mat-icon>check</mat-icon> Marquer ce chapitre comme terminé</button>
+              }
+            }
           </div>
         </div>
+        @if (estApprenant() && progressionConnue() && !progression()) {
+          <p class="invitation" role="status">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <span>Inscris-toi à ce cours pour enregistrer ta progression : tes chapitres terminés seront sauvegardés.</span>
+            <button type="button" bwButton="principal" [disabled]="action()" (click)="sInscrire()">{{ action() ? 'Inscription…' : 'S’inscrire' }}</button>
+          </p>
+        }
 
         @if (contenu()) {
           <article class="reading" [class.large]="!aVideo()" aria-label="Contenu du chapitre">{{ contenu() }}</article>

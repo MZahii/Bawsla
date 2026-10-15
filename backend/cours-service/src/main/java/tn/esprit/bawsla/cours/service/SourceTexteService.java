@@ -42,7 +42,8 @@ public class SourceTexteService {
 
     /** @throws BadRequestException si le cours n'a ni PDF avec du texte, ni chapitre avec du contenu */
     public String pour(Cours cours) {
-        if (cours.getPdfStockage() != null) {
+        {
+            // Pages du PDF et pages lues par vision (PDF scanné, images déposées) : toutes sont dans PageDocument.
             String pdf = pageRepository.findByCoursIdOrderByNumeroAsc(cours.getId()).stream()
                     .map(PageDocument::getTexte)
                     .map(TexteMasker::masquer)
@@ -73,7 +74,7 @@ public class SourceTexteService {
      */
     public PagesSource pagesPour(Cours cours) {
         boolean pdfSansTexte = false;
-        if (cours.getPdfStockage() != null) {
+        {
             List<PageIaDto> pages = pageRepository.findByCoursIdOrderByNumeroAsc(cours.getId()).stream()
                     .map(p -> new PageIaDto(p.getNumero(), TexteMasker.masquer(p.getTexte()).strip()))
                     .filter(p -> !p.texte().isBlank())
@@ -81,7 +82,8 @@ public class SourceTexteService {
             if (total(pages) >= minimumExplication) {
                 return new PagesSource(pages, false);
             }
-            pdfSansTexte = true; // un PDF d'images : l'extraction ne trouve (presque) rien
+            pdfSansTexte = cours.getPdfStockage() != null && !pageRepository.findByCoursIdOrderByNumeroAsc(cours.getId()).isEmpty();
+            // un PDF d'images : l'extraction ne trouve (presque) rien
         }
         List<PageIaDto> chapitres = new ArrayList<>();
         for (Chapitre c : cours.getChapitres()) {

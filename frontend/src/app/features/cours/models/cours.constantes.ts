@@ -66,8 +66,13 @@ export const RANG_NIVEAU: Record<Niveau, 1 | 2 | 3> = { DEBUTANT: 1, INTERMEDIAI
 /** Image affichée tant qu'un cours n'a pas de couverture. */
 export const IMAGE_DEFAUT = 'assets/demo/cours/outils.jpg';
 export const FORMATEUR_DEFAUT = 'Formateur';
-/** Valeur d'une donnée que cours-service ne fournit pas encore (inscrits, note, achèvement…). */
+/** Valeur d'une donnée absente : pas encore de note, aucun inscrit pour calculer un achèvement… */
 export const VIDE = '—';
+
+/** 0,65 → « 65 % » (progression de 0 à 1 renvoyée par cours-service). */
+export function pourcent(progression: number | null | undefined): string {
+  return `${Math.round((progression ?? 0) * 100)} %`;
+}
 
 /** « Gratuit » ou « 49 DT » (« 49,5 DT » s'il y a des centimes). */
 export function libellePrix(prix: number | null | undefined): string {

@@ -28,6 +28,26 @@ export interface Cours {
   dureeTotaleMinutes: number;
   aPdf: boolean;
   pdfTaille: number | null;
+  /** Nombre d'apprenants inscrits (un nombre, aucune donnée personnelle). */
+  nbInscrits?: number;
+}
+
+/** Miroir de InscriptionResponse (contrat 7). `tempsPasseMinutes` et `dateDerniereActivite` sont omis tant qu'ils n'existent pas. */
+export interface Inscription {
+  etudiantId: number;
+  coursId: number;
+  dateInscription: string;
+  /** De 0 à 1 : chapitres terminés ÷ chapitres du cours. */
+  progression: number;
+  tempsPasseMinutes?: number;
+  /** Tous les chapitres du cours sont terminés. */
+  termine: boolean;
+  dateDerniereActivite?: string;
+}
+
+/** Miroir de ProgressionResponse : l'inscription de l'apprenant connecté, avec les chapitres qu'il a terminés. */
+export interface Progression extends Inscription {
+  chapitresTermines: number[];
 }
 
 /** Corps de POST et PUT /api/cours. `prix` absent : inchangé en modification, gratuit à la création. */
@@ -117,7 +137,7 @@ export interface FicheRequest {
   notions: { titre: string; definition: string; extraitSource: string }[];
 }
 
-export type EtapeIA = 'TEXTE' | 'FICHE' | 'SCRIPT' | 'TRADUCTION' | 'RESUME' | 'AUDIO';
+export type EtapeIA = 'TEXTE' | 'FICHE' | 'SCRIPT' | 'TRADUCTION' | 'RESUME' | 'LECTURE_IMAGES' | 'AUDIO';
 export type StatutTraitement = 'EN_ATTENTE' | 'EN_COURS' | 'TERMINE' | 'ECHEC' | 'ANNULE';
 
 export interface EtapeTraitement {
@@ -126,6 +146,9 @@ export interface EtapeTraitement {
   dureeMs?: number;
   /** Message lisible, sans détail technique. */
   erreur?: string;
+  /** Étape qui traite plusieurs éléments (pages lues par vision) : avancement sur total. */
+  avancement?: number;
+  total?: number;
 }
 
 /** Suivi du dernier lancement de l'IA sur un cours. `enCours` reste vrai tant qu'une étape n'est pas terminée. */
@@ -235,4 +258,33 @@ export interface ResumeLocal {
   alertes?: string[];
   dureeCalculMs?: number;
   valideeDisponible?: boolean;
+}
+
+// ------------------------------------------------------------------ pages lues par l'IA (vision)
+
+export type SourcePage = 'PDFBOX' | 'VISION';
+
+/** Miroir de PageLueResponse : une page du cours (texte extrait du PDF, ou lu par l'IA sur un scan ou une image). */
+export interface PageLue {
+  numero: number;
+  texte: string;
+  source: SourcePage;
+  /** Moins de 30 caractères : page vide (scan non lu, image non lue, page illisible). */
+  sansTexte: boolean;
+  /** Le formateur a corrigé le texte à la main. */
+  modifie: boolean;
+  /** Page déposée sous forme d'image : un aperçu est disponible. */
+  aImage: boolean;
+  /** La lecture par vision peut encore y trouver du texte. */
+  aLire: boolean;
+  /** Moteur réel de la lecture (« gemini », « local · Florence-2 »). Absent : page lue avant l'ajout de ce champ, ou texte corrigé à la main. */
+  moteur?: string;
+}
+
+/** Miroir de PagesLuesResponse. `plafond` : pages lues par lancement. */
+export interface PagesLues {
+  total: number;
+  aLire: number;
+  plafond: number;
+  pages: PageLue[];
 }

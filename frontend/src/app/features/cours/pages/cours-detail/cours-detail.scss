@@ -35,3 +35,5 @@ h2 { font: 600 20px var(--font-heading); }
 .ch-n.exam { background: var(--color-gold-100); color: var(--color-gold-700); mat-icon { font-size: 16px; width: 16px; height: 16px; } }
 .reply { margin-top: var(--space-2) !important; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--color-border); background: var(--color-bg); font-size: 14px; }
 .programme { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); } .ch-t { flex: 1; font-weight: 600; } }
+
+.inscrit { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-3); font-weight: 700; color: var(--color-success); mat-icon { font-size: 22px; width: 22px; height: 22px; } .muted { font-weight: 500; } }
