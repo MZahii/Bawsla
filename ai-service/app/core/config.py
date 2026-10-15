@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     llm_thinking_budget: int | None = 128
     # Modèle de synthèse vocale (Gemini TTS) : LLM_TTS_MODEL. Le fournisseur « gemini » de la chaîne vocale en dépend.
     llm_tts_model: str | None = "gemini-3.8-flash-tts"
+    # Vectorisation (embeddings) : modèle Gemini et dimension demandée (vecteurs normalisés par le cœur).
+    llm_embedding_model: str = "gemini-embedding-001"
+    llm_embedding_dimension: int = 768
 
     # Fournisseur de SECOURS : vide = aucun ; "openai" = on bascule sur OpenAI quand Gemini répond 429 (quota) ou est
     # indisponible. OPENAI_API_KEY est requise (sinon le secours est ignoré, avec un avertissement dans les logs).
@@ -35,6 +38,8 @@ class Settings(BaseSettings):
     # Effort de réflexion (none, low, medium, high…) : bas pour rester rapide et économique.
     openai_reasoning_effort: str | None = "low"
     openai_tts_model: str = "gpt-4o-mini-tts"
+    # Vectorisation de secours (OpenAI). Groq n'a pas d'embeddings : avec LLM_SECOURS=groq, pas de secours ici.
+    openai_embedding_model: str = "text-embedding-3-small"
 
     # Groq (LLM_SECOURS=groq) : API compatible OpenAI, donc le même client avec une autre base_url.
     # URL et modèle : console.groq.com/docs/openai et /docs/models. gpt-oss-120b accepte le mode JSON et le français.
