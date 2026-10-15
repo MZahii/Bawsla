@@ -7,6 +7,26 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 12 — 2026-10-15 — Contrats 6 à 8 proposés à Quiz et Cours (étape F1)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : obtenir les vraies données du ML (notes, temps passé, cours suivis), absentes aujourd'hui, avant de brancher les pages Progrès et Apprenants
+- **Contexte fourni** : branches distantes relues : quiz-service a désormais `Tentative` (score, réussite, date) et `NotionRatee`, mais aucune route pour lire les tentatives d'un autre apprenant ; cours-service n'a ni inscription, ni progression, ni temps passé
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start with F1, the contract proposals? »)
+- **Résultat** :
+  - Branche `docs/contrat-user-ia` partant de `develop` (petite PR à part, comme le module Quiz), faite dans un worktree séparé pour ne pas toucher à `feature/user`.
+  - Contrat 6 : `GET /api/quiz/tentatives?etudiantId=` (quiz-service, à partir de l'entité `Tentative` existante) et la façon dont user-service en tire `nbQuiz`, `noteMoyenne`, `tauxReussite`.
+  - Contrat 7 : `GET /api/cours/inscriptions?etudiantId=` et `GET /api/cours/{id}/inscriptions` (nouvelle entité `Inscription` dans cours-service : progression, temps passé, terminé).
+  - Contrat 8 : `GET /api/cours/inscriptions/toutes` (ADMIN) pour entraîner le filtrage collaboratif ; `etudiantId` remplacé par un pseudonyme avant l'envoi à ai-service.
+- **Vérification** : relecture de la structure de `CONTRATS_API.md` (sections 1 à 8, historique) ; simulation de fusion avec `feature/user` : seul conflit attendu, la ligne d'historique.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : brancher tout de suite les pages Progrès et Apprenants avec des indicateurs presque vides : les prédictions auraient été trompeuses en démonstration.
+  - Gardé : le principe « user-service calcule les indicateurs, ai-service ne reçoit que des nombres », déjà appliqué au contrat 5.
+- **Captures** : _(aucune : document)_
+- **Leçon** : quand un module dépend des données d'un autre, proposer le contrat tôt, sur une petite branche à part, pour laisser au coéquipier le temps de l'implémenter.
+
 ### 11 — 2026-10-15 — IA : page Admin → Supervision IA (étape E1)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

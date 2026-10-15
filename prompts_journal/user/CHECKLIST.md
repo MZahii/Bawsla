@@ -28,7 +28,8 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 
 ## 3. Intégration avec les autres modules
 - [ ] 3.0 Prévenir le membre Cours : refuser la publication (403) si `formateurValide` est false (contrat 4)
-- [ ] 3.1 Contrats avec Quiz (notions ratées, tentatives) et Cours (inscriptions, temps, progression)
+- [x] 3.1 Contrats 6 (Quiz : tentatives), 7 et 8 (Cours : inscriptions) proposés sur `docs/contrat-user-ia` ; contrat 3 déjà en place
+- [ ] 3.1b Pousser `docs/contrat-user-ia`, ouvrir la PR et prévenir les membres Quiz et Cours
 - [ ] 3.2 user-service construit le vecteur numérique (Feign) et appelle ai-service
 - [ ] 3.3 Page `progres` (apprenant) branchée
 - [ ] 3.4 Page `apprenants` (formateur) branchée, risque jamais montré à l'apprenant
