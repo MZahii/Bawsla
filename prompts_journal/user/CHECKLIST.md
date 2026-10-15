@@ -33,7 +33,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [x] 3.2a user-service rassemble les indicateurs (Feign : contrats 3, 6, 7 ; activité) avec l'état de chaque source
 - [x] 3.2b user-service appelle ai-service : `/me/ia` (profil + recommandations sur le vrai catalogue), `/{id}/ia` (risque) ; aucune prédiction sur données incomplètes
 - [x] 3.3 Page `progres` (apprenant) : recommandations réelles, profil, sources des données ; jamais le risque
-- [ ] 3.4 Page `apprenants` (formateur) branchée, risque jamais montré à l'apprenant
+- [x] 3.4 Page `apprenants` (formateur) : inscrits à ses cours, risque et raisons, profil ; message tant que le contrat 7 manque
 
 ## 4. Qualité et rendu
 - [ ] 4.1 Tests : UserService, endpoints admin, pytest pour le ML

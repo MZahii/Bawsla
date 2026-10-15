@@ -130,3 +130,33 @@ export interface IaApprenant {
   complet: boolean;
   indicateurs?: IndicateursApprenant;
 }
+
+// ---------- Page Apprenants du formateur (user-service : GET /api/users/formateur/apprenants) ----------
+
+export type NiveauRisque = 'faible' | 'moyen' | 'eleve';
+
+/** Miroir de ApprenantsResponse.Ligne : une inscription (apprenant × cours). */
+export interface LigneApprenant {
+  etudiantId: number;
+  nom: string;
+  prenom: string;
+  avatarVersion?: number;
+  coursId: number;
+  coursTitre?: string;
+  dateInscription?: string;
+  progression?: number;
+  tempsPasseMinutes?: number;
+  dateDerniereActivite?: string;
+  risque?: { probabilite: number; niveau: NiveauRisque; facteurs: string[] };
+  risqueIndisponible?: string;
+  profil?: string;
+}
+
+/** Miroir de ApprenantsResponse. */
+export interface ApprenantsFormateur {
+  cours: { id: number; titre: string }[];
+  lignes: LigneApprenant[];
+  inscriptions?: SourceDonnees;
+  message?: string;
+  donneesSimulees?: boolean;
+}

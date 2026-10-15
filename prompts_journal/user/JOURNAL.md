@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 16 — 2026-10-15 — Page Apprenants du formateur : risque d'échec et raisons (étape E3)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : montrer au formateur les inscrits à ses cours et leur risque d'échec (Random Forest) avec ses raisons, jamais à l'apprenant
+- **Contexte fourni** : `IaApprenantService` (entrée 14), contrat 7 proposé (`GET /api/cours/{id}/inscriptions`), page `apprenants` existante (démo)
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start E3? »)
+- **Résultat** :
+  - user-service : `ApprenantsService` et `GET /api/users/formateur/apprenants` (ENSEIGNANT : ses cours seulement ; ADMIN : tous) : cours du formateur, inscrits par cours (contrat 7), indicateurs de chaque apprenant, risque et profil en un seul appel à l'IA pour ceux aux données complètes ; route absente, service ou IA arrêtés : message clair, jamais d'erreur 500.
+  - `CoursDto` complété par `enseignantId` (contrat 1), `CoursClient.inscriptionsDuCours()`.
+  - Front : page `apprenants` refaite : KPI, filtres (risque, cours, recherche), tableau (progression, suivi et probabilité, profil), fiche latérale avec les raisons du risque dans `bw-ai-box`, message « Pas encore d'inscrits à afficher » tant que le contrat 7 n'existe pas.
+  - 6 tests (`ApprenantsServiceTest`), 85 au total dans user-service.
+- **Vérification** : `mvnw test` (85/85) ; via la gateway : apprenant 403, formateur ne voit que ses 2 cours, statut `PAS_ENCORE_DISPONIBLE` pour le contrat 7 ; navigateur headless : formateur avec cours (message contrat 7) et sans cours (« Aucun cours ») ; tableau et fiche vérifiés avec une réponse simulée dans le navigateur de test seulement (`page.route`), au format exact du backend : 3 lignes, filtre « Risque d'échec », raisons du risque ; capture.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : afficher tous les apprenants de la plateforme au formateur en attendant le contrat 7 : il ne doit voir que les inscrits à ses cours (confidentialité).
+  - Corrigé : « 1.6 h » (point décimal anglais, pas de `LOCALE_ID` français) → `Intl.NumberFormat('fr-FR')`, « 1,6 h ».
+  - Faux problème : un premier clic de test sur le filtre visait le mauvais élément ; le filtre fonctionne.
+  - Limite : le tableau avec de vraies inscriptions ne pourra être vu qu'une fois le contrat 7 livré par le module Cours.
+- **Captures** : `captures/2026-10-15_16_apprenants.png`
+- **Leçon** : quand une donnée dépend d'un autre module, simuler sa réponse dans le seul navigateur de test permet de vérifier l'affichage sans tricher dans l'application.
+
 ### 15 — 2026-10-15 — Page Progrès de l'apprenant branchée sur le ML (étape E2)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

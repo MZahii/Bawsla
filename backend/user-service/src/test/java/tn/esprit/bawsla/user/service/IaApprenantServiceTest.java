@@ -53,9 +53,9 @@ class IaApprenantServiceTest {
     }
 
     private static final List<CoursDto> CATALOGUE = List.of(
-            new CoursDto(10L, "SQL", "Données", "DEBUTANT", "PUBLIE"),
-            new CoursDto(11L, "Brouillon", "Données", "AVANCE", "BROUILLON"),
-            new CoursDto(12L, "React", "Web", "DEBUTANT", "PUBLIE"));
+            new CoursDto(10L, "SQL", "Données", "DEBUTANT", "PUBLIE", 2L),
+            new CoursDto(11L, "Brouillon", "Données", "AVANCE", "BROUILLON", 2L),
+            new CoursDto(12L, "React", "Web", "DEBUTANT", "PUBLIE", 3L));
 
     private static ApiResponse<RecommandationsIaDto> recos() {
         return ApiResponse.ok(new RecommandationsIaDto(

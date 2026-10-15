@@ -20,6 +20,7 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
+import tn.esprit.bawsla.user.dto.ApprenantsResponse;
 import tn.esprit.bawsla.user.dto.DesactivationRequest;
 import tn.esprit.bawsla.user.dto.IaApprenantResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse;
@@ -29,6 +30,7 @@ import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.StatutRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
+import tn.esprit.bawsla.user.service.ApprenantsService;
 import tn.esprit.bawsla.user.service.IaApprenantService;
 import tn.esprit.bawsla.user.service.IndicateursService;
 import tn.esprit.bawsla.user.service.UserService;
@@ -40,12 +42,14 @@ public class UserController {
     private final UserService userService;
     private final IndicateursService indicateursService;
     private final IaApprenantService iaApprenantService;
+    private final ApprenantsService apprenantsService;
 
     public UserController(UserService userService, IndicateursService indicateursService,
-                          IaApprenantService iaApprenantService) {
+                          IaApprenantService iaApprenantService, ApprenantsService apprenantsService) {
         this.userService = userService;
         this.indicateursService = indicateursService;
         this.iaApprenantService = iaApprenantService;
+        this.apprenantsService = apprenantsService;
     }
 
     @GetMapping("/me")
@@ -100,6 +104,13 @@ public class UserController {
     public ApiResponse<IaApprenantResponse> iaDUnApprenant(@PathVariable Long id, CurrentUser user,
                                                            @RequestHeader(value = "Authorization", required = false) String jeton) {
         return ApiResponse.ok(iaApprenantService.pourUnApprenant(user, id, jeton));
+    }
+
+    /** ENSEIGNANT (ses cours) ou ADMIN (tous) : inscrits et risque d'échec, pour la page Apprenants. */
+    @GetMapping("/formateur/apprenants")
+    public ApiResponse<ApprenantsResponse> apprenantsDuFormateur(CurrentUser user,
+                                                                 @RequestHeader(value = "Authorization", required = false) String jeton) {
+        return ApiResponse.ok(apprenantsService.pourFormateur(user, jeton));
     }
 
     /** ENSEIGNANT ou ADMIN : indicateurs d'un apprenant. */

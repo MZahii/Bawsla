@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { IaApprenant, MetriquesIa } from '../models/ia.model';
+import { ApprenantsFormateur, IaApprenant, MetriquesIa } from '../models/ia.model';
 
 /**
  * Machine Learning du module User. Métriques et entraînement : ai-service (ADMIN). Résultats d'un apprenant :
@@ -24,6 +24,11 @@ export class IaUserService {
   /** ENSEIGNANT ou ADMIN : risque d'échec et profil d'un apprenant. */
   iaDUnApprenant(id: number): Observable<IaApprenant> {
     return this.http.get<ApiResponse<IaApprenant>>(`${this.users}/${id}/ia`).pipe(map((r) => r.data));
+  }
+
+  /** ENSEIGNANT (ses cours) ou ADMIN (tous) : inscrits et risque d'échec. */
+  apprenantsDuFormateur(): Observable<ApprenantsFormateur> {
+    return this.http.get<ApiResponse<ApprenantsFormateur>>(`${this.users}/formateur/apprenants`).pipe(map((r) => r.data));
   }
 
   metriques(): Observable<MetriquesIa> {
