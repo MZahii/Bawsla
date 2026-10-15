@@ -7,6 +7,25 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 11 — 2026-10-15 — IA : page Admin → Supervision IA (étape E1)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : point démo du sujet : « afficher la précision du modèle sur le tableau de bord admin », avec les vraies métriques
+- **Contexte fourni** : `metriques.json` (entrée 09), endpoints `metriques` et `entrainer` (entrée 10), page `admin-ia` existante (données de démo), composants `bw-kpi`, `bw-chart`, `bw-empty-state`, `bw-skeleton`
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start E1? »)
+- **Résultat** :
+  - `models/ia.model.ts` (miroir de `metriques.json`) et `services/ia-user.service.ts` (`metriques()`, `entrainer()`).
+  - Page `admin-ia` refaite : bandeau « Données simulées » (source, date, durée, versions), 4 KPI (accuracy 82,5 %, rappel 69 %, AUC 0,81, recommandation top 3 64 %), comparaison du Random Forest à la régression logistique et à la classe majoritaire, matrice de confusion, importances des variables, courbes du coude et de la silhouette, tableau des groupes K-Means, évaluation des recommandations, bouton « Réentraîner ».
+- **Vérification** : build Docker du front ; navigateur headless connecté en admin : bandeau, 4 KPI, matrice 22 / 2 / 5 / 11, 5 graphiques, 3 groupes, réentraînement « Modèles réentraînés en 108,8 s », aucune erreur dans la console ; capture.
+- **Gardé / modifié / rejeté** :
+  - Retiré : les données de démo de la page (requêtes par module, quota, coût, erreurs, interrupteurs) : aucune source réelle, elles demanderaient un endpoint dans `app/core` (socle). Mieux vaut aucune donnée que de faux chiffres à côté des vrais.
+  - Corrigé après capture : le tableau des groupes n'avait pas de marges (les styles globaux de `.bw-table` visent les tableaux Material) ; styles propres à la page.
+  - Problème d'environnement : le build Docker du front restait bloqué au téléchargement des polices Google (réseau du build BuildKit). Contourné sans modifier de fichier : `docker build --network=host -t bawsla/frontend frontend`, puis `docker compose up -d --no-build frontend`.
+- **Captures** : `captures/2026-10-15_11_supervision-ia.png`
+- **Leçon** : sur un tableau de bord, distinguer clairement données réelles et simulées, et retirer les chiffres de démo dès qu'une partie de la page devient réelle.
+
 ### 10 — 2026-10-15 — IA : endpoints du module User et contrat (phase D)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

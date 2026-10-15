@@ -24,7 +24,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [x] 2.4 Random Forest risque d'échec : test accuracy 0,825, rappel 0,69, F1 0,76, AUC 0,81 ; comparé à 2 références ; raisons lisibles
 - [x] 2.5 Filtrage collaboratif hybride (collaboratif 0,5 + popularité 0,2 + domaines 0,3) : réussite@3 0,64 contre 0,31 ; notions ratées ; démarrage à froid
 - [x] 2.6 Endpoints `profil`, `risque` (formateur/admin), `recommandations`, `metriques`, `entrainer` (admin) + contrat 5 ; testés via la gateway
-- [ ] 2.7 Page admin « IA » branchée sur les métriques
+- [x] 2.7 Page Admin → Supervision IA : vraies métriques des 3 modèles, graphiques, matrice de confusion, bouton Réentraîner
 
 ## 3. Intégration avec les autres modules
 - [ ] 3.0 Prévenir le membre Cours : refuser la publication (403) si `formateurValide` est false (contrat 4)
