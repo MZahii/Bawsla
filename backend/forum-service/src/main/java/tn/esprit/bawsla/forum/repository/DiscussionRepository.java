@@ -53,6 +53,11 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Long>, J
             + "order by d.creeLe desc")
     List<Discussion> deLAuteur(@Param("auteurId") Long auteurId, Pageable page);
 
+    /** Discussions candidates d'une recherche : visibles, non fusionnées, dans un cours ou partout. */
+    @Query("select d from Discussion d where d.supprimeeLe is null and d.masquee = false "
+            + "and d.fusionneeDansId is null and (:coursId is null or d.coursId = :coursId)")
+    List<Discussion> candidats(@Param("coursId") Long coursId);
+
     /** Discussions non lues d'un membre (« Tout marquer comme lu »), éventuellement dans un seul cours. */
     @Query("""
             select d.id from Discussion d where d.supprimeeLe is null and (:coursId is null or d.coursId = :coursId)

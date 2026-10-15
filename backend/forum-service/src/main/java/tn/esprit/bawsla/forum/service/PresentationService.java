@@ -143,6 +143,12 @@ public class PresentationService {
     // ------------------------------------------------------------------ Liste
 
     public List<DiscussionResume> resumes(List<Discussion> discussions, CurrentUser user) {
+        return resumes(discussions, user, Map.of());
+    }
+
+    /** Résumés avec le score de pertinence de chaque fil (recherche), absent s'il n'y en a pas. */
+    public List<DiscussionResume> resumes(List<Discussion> discussions, CurrentUser user,
+                                          Map<Long, Double> pertinences) {
         if (discussions.isEmpty()) {
             return List.of();
         }
@@ -167,7 +173,8 @@ public class PresentationService {
                     d.isEpinglee(), d.isVerrouillee(), d.isFaq(), d.getScore(), d.getNbReponses(), d.getNbVues(),
                     libelles(d), auteurs.de(d.getAuteurId(), d.isAnonyme(), c, moderateur),
                     auteurs.de(d.getDernierActeurId(), false, c, moderateur), d.getDerniereActiviteLe(),
-                    d.getCreeLe(), nonLue, approuvees.contains(d.getId()), avecVigie.contains(d.getId()), null));
+                    d.getCreeLe(), nonLue, approuvees.contains(d.getId()), avecVigie.contains(d.getId()),
+                    pertinences.get(d.getId())));
         }
         return resultat;
     }

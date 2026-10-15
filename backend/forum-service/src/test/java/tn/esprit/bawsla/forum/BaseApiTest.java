@@ -40,6 +40,7 @@ import tn.esprit.bawsla.forum.client.UserClient;
 import tn.esprit.bawsla.forum.client.UserDto;
 import tn.esprit.bawsla.forum.common.ApiResponse;
 import tn.esprit.bawsla.forum.service.AnnuaireService;
+import tn.esprit.bawsla.forum.service.IaService;
 
 /**
  * Socle des tests d'API : base H2 vidée avant chaque test, services distants simulés.
@@ -57,6 +58,12 @@ abstract class BaseApiTest {
         @Primary
         HorlogeDeTest horlogeDeTest() {
             return new HorlogeDeTest();
+        }
+
+        @Bean
+        @Primary
+        FauxIa fauxIa() {
+            return new FauxIa();
         }
     }
 
@@ -88,6 +95,12 @@ abstract class BaseApiTest {
     @Autowired
     HorlogeDeTest horloge;
 
+    @Autowired
+    FauxIa ia;
+
+    @Autowired
+    IaService iaService;
+
     @MockitoBean
     CoursClient coursClient;
 
@@ -102,6 +115,8 @@ abstract class BaseApiTest {
         viderBase();
         annuaire.oublierCaches();
         horloge.remettre();
+        ia.remettre();
+        iaService.oublierCaches();
         when(coursClient.getCours(COURS)).thenReturn(
                 ApiResponse.ok(new CoursDto(COURS, "Bases de données", "Informatique", "DEBUTANT", FORMATRICE)));
         Request requete = Request.create(Request.HttpMethod.GET, "/api/cours/404", Map.of(), null,

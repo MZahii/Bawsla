@@ -60,6 +60,7 @@ class VectoriserResponse(CamelModel):
     vecteurs: list[list[float]]
     modele: str
     dimension: int
+    fournisseur: str | None = None
 
 
 # ---------------------------------------------------------------- POST /indexer
@@ -77,7 +78,10 @@ class ChapitreCours(ForumModel):
 
 
 class IndexerRequest(ForumModel):
+    """Texte du cours : pages du PDF, chapitres, ou texte libre sans pagination (contrat 2 tel qu'il existe)."""
+
     cours_id: int
+    texte: str | None = None
     pages: list[PageCours] = Field(default_factory=list)
     chapitres: list[ChapitreCours] = Field(default_factory=list)
 
@@ -95,6 +99,8 @@ class IndexerResponse(CamelModel):
     passages: list[PassageIndexe]
     modele: str
     dimension: int
+    fournisseur: str | None = None
+    donnees_masquees: int = 0
 
 
 # ---------------------------------------------------------------- POST /reformuler
@@ -111,10 +117,20 @@ class ReformulerRequest(ForumModel):
 
 
 class ReformulerResponse(CamelModel):
+    """repli = true : le LLM n'a pas répondu, la question (nettoyée) est renvoyée telle quelle."""
+
     requete: str
     langue_detectee: str
     version_prompt: str | None = None
     fournisseur: str | None = None
+    repli: bool = False
+
+
+class ReformulationLLM(CamelModel):
+    """Sortie attendue du LLM pour la reformulation."""
+
+    requete: str = Field(min_length=1, max_length=MAX_QUESTION)
+    langue_detectee: str = Field(default="autre", max_length=20)
 
 
 # ---------------------------------------------------------------- POST /repondre (format du cahier des charges)

@@ -17,3 +17,8 @@ eureka:
 forum:
   pieces-jointes:
     dossier: target/test-pieces-jointes
+  # Tâches de fond (vectorisation, indexation, La Vigie) exécutées sur place : tests déterministes.
+  taches:
+    synchrones: true
+  rag:
+    texte-demo: true

@@ -48,3 +48,9 @@ def prompt(tache: str, version: str | None) -> Prompt:
     repli = VERSION_PAR_DEFAUT if VERSION_PAR_DEFAUT in versions else max(versions)
     log.warning("Version de prompt %r inconnue pour %s : repli sur %s", version, tache, repli)
     return versions[repli]
+
+
+# Enregistrement des tâches (en fin de fichier : les modules de prompts n'importent rien d'ici).
+from app.modules.forum.prompts import reformuler_v1, reformuler_v2, reformuler_v3  # noqa: E402
+
+enregistrer("reformuler", reformuler_v1, reformuler_v2, reformuler_v3)

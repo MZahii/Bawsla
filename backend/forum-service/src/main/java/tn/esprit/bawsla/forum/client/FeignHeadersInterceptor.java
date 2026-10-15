@@ -1,35 +1,38 @@
 package tn.esprit.bawsla.forum.client;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import jakarta.servlet.http.HttpServletRequest;
 import tn.esprit.bawsla.forum.common.security.CurrentUserArgumentResolver;
+import tn.esprit.bawsla.forum.service.IdentiteService;
+import tn.esprit.bawsla.forum.service.IdentiteService.Identite;
 
 /**
- * Propage l'identité de l'utilisateur courant (X-User-Id / X-User-Role) sur les appels Feign,
- * pour que le service appelé applique ses propres règles de visibilité.
+ * Propage l'identité de l'utilisateur courant (X-User-Id / X-User-Role) sur les appels Feign, pour que le service
+ * appelé applique ses propres règles de visibilité. Fonctionne aussi dans les tâches de fond (indexation,
+ * vectorisation) grâce à l'identité copiée par {@link IdentiteService}.
  */
 @Component
 public class FeignHeadersInterceptor implements RequestInterceptor {
 
-    @Override
-    public void apply(RequestTemplate template) {
-        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs)) {
-            return;
-        }
-        HttpServletRequest request = attrs.getRequest();
-        copy(request, template, CurrentUserArgumentResolver.HEADER_USER_ID);
-        copy(request, template, CurrentUserArgumentResolver.HEADER_USER_ROLE);
+    private final IdentiteService identites;
+
+    public FeignHeadersInterceptor(IdentiteService identites) {
+        this.identites = identites;
     }
 
-    private static void copy(HttpServletRequest request, RequestTemplate template, String header) {
-        String value = request.getHeader(header);
-        if (value != null) {
-            template.header(header, value);
+    @Override
+    public void apply(RequestTemplate template) {
+        Identite identite = identites.courante();
+        if (identite == null) {
+            return;
+        }
+        if (identite.userId() != null) {
+            template.header(CurrentUserArgumentResolver.HEADER_USER_ID, identite.userId());
+        }
+        if (identite.role() != null) {
+            template.header(CurrentUserArgumentResolver.HEADER_USER_ROLE, identite.role());
         }
     }
 }

@@ -7,6 +7,58 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 04 — 2026-10-15 — Lot 4 : NLP, embeddings, recherche sémantique, index des cours
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : PR socle `embed()` ; routes `vectoriser`, `indexer` (découpage), `reformuler` ; côté forum-service,
+  base vectorielle, indexation des cours avec hash, recherche hybride RRF, similaires en direct, discussions liées,
+  doublons (plan §4.1, §4.2 étapes 1 à 6, §5.2).
+- **Contexte fourni** : `app/core/llm_client.py` lu en entier ; documentation Gemini des embeddings
+  (ai.google.dev) et signatures réelles des SDK installés (`google-genai`, `openai`), vérifiées avant d'écrire.
+- **Prompt** : suite du prompt de l'entrée 02.
+- **Résultat** :
+  - **Socle (commit séparé `chore(socle)`, ajouts uniquement)** : `LLMClient.embed()` et `EmbeddingResult` ;
+    Gemini `gemini-embedding-001` (un `Content` par texte, `task_type` RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY,
+    768 dimensions, lots de 100, normalisation) ; OpenAI `text-embedding-3-small` ; Groq sans embeddings (503
+    clair) ; stub déterministe par hachage ; routage avec secours ; 14 tests.
+  - **ai-service / forum** : découpage (~800 caractères, 120 de chevauchement, paragraphes puis phrases, titres
+    Markdown en sections) ; `securite.py` (Sanitizer, balises de données neutralisées, ouvrantes comme fermantes) ;
+    prompts `reformuler` v1 → v3 (v3 : exemples derja / arabizi, questions de suivi rendues autonomes) ;
+    repli sans LLM (la question nettoyée telle quelle) ; 33 tests, couverture de branches 98 %.
+  - **forum-service** : `IaClient` via la gateway avec le jeton de l'utilisateur ; tâches de fond qui copient
+    l'identité au moment de la soumission ; vectorisation des discussions après validation de la transaction ;
+    `IndexationService` (contrat 2 et chapitres s'ils existent, hash SHA-256, texte de démonstration en profil dev,
+    état consultable et réindexation) ; `RechercheService` (cosinus en Java sur les vecteurs du même modèle,
+    FULLTEXT MySQL ou score de mots, RRF k = 60, similaires, liées, « Pour toi », doublon à la publication = 409).
+- **Vérification** : `pytest` 145 verts ; `mvnw test` 83 verts dont 15 nouveaux (`RechercheApiTest`) avec un
+  `FauxIa` déterministe. Le scénario de démo §12 étape 3 (« kifech nfiltri b LEFT JOIN… » retrouve la question
+  résolue) est un test.
+- **Gardé / modifié / rejeté** :
+  - La doc Gemini a montré deux pièges : `gemini-embedding-001` ne normalise pas sous 3072 dimensions, et
+    `gemini-embedding-2` fusionne plusieurs textes en un seul vecteur s'ils ne sont pas enveloppés un par un.
+    Les deux sont gérés dans le cœur.
+  - Premier découpage faux : le dernier passage d'une section disparaissait si son texte figurait déjà dans le
+    précédent (comparaison de texte). Corrigé en comptant les phrases nouvelles depuis le chevauchement.
+  - Tâches de fond : une transaction `REQUIRED` lancée en phase AFTER_COMMIT aurait rejoint la transaction déjà
+    validée (écritures perdues). Toutes les tâches utilisent `REQUIRES_NEW`.
+  - Deux tests de recherche échouaient à cause des données de test (même contenu pour toutes les discussions,
+    cosinus 0,74 entre sujets sans rapport) : mesuré, puis contenus distincts dans ces tests. Le code est inchangé.
+  - Git Bash interprète les `\n` dans les heredocs Python : modifications refaites avec l'outil d'édition.
+- **Décisions non couvertes par le plan** :
+  - Seuils de similarité provisoires (0,75 « similaire », 0,9 « doublon ») réglables par l'admin, fixés au lot 9.
+  - Repli lexical des similaires : seuil fixe de 0,5 sur le score de mots (ce n'est pas un cosinus), et jamais de
+    « doublon » sans vecteurs.
+  - `IndexerRequest.texte` ajouté (texte libre sans pagination, forme actuelle du contrat 2).
+  - Texte de démonstration activé par `forum.rag.texte-demo=true` (profil dev ou variable d'environnement).
+  - L'ai-service renvoie les champs `null` au lieu de les omettre (comportement du socle, inchangé ici).
+  - La mise à jour de `CONTRATS_API.md` (routes du forum) sera faite en une seule fois quand toutes les routes IA
+    existeront (lot 7), dans un commit `chore(socle)`.
+- **Captures** : `captures/2026-10-15_05_lot4-tests-nlp.png`
+- **Leçon** : avant de corriger un seuil ou un algorithme parce qu'un test échoue, mesurer le score réel : ici,
+  c'étaient les données de test.
+
+---
+
 ### 03 — 2026-10-15 — Lot 3 : forum-service, engagement
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

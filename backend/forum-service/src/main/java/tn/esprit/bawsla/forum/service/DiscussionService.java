@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -19,6 +20,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
 import tn.esprit.bawsla.forum.common.exception.BadRequestException;
+import tn.esprit.bawsla.forum.common.exception.ConflictException;
 import tn.esprit.bawsla.forum.common.exception.ForbiddenException;
 import tn.esprit.bawsla.forum.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.forum.common.security.CurrentUser;
@@ -61,6 +63,10 @@ public class DiscussionService {
     /** Filtres de la liste (paramètres de GET /api/forum/discussions). */
     public record Filtres(Long coursId, Long chapitreId, TypeDiscussion type, String statut, String etiquette,
                           String filtre, String tri, String q, String mode, Integer page, Integer taille) {
+
+        Filtres sansRecherche() {
+            return new Filtres(coursId, chapitreId, type, statut, etiquette, filtre, tri, null, mode, page, taille);
+        }
     }
 
     private final DiscussionRepository discussionRepository;
@@ -73,6 +79,7 @@ public class DiscussionService {
     private final EtiquetteService etiquettes;
     private final PresentationService presentation;
     private final JournalService journal;
+    private final RechercheService recherche;
     private final ApplicationEventPublisher evenements;
     private final Clock horloge;
 
@@ -80,7 +87,7 @@ public class DiscussionService {
                              VersionDiscussionRepository versionRepository, VueRepository vueRepository,
                              LectureRepository lectureRepository, AccesService acces, FilService fils,
                              EtiquetteService etiquettes, PresentationService presentation, JournalService journal,
-                             ApplicationEventPublisher evenements, Clock horloge) {
+                             RechercheService recherche, ApplicationEventPublisher evenements, Clock horloge) {
         this.discussionRepository = discussionRepository;
         this.reponseRepository = reponseRepository;
         this.versionRepository = versionRepository;
@@ -91,6 +98,7 @@ public class DiscussionService {
         this.etiquettes = etiquettes;
         this.presentation = presentation;
         this.journal = journal;
+        this.recherche = recherche;
         this.evenements = evenements;
         this.horloge = horloge;
     }
@@ -104,10 +112,34 @@ public class DiscussionService {
         }
         int page = f.page() == null ? 0 : Math.max(0, f.page());
         int taille = f.taille() == null ? TAILLE_PAR_DEFAUT : Math.clamp(f.taille(), 1, TAILLE_MAX);
+        if (f.q() != null && !f.q().isBlank()) {
+            return listerRecherche(f, user, page, taille);
+        }
         Page<Discussion> resultat = discussionRepository.findAll(specification(f, user),
                 PageRequest.of(page, taille, tri(f.tri())));
         return PageResponse.of(presentation.resumes(resultat.getContent(), user), page, taille,
                 resultat.getTotalElements());
+    }
+
+    /**
+     * Recherche (barre « Cherche ou pose ta question… ») : hybride RRF par défaut, mots exacts en mode lexical.
+     * Les autres filtres s'appliquent aux résultats ; tri par pertinence, sauf si un autre tri est demandé.
+     */
+    private PageResponse<DiscussionResume> listerRecherche(Filtres f, CurrentUser user, int page, int taille) {
+        RechercheService.Resultat r = recherche.rechercher(f.coursId(), f.q().trim(), f.mode());
+        List<Long> ids = r.ids();
+        if (ids.isEmpty()) {
+            return PageResponse.of(List.of(), page, taille, 0);
+        }
+        Specification<Discussion> spec = specification(f.sansRecherche(), user)
+                .and((racine, requete, cb) -> racine.get("id").in(ids));
+        List<Discussion> trouvees = f.tri() == null || "pertinence".equals(f.tri())
+                ? discussionRepository.findAll(spec).stream()
+                        .sorted(Comparator.comparingInt(d -> ids.indexOf(d.getId()))).toList()
+                : discussionRepository.findAll(spec, tri(f.tri()));
+        int debut = Math.min(page * taille, trouvees.size());
+        List<Discussion> morceau = trouvees.subList(debut, Math.min(debut + taille, trouvees.size()));
+        return PageResponse.of(presentation.resumes(morceau, user, r.scores()), page, taille, trouvees.size());
     }
 
     /** Ouvre un fil : compte la vue (une par utilisateur et par jour) et le marque comme lu. */
@@ -147,6 +179,13 @@ public class DiscussionService {
             acces.exigerAnonymatPermis(ctx);
         }
         acces.exigerSousLimites(ctx, req.type() == TypeDiscussion.QUESTION);
+        if (req.type() == TypeDiscussion.QUESTION && !req.confirmer()) {
+            Long doublon = recherche.similaires(req.coursId(), req.titre().trim(), null).doublonId();
+            if (doublon != null) {
+                throw new ConflictException("Doublon probable : une question très proche est déjà résolue "
+                        + "(discussion n° " + doublon + "). Lis sa réponse, ou confirme la publication.");
+            }
+        }
 
         Discussion d = new Discussion();
         d.setCoursId(req.coursId());
@@ -297,7 +336,7 @@ public class DiscussionService {
             case "votes" -> Sort.by(Sort.Direction.DESC, "score").and(Sort.by(Sort.Direction.DESC, "creeLe"));
             case "sans-reponse" -> Sort.by(Sort.Direction.ASC, "nbReponses")
                     .and(Sort.by(Sort.Direction.DESC, "creeLe"));
-            // « pertinence » (recherche hybride) arrive au lot 4 ; d'ici là, activité récente.
+            // « pertinence » n'a de sens qu'avec une recherche (q) : sans elle, activité récente.
             default -> Sort.by(Sort.Direction.DESC, "derniereActiviteLe");
         };
         return epinglees.and(suite).and(Sort.by(Sort.Direction.DESC, "id"));
