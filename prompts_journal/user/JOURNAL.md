@@ -7,6 +7,30 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 10 — 2026-10-15 — IA : endpoints du module User et contrat (phase D)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : rendre les trois modèles utilisables via la gateway, sans jamais recevoir de donnée personnelle
+- **Contexte fourni** : modèles et `entrainement.py` (entrées 06 à 09) ; conventions du module Quiz (`extra="forbid"`, contrôle de rôle) ; branches distantes relues (contrat 3 `notions-ratees` désormais « en place », `Tentative` et `NotionRatee` dans quiz-service)
+- **Prompt** :
+  > okay start Phase D but first what is this ? (IMAGE)
+  (capture de l'activation automatique de `.venv` par l'extension Python de VS Code : expliquée, sans effet sur le projet)
+- **Résultat** :
+  - `schemas.py` : `Indicateurs` (11 nombres bornés), lots de 1 à 500 apprenants, `extra="forbid"` : `etudiantId`, `email`… refusés en 400.
+  - `router.py` : `POST /profil` (K-Means), `POST /risque` (Random Forest, ENSEIGNANT et ADMIN seulement), `POST /recommandations` (cours suivis, domaines, notions ratées, catalogue), `GET /metriques` et `POST /entrainer` (ADMIN) ; calculs hors boucle asynchrone (`run_in_threadpool`) ; champs nuls omis.
+  - `CONTRATS_API.md` (commit socle séparé) : contrat 5 du module User, l'ancien stub `recommandations { etudiantId }` remplacé.
+  - Nouvelle synchronisation avec `develop` (PR #3 du module Quiz) : conflit dans l'historique de `CONTRATS_API.md`, résolu en gardant les deux lignes.
+  - 12 tests de routes + 3 tests du dossier des modèles (166 tests au total dans ai-service).
+- **Vérification** : `pytest` ; puis via la gateway avec de vrais jetons (apprenant, formateur, admin) : profil 200 (34 s au premier appel, entraînement dans le conteneur, puis 0,16 s), risque 403 pour l'apprenant et 200 pour le formateur, recommandations 200, données personnelles 400, en-têtes falsifiés sans jeton 401, métriques 403 pour le formateur, réentraînement admin 200 (51 s).
+- **Gardé / modifié / rejeté** :
+  - Bug trouvé au test Docker : 500 (`PermissionError`) car l'application tourne sous l'utilisateur `bawsla`, sans droit d'écriture sur `/app`. Corrigé dans le module, sans toucher au Dockerfile : dossier `USER_ML_DOSSIER` s'il est défini, sinon `ml/modeles/`, sinon le dossier temporaire ; un échec d'enregistrement n'empêche plus de servir les modèles.
+  - Bug trouvé avant les tests : l'alias automatique de `jours_actifs30j` donnait `joursActifs30J` ; alias explicite `joursActifs30j`.
+  - Corrigé : `"message": null` apparaissait dans les réponses ; `response_model_exclude_none=True` comme le module Quiz.
+  - Faux problème : conteneur « unhealthy » juste après le redémarrage de Docker Desktop ; démarrage lent, import mesuré à 3 s, puis « healthy ».
+  - Limite connue : dans Docker, les modèles vivent dans `/tmp` et sont réentraînés après chaque redémarrage du conteneur (≈ 30 à 50 s au premier appel).
+- **Captures** : _(à ajouter : réponses de /risque et /recommandations via la gateway)_
+- **Leçon** : tester dans le vrai conteneur, pas seulement en local : les droits du fichier et la version de Python y sont différents.
+
 ### 09 — 2026-10-13 — IA : enregistrement des modèles et métriques (étape C4)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

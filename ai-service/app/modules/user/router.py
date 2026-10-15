@@ -49,7 +49,7 @@ def _simulees(modeles: entrainement.Modeles) -> bool:
     return bool(modeles.metriques.get("donneesSimulees", False))
 
 
-@router.post("/profil", response_model=ApiResponse[ProfilResponse])
+@router.post("/profil", response_model=ApiResponse[ProfilResponse], response_model_exclude_none=True)
 async def profil(body: LotIndicateurs, user: CurrentUser = Depends(get_current_user)) -> ApiResponse[ProfilResponse]:
     def calculer() -> ProfilResponse:
         modeles = entrainement.obtenir()
@@ -62,7 +62,7 @@ async def profil(body: LotIndicateurs, user: CurrentUser = Depends(get_current_u
     return ApiResponse.ok(await run_in_threadpool(calculer))
 
 
-@router.post("/risque", response_model=ApiResponse[RisqueResponse])
+@router.post("/risque", response_model=ApiResponse[RisqueResponse], response_model_exclude_none=True)
 async def risque(body: LotIndicateurs, user: CurrentUser = Depends(get_current_user)) -> ApiResponse[RisqueResponse]:
     _exiger(user, *ROLES_RISQUE)
 
@@ -78,7 +78,7 @@ async def risque(body: LotIndicateurs, user: CurrentUser = Depends(get_current_u
     return ApiResponse.ok(await run_in_threadpool(calculer))
 
 
-@router.post("/recommandations", response_model=ApiResponse[RecommandationsResponse])
+@router.post("/recommandations", response_model=ApiResponse[RecommandationsResponse], response_model_exclude_none=True)
 async def recommandations(
     body: RecommandationsRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -97,14 +97,14 @@ async def recommandations(
     return ApiResponse.ok(await run_in_threadpool(calculer))
 
 
-@router.get("/metriques", response_model=ApiResponse[dict])
+@router.get("/metriques", response_model=ApiResponse[dict], response_model_exclude_none=True)
 async def metriques(user: CurrentUser = Depends(get_current_user)) -> ApiResponse[dict]:
     _exiger(user, ROLE_ADMIN)
     modeles = await run_in_threadpool(entrainement.obtenir)
     return ApiResponse.ok(modeles.metriques)
 
 
-@router.post("/entrainer", response_model=ApiResponse[dict])
+@router.post("/entrainer", response_model=ApiResponse[dict], response_model_exclude_none=True)
 async def entrainer(user: CurrentUser = Depends(get_current_user)) -> ApiResponse[dict]:
     _exiger(user, ROLE_ADMIN)
     modeles = await run_in_threadpool(entrainement.reentrainer)

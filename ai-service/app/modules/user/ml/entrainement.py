@@ -12,7 +12,10 @@ Utilisation : `cd ai-service && .venv/Scripts/python -m app.modules.user.ml.entr
 """
 
 import json
+import logging
+import os
 import platform
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -30,7 +33,21 @@ from app.modules.user.ml.donnees_simulees import NB_APPRENANTS, generer
 from app.modules.user.ml.recommandation import ModeleRecommandation
 from app.modules.user.ml.risque import ModeleRisque
 
-DOSSIER = Path(__file__).parent / "modeles"
+log = logging.getLogger(__name__)
+
+
+def _dossier_par_defaut() -> Path:
+    """`USER_ML_DOSSIER` s'il est défini ; sinon `ml/modeles/` ; sinon, s'il n'est pas modifiable (image Docker où
+    l'application tourne sous un utilisateur sans droit d'écriture sur /app), le dossier temporaire du système."""
+    if os.environ.get("USER_ML_DOSSIER"):
+        return Path(os.environ["USER_ML_DOSSIER"])
+    ici = Path(__file__).parent / "modeles"
+    if os.access(ici, os.W_OK) or (not ici.exists() and os.access(ici.parent, os.W_OK)):
+        return ici
+    return Path(tempfile.gettempdir()) / "bawsla-user-ml"
+
+
+DOSSIER = _dossier_par_defaut()
 FICHIERS = {"profils": "profils.joblib", "risque": "risque.joblib", "recommandation": "recommandation.joblib"}
 METRIQUES = "metriques.json"
 SOURCE_SIMULEE = f"Données simulées ({NB_APPRENANTS} apprenants fictifs, graine fixe) : quiz-service et cours-service " \
@@ -70,7 +87,11 @@ def entrainer_tout(dossier: Path = DOSSIER) -> Modeles:
         "recommandation": modele_reco.metriques,
     }
     modeles = Modeles(profils, modele_risque, modele_reco, metriques)
-    enregistrer(modeles, dossier)
+    try:
+        enregistrer(modeles, dossier)
+    except OSError as e:
+        # Les modèles restent utilisables en mémoire ; ils seront réentraînés au prochain démarrage.
+        log.warning("Modèles du module User non enregistrés dans %s : %s", dossier, e)
     return modeles
 
 

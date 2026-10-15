@@ -49,6 +49,31 @@ def test_rechargement_identique(modeles, dossier):
     assert [g.nom for g in recharges.profils.groupes] == [g.nom for g in modeles.profils.groupes]
 
 
+def test_dossier_non_modifiable_les_modeles_restent_en_memoire(modeles, tmp_path, monkeypatch):
+    """Image Docker : /app n'est pas modifiable par l'utilisateur du conteneur. Pas d'erreur 500 pour autant."""
+    def refuser(*args, **kwargs):
+        raise PermissionError("lecture seule")
+    monkeypatch.setattr(entrainement, "enregistrer", refuser)
+    # Entraînements remplacés par les modèles déjà prêts : le test porte sur l'enregistrement, pas sur le ML.
+    monkeypatch.setattr(entrainement.clustering, "entrainer", lambda a: modeles.profils)
+    monkeypatch.setattr(entrainement.risque, "entrainer", lambda a: modeles.risque)
+    monkeypatch.setattr(entrainement.recommandation, "entrainer", lambda a, i, c: modeles.recommandation)
+    m = entrainement.entrainer_tout(tmp_path)
+    assert m.profils.groupes
+    assert not any(tmp_path.iterdir())
+
+
+def test_dossier_par_defaut_variable_d_environnement(monkeypatch, tmp_path):
+    monkeypatch.setenv("USER_ML_DOSSIER", str(tmp_path / "ici"))
+    assert entrainement._dossier_par_defaut() == tmp_path / "ici"
+
+
+def test_dossier_par_defaut_repli_sur_le_dossier_temporaire(monkeypatch):
+    monkeypatch.delenv("USER_ML_DOSSIER", raising=False)
+    monkeypatch.setattr(entrainement.os, "access", lambda chemin, mode: False)
+    assert entrainement._dossier_par_defaut() == entrainement.Path(entrainement.tempfile.gettempdir()) / "bawsla-user-ml"
+
+
 def test_charger_sans_fichiers_renvoie_none(tmp_path):
     assert entrainement.charger(tmp_path) is None
 
