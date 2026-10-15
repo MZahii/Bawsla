@@ -44,6 +44,9 @@ class AuthServiceTest {
     @Mock
     private DemandeFormateurService demandeFormateurService;
 
+    @Mock
+    private ActiviteService activiteService;
+
     /** Coût BCrypt minimal : les tests restent rapides. */
     private final PasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private final JwtService jwtService = new JwtService("un-secret-de-test-d-au-moins-32-caracteres!!", 3_600_000);
@@ -55,7 +58,7 @@ class AuthServiceTest {
     }
 
     private AuthService serviceA(Instant instant) {
-        return new AuthService(userRepository, encoder, jwtService, demandeFormateurService, Clock.fixed(instant, ZONE));
+        return new AuthService(userRepository, encoder, jwtService, demandeFormateurService, activiteService, Clock.fixed(instant, ZONE));
     }
 
     private User compte(boolean actif) {
@@ -157,6 +160,7 @@ class AuthServiceTest {
         assertThat(res.user().id()).isEqualTo(7L);
         assertThat(u.getDerniereConnexion()).isEqualTo(LocalDateTime.ofInstant(T0, ZONE));
         assertThat(res.user().derniereConnexion()).isEqualTo(u.getDerniereConnexion());
+        verify(activiteService).enregistrer(7L);
     }
 
     @Test

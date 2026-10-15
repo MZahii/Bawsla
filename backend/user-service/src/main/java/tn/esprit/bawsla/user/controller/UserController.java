@@ -20,12 +20,14 @@ import tn.esprit.bawsla.user.dto.AdminCreationRequest;
 import tn.esprit.bawsla.user.dto.AdminModificationRequest;
 import tn.esprit.bawsla.user.dto.ChangementMotDePasseRequest;
 import tn.esprit.bawsla.user.dto.DesactivationRequest;
+import tn.esprit.bawsla.user.dto.IndicateursResponse;
 import tn.esprit.bawsla.user.dto.ParcoursDto;
 import tn.esprit.bawsla.user.dto.MotDePasseRequest;
 import tn.esprit.bawsla.user.dto.ProfilRequest;
 import tn.esprit.bawsla.user.dto.StatutRequest;
 import tn.esprit.bawsla.user.dto.UserDto;
 import tn.esprit.bawsla.user.dto.UserPublicDto;
+import tn.esprit.bawsla.user.service.IndicateursService;
 import tn.esprit.bawsla.user.service.UserService;
 
 @RestController
@@ -33,9 +35,11 @@ import tn.esprit.bawsla.user.service.UserService;
 public class UserController {
 
     private final UserService userService;
+    private final IndicateursService indicateursService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, IndicateursService indicateursService) {
         this.userService = userService;
+        this.indicateursService = indicateursService;
     }
 
     @GetMapping("/me")
@@ -70,6 +74,18 @@ public class UserController {
     @PutMapping("/me/parcours")
     public ApiResponse<ParcoursDto> enregistrerMonParcours(@Valid @RequestBody ParcoursDto request, CurrentUser user) {
         return ApiResponse.ok(userService.enregistrerMonParcours(user, request), "Parcours enregistré");
+    }
+
+    /** Mes indicateurs pour le Machine Learning, avec l'état de chaque source (quiz-service, cours-service). */
+    @GetMapping("/me/indicateurs")
+    public ApiResponse<IndicateursResponse> mesIndicateurs(CurrentUser user) {
+        return ApiResponse.ok(indicateursService.lesMiens(user));
+    }
+
+    /** ENSEIGNANT ou ADMIN : indicateurs d'un apprenant. */
+    @GetMapping("/{id}/indicateurs")
+    public ApiResponse<IndicateursResponse> indicateurs(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(indicateursService.dUnApprenant(user, id));
     }
 
     /** ADMIN uniquement. */

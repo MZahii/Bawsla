@@ -30,14 +30,16 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final DemandeFormateurService demandeFormateurService;
+    private final ActiviteService activiteService;
     private final Clock clock;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-                       DemandeFormateurService demandeFormateurService, Clock clock) {
+                       DemandeFormateurService demandeFormateurService, ActiviteService activiteService, Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.demandeFormateurService = demandeFormateurService;
+        this.activiteService = activiteService;
         this.clock = clock;
     }
 
@@ -88,6 +90,7 @@ public class AuthService {
             throw new UnauthorizedException("Compte désactivé");
         }
         user.enregistrerConnexion(maintenant);
+        activiteService.enregistrer(user.getId());
         return toAuthResponse(user);
     }
 

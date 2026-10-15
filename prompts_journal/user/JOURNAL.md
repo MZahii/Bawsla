@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 13 — 2026-10-15 — Indicateurs d'un apprenant rassemblés par user-service (étape F2a)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : calculer dans user-service les 11 indicateurs du ML d'un vrai apprenant, à partir de quiz-service, cours-service et user-service, en disant clairement quelles données manquent
+- **Contexte fourni** : contrats 3, 6, 7 ; modèle Feign de référence (quiz-service : `CoursClient`, `FeignHeadersInterceptor`) ; client IA de cours-service
+- **Prompt** :
+  > yes
+  (réponse à « Shall I start F2? »)
+- **Résultat** :
+  - `ActiviteJour` + `ActiviteService` : un jour d'activité enregistré à chaque connexion (et à chaque lecture de ses indicateurs) → `joursActifs30j`, qui n'existait pas (seule la dernière connexion était gardée).
+  - Clients Feign `QuizClient` (contrats 3 et 6) et `CoursClient` (contrat 7, catalogue), `FeignHeadersInterceptor` : chaque service applique ses propres droits (un apprenant ne lit que ses données).
+  - `IndicateursService` : chaque source appelée séparément, statut `DISPONIBLE`, `STUB`, `PAS_ENCORE_DISPONIBLE` ou `INDISPONIBLE` ; un indicateur dont la source manque reste null (omis du JSON), jamais remplacé par un faux zéro ; `complet` seulement si tout a répondu.
+  - `GET /api/users/me/indicateurs` (apprenant) et `GET /api/users/{id}/indicateurs` (formateur, admin ; 404 si ce n'est pas un apprenant).
+  - 12 tests (`IndicateursServiceTest`, `ActiviteServiceTest`), 72 tests au total dans user-service.
+- **Vérification** : `mvnw test` (72/72) ; via la gateway : tentatives et inscriptions `PAS_ENCORE_DISPONIBLE`, notions ratées `STUB` (version de quiz-service encore sans contrat 3 dans ce Docker), activité `DISPONIBLE` ; droits : 403 entre apprenants, 200 pour l'admin, 404 pour un non-apprenant.
+- **Gardé / modifié / rejeté** :
+  - Corrigé au test réel : une route absente renvoyait 400 et non 404 (« tentatives » tombe sur `/api/quiz/{id}`, qui attend un nombre), donc classée à tort `INDISPONIBLE`. Comme nos requêtes sont toujours bien formées, 400, 404 et 405 comptent pour « route pas encore implémentée ».
+  - Corrigé : les indicateurs absents apparaissaient en `null` dans le JSON ; omis comme l'exige la règle commune du projet.
+  - Corrigé (tests) : créer un mock pendant un autre stubbing troublait Mockito ; exceptions Feign réelles (sous-classe anonyme).
+- **Captures** : _(à ajouter : réponse de /api/users/me/indicateurs)_
+- **Leçon** : un service qui dépend d'autres doit dégrader proprement source par source, et le dire, plutôt que d'échouer ou d'inventer des valeurs.
+
 ### 12 — 2026-10-15 — Contrats 6 à 8 proposés à Quiz et Cours (étape F1)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
