@@ -16,6 +16,7 @@ import tn.esprit.bawsla.cours.common.exception.ForbiddenException;
 import tn.esprit.bawsla.cours.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.cours.common.security.CurrentUser;
 import tn.esprit.bawsla.cours.dto.InscriptionResponse;
+import tn.esprit.bawsla.cours.dto.InscriptionResumeResponse;
 import tn.esprit.bawsla.cours.dto.ProgressionResponse;
 import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.Inscription;
@@ -101,6 +102,27 @@ public class InscriptionService {
 
     public List<InscriptionResponse> mesInscriptions(CurrentUser user) {
         return reponses(inscriptionRepository.findByEtudiantIdOrderByDateInscriptionDescIdDesc(user.id()));
+    }
+
+    /**
+     * Lot 2 : POST /api/cours/{id}/activite, envoyé par le lecteur toutes les 60 s quand l'onglet est visible. Apprenant inscrit à un
+     * cours publié seulement (403 sinon, 404 si le cours n'est pas visible). Renvoie l'inscription à jour (temps passé).
+     */
+    public InscriptionResponse signalerActivite(Long coursId, CurrentUser user) {
+        exigerApprenant(user, "Seul un apprenant a un temps passé dans un cours.");
+        coursService.chargerVisible(coursId, user);
+        Inscription inscription = inscriptionRepository.findByEtudiantIdAndCoursId(user.id(), coursId)
+                .orElseThrow(() -> new ForbiddenException("Inscris-toi à ce cours pour suivre ton temps passé."));
+        enregistrement.signalerActivite(inscription.getId());
+        return reponse(inscriptionRepository.findById(inscription.getId()).orElseThrow());
+    }
+
+    // ------------------------------------------------------------------ contrat 8
+
+    /** GET /api/cours/inscriptions/toutes : ADMIN uniquement. Toutes les inscriptions, sans autre donnée sur l'apprenant que son identifiant. */
+    public List<InscriptionResumeResponse> toutes(CurrentUser user) {
+        user.requireAnyRole(CurrentUser.ADMIN);
+        return reponses(inscriptionRepository.findAllByOrderByIdAsc()).stream().map(InscriptionResumeResponse::from).toList();
     }
 
     // ------------------------------------------------------------------ contrat 7

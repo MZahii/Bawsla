@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -54,6 +55,7 @@ class InscriptionApiTest {
     @Autowired CoursRepository coursRepository;
     @Autowired InscriptionRepository inscriptionRepository;
     @Autowired ChapitreTermineRepository termineRepository;
+    @Autowired JdbcTemplate jdbc;
 
     @BeforeEach
     void nettoyer() {
@@ -76,8 +78,8 @@ class InscriptionApiTest {
                 .andExpect(jsonPath("$.data.progression").value(0.0))
                 .andExpect(jsonPath("$.data.termine").value(false))
                 .andExpect(jsonPath("$.data.dateInscription").value(org.hamcrest.Matchers.matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")))
-                // Pas encore de suivi du temps ni d'activité : champs OMIS (jamais un 0 trompeur pour le module User).
-                .andExpect(jsonPath("$.data.tempsPasseMinutes").doesNotExist())
+                // Lot 2 : le temps passé commence à 0 ; pas encore d'activité : date OMISE.
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(0))
                 .andExpect(jsonPath("$.data.dateDerniereActivite").doesNotExist());
         String date = JsonPath.read(corps(premiere), "$.data.dateInscription");
 
@@ -190,7 +192,7 @@ class InscriptionApiTest {
                 .andExpect(jsonPath("$.data.progression").value(0.25))
                 .andExpect(jsonPath("$.data.termine").value(false))
                 .andExpect(jsonPath("$.data.dateDerniereActivite").exists())
-                .andExpect(jsonPath("$.data.tempsPasseMinutes").doesNotExist());
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(0));
         // Idempotent : le même chapitre deux fois ne compte qu'une fois.
         envoyer(post(route(cours, "/chapitres/" + c.get(0) + "/terminer")), APPRENANT, "ETUDIANT")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.progression").value(0.25));
@@ -224,7 +226,7 @@ class InscriptionApiTest {
         envoyer(post(route(cours, "/chapitres/" + c.get(0) + "/terminer")), APPRENANT, "ETUDIANT").andExpect(status().isOk());
 
         assertThat(inscriptionRepository.findAll().get(0).getDateDerniereActivite()).isNotNull();
-        assertThat(inscriptionRepository.findAll().get(0).getTempsPasseMinutes()).isNull(); // lot 2
+        assertThat(inscriptionRepository.findAll().get(0).getTempsPasseMinutes()).isZero(); // lot 2 : seul le lecteur compte le temps
     }
 
     @Test
@@ -328,7 +330,7 @@ class InscriptionApiTest {
         envoyer(get(route(cours, "/progression")), APPRENANT, "ETUDIANT")
                 .andExpect(jsonPath("$.data.progression").value(0.6667))
                 .andExpect(jsonPath("$.data.chapitresTermines.length()").value(2))
-                .andExpect(jsonPath("$.data.tempsPasseMinutes").doesNotExist());
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(0));
         // Réservée à l'apprenant lui-même ; le contrat 7, lui, n'expose pas la liste des chapitres.
         envoyer(get(route(cours, "/progression")), FORMATEUR_A, "ENSEIGNANT").andExpect(status().isForbidden());
         envoyer(get(route(cours, "/inscriptions")), FORMATEUR_A, "ENSEIGNANT").andExpect(jsonPath("$.data[0].chapitresTermines").doesNotExist());
@@ -357,7 +359,7 @@ class InscriptionApiTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[*].etudiantId").value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is((int) APPRENANT))))
                 .andExpect(jsonPath("$.data[?(@.coursId == " + cours + ")].progression").value(0.5))
-                .andExpect(jsonPath("$.data[0].tempsPasseMinutes").doesNotExist());
+                .andExpect(jsonPath("$.data[0].tempsPasseMinutes").value(0));
         // Un apprenant ne lit pas celles d'un autre : 403.
         envoyer(get("/api/cours/inscriptions?etudiantId=" + AUTRE_APPRENANT), APPRENANT, "ETUDIANT").andExpect(status().isForbidden());
         // Tout ENSEIGNANT (y compris sans lien avec les cours) et l'ADMIN peuvent lire, à la lettre du contrat.
@@ -385,7 +387,7 @@ class InscriptionApiTest {
                 .andExpect(jsonPath("$.data[0].progression").value(0.0))
                 .andExpect(jsonPath("$.data[0].termine").value(false))
                 .andExpect(jsonPath("$.data[0].dateInscription").exists())
-                .andExpect(jsonPath("$.data[0].tempsPasseMinutes").doesNotExist())
+                .andExpect(jsonPath("$.data[0].tempsPasseMinutes").value(0))
                 .andExpect(jsonPath("$.data[0].dateDerniereActivite").doesNotExist());
         envoyer(get(route(cours, "/inscriptions")), ADMIN, "ADMIN").andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2));
         // Un autre formateur : 403 ; un apprenant, même inscrit : 403 ; cours inexistant : 404.
@@ -447,6 +449,83 @@ class InscriptionApiTest {
 
         assertThat(inscriptionRepository.findAll()).extracting("coursId").containsExactly(conserve);
         assertThat(termineRepository.count()).isEqualTo(1);
+    }
+
+    // ------------------------------------------------------------------ lot 2 : temps passé
+
+    @Test
+    void signalDActivite_compteUneMinuteEtDateLActivite() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 1);
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT");
+
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(1))
+                .andExpect(jsonPath("$.data.dateDerniereActivite").exists());
+    }
+
+    @Test
+    void signauxTropRapproches_uneSeuleMinute_puisUneDePlusApres55Secondes() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 1);
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT");
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT");
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT")
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(1)); // deuxième onglet ou double envoi : refusé
+
+        jdbc.update("update inscription set dernier_signal = ?", java.time.LocalDateTime.now().minusSeconds(56));
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT")
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(2));
+    }
+
+    @Test
+    void plafondDe600MinutesParJour() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 1);
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT");
+        jdbc.update("update inscription set temps_passe_minutes = 600, minutes_du_jour = 600, jour_activite = ?, dernier_signal = ?",
+                java.time.LocalDate.now(), java.time.LocalDateTime.now().minusMinutes(5));
+
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(600));
+    }
+
+    @Test
+    void ancienneInscriptionSansTemps_passeA1AuPremierSignal() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 1);
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT");
+        jdbc.update("update inscription set temps_passe_minutes = null");
+
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT")
+                .andExpect(jsonPath("$.data.tempsPasseMinutes").value(1));
+    }
+
+    @Test
+    void signalDActivite_apprenantInscritACoursPublieSeulement() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 1);
+        envoyer(post(route(cours, "/activite")), APPRENANT, "ETUDIANT").andExpect(status().isForbidden()); // pas inscrit
+        envoyer(post(route(cours, "/activite")), FORMATEUR_A, "ENSEIGNANT").andExpect(status().isForbidden());
+        envoyer(post(route(999_999, "/activite")), APPRENANT, "ETUDIANT").andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------------ contrat 8
+
+    @Test
+    void contrat8_toutesLesInscriptions_adminSeulement() throws Exception {
+        long cours = coursPublie(FORMATEUR_A, 2);
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT");
+        envoyer(post(route(cours, "/chapitres/" + chapitres(cours).get(0) + "/terminer")), APPRENANT, "ETUDIANT");
+        envoyer(post(route(cours, "/inscriptions")), AUTRE_APPRENANT, "ETUDIANT");
+
+        envoyer(get("/api/cours/inscriptions/toutes"), ADMIN, "ADMIN")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].etudiantId").value(APPRENANT))
+                .andExpect(jsonPath("$.data[0].coursId").value(cours))
+                .andExpect(jsonPath("$.data[0].progression").value(0.5))
+                .andExpect(jsonPath("$.data[0].termine").value(false))
+                .andExpect(jsonPath("$.data[0].dateInscription").doesNotExist());
+        envoyer(get("/api/cours/inscriptions/toutes"), FORMATEUR_A, "ENSEIGNANT").andExpect(status().isForbidden());
+        envoyer(get("/api/cours/inscriptions/toutes"), APPRENANT, "ETUDIANT").andExpect(status().isForbidden());
     }
 
     // ------------------------------------------------------------------ outils

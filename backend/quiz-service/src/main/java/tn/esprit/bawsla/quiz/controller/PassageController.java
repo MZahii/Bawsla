@@ -23,6 +23,7 @@ import tn.esprit.bawsla.quiz.dto.PassageResponse;
 import tn.esprit.bawsla.quiz.dto.RattrapageRequest;
 import tn.esprit.bawsla.quiz.dto.RattrapageResultat;
 import tn.esprit.bawsla.quiz.dto.RemediationResponse;
+import tn.esprit.bawsla.quiz.dto.TentativeLigne;
 import tn.esprit.bawsla.quiz.dto.TentativeRequest;
 import tn.esprit.bawsla.quiz.dto.TentativeResultat;
 import tn.esprit.bawsla.quiz.service.QuizService;
@@ -61,6 +62,12 @@ public class PassageController {
     @GetMapping("/tentatives/mes")
     public ApiResponse<List<HistoriqueLigne>> historique(CurrentUser user) {
         return ApiResponse.ok(tentativeService.historique(user));
+    }
+
+    /** Contrat 6 (module User / ML) : tentatives corrigées d'un apprenant (lui-même, ENSEIGNANT, ADMIN). */
+    @GetMapping("/tentatives")
+    public ApiResponse<List<TentativeLigne>> tentatives(@RequestParam(required = false) Long etudiantId, CurrentUser user) {
+        return ApiResponse.ok(tentativeService.tentativesDe(etudiantId, user));
     }
 
     /** Contrat 3 (module User / ML) : notions ratées d'un apprenant, agrégées par compétence. */

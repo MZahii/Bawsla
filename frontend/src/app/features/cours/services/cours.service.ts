@@ -71,6 +71,11 @@ export class CoursService {
     return this.http.delete<ApiResponse<Progression>>(`${this.url}/${coursId}/chapitres/${chapitreId}/terminer`).pipe(map((r) => r.data));
   }
 
+  /** Signal d'activité du lecteur (toutes les 60 s, onglet visible) : le serveur compte au plus une minute par signal. */
+  signalerActivite(coursId: number): Observable<Inscription> {
+    return this.http.post<ApiResponse<Inscription>>(`${this.url}/${coursId}/activite`, {}).pipe(map((r) => r.data));
+  }
+
   /** Formateur propriétaire ou ADMIN : les inscriptions d'un cours (contrat 7). */
   inscriptionsDuCours(coursId: number): Observable<Inscription[]> {
     return this.http.get<ApiResponse<Inscription[]>>(`${this.url}/${coursId}/inscriptions`).pipe(map((r) => r.data));

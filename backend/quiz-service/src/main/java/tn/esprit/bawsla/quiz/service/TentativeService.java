@@ -13,6 +13,7 @@ import tn.esprit.bawsla.quiz.common.exception.ConflictException;
 import tn.esprit.bawsla.quiz.common.security.CurrentUser;
 import tn.esprit.bawsla.quiz.dto.HistoriqueLigne;
 import tn.esprit.bawsla.quiz.dto.NotionRateeDto;
+import tn.esprit.bawsla.quiz.dto.TentativeLigne;
 import tn.esprit.bawsla.quiz.dto.TentativeRequest;
 import tn.esprit.bawsla.quiz.dto.TentativeRequest.ReponseRequest;
 import tn.esprit.bawsla.quiz.dto.TentativeResultat;
@@ -99,6 +100,20 @@ public class TentativeService {
                     t.getQuiz().getType(), t.getPourcentage(), t.isReussie(), t.getDateTentative(),
                     autres == null ? null : Math.round(autres * 10) / 10.0);
         }).toList();
+    }
+
+    /**
+     * Contrat 6 (consommé par le module User pour le ML) : tentatives corrigées d'un apprenant, la plus récente d'abord.
+     * L'apprenant lui-même, un ENSEIGNANT ou un ADMIN ; {@code etudiantId} absent : 400.
+     */
+    public List<TentativeLigne> tentativesDe(Long etudiantId, CurrentUser user) {
+        if (etudiantId == null) {
+            throw new BadRequestException("Le paramètre etudiantId est obligatoire.");
+        }
+        if (!user.id().equals(etudiantId)) {
+            user.requireAnyRole(CurrentUser.ENSEIGNANT, CurrentUser.ADMIN);
+        }
+        return tentativeRepository.findByEtudiantIdOrderByDateTentativeDesc(etudiantId).stream().map(TentativeLigne::from).toList();
     }
 
     /**

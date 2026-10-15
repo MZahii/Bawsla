@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import tn.esprit.bawsla.cours.common.ApiResponse;
 import tn.esprit.bawsla.cours.common.security.CurrentUser;
 import tn.esprit.bawsla.cours.dto.InscriptionResponse;
+import tn.esprit.bawsla.cours.dto.InscriptionResumeResponse;
 import tn.esprit.bawsla.cours.dto.ProgressionResponse;
 import tn.esprit.bawsla.cours.service.InscriptionService;
 
@@ -65,6 +66,18 @@ public class InscriptionController {
     @GetMapping("/mes-inscriptions")
     public ApiResponse<List<InscriptionResponse>> mesInscriptions(CurrentUser user) {
         return ApiResponse.ok(inscriptionService.mesInscriptions(user));
+    }
+
+    /** Lot 2 : signal d'activité du lecteur (toutes les 60 s, onglet visible). */
+    @PostMapping("/{id}/activite")
+    public ApiResponse<InscriptionResponse> activite(@PathVariable Long id, CurrentUser user) {
+        return ApiResponse.ok(inscriptionService.signalerActivite(id, user));
+    }
+
+    /** Contrat 8 : toutes les inscriptions (ADMIN), pour l'entraînement du filtrage collaboratif du module User. */
+    @GetMapping("/inscriptions/toutes")
+    public ApiResponse<List<InscriptionResumeResponse>> toutes(CurrentUser user) {
+        return ApiResponse.ok(inscriptionService.toutes(user));
     }
 
     /** Contrat 7 : par apprenant (lui-même, ENSEIGNANT, ADMIN). {@code etudiantId} absent : 400. */

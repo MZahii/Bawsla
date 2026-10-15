@@ -1,5 +1,6 @@
 package tn.esprit.bawsla.cours.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -42,11 +43,22 @@ public class Inscription {
     @Column(nullable = false)
     private boolean termine;
 
-    /** Dernier chapitre marqué terminé. Null tant que l'apprenant n'a rien terminé. */
+    /** Dernière action de l'apprenant (chapitre terminé ou signal d'activité du lecteur). Null tant qu'il n'a rien fait. */
     private LocalDateTime dateDerniereActivite;
 
-    /** Minutes passées dans le lecteur. NULL tant que le suivi du temps n'existe pas : le champ est alors omis de l'API. */
+    /**
+     * Minutes passées dans le lecteur (lot 2) : 0 à l'inscription, +1 par signal d'activité accepté. NULL seulement pour une inscription
+     * antérieure au suivi du temps (le champ est alors omis de l'API) ; elle passe à 1 au premier signal.
+     */
     private Integer tempsPasseMinutes;
+
+    /** Dernier signal d'activité ACCEPTÉ : un signal n'ajoute une minute que si au moins 55 s se sont écoulées depuis. */
+    private LocalDateTime dernierSignal;
+
+    /** Jour des minutes comptées dans {@code minutesDuJour} (plafond quotidien). */
+    private LocalDate jourActivite;
+
+    private Integer minutesDuJour;
 
     protected Inscription() {
     }
@@ -55,6 +67,7 @@ public class Inscription {
         this.etudiantId = etudiantId;
         this.coursId = coursId;
         this.dateInscription = LocalDateTime.now();
+        this.tempsPasseMinutes = 0;
     }
 
     public Long getId() { return id; }

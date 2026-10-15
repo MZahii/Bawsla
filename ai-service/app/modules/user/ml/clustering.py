@@ -42,7 +42,7 @@ DESCRIPTIONS = {
     "Avancé": "Très bonnes notes et régulier : prêt pour des cours de niveau supérieur.",
     "Régulier": "Avance à bon rythme avec des résultats corrects.",
     "Débutant en difficulté": "Actif, mais beaucoup d'erreurs aux quiz : a besoin de revoir les bases.",
-    "Décrocheur": "Peu ou plus d'activité depuis longtemps : risque d'abandon.",
+    "Décrocheur": "Peu d'activité ces derniers temps : reprendre à petits pas, un chapitre à la fois.",
 }
 
 

@@ -179,6 +179,39 @@ class QuizApiTest {
     }
 
     @Test
+    void contrat6_lesTentativesDUnApprenantAvecSesBonnesReponses() throws Exception {
+        long apprenant = 310L;
+        long id = creer("QUIZ", 4);
+        publier(id);
+        Passage p = passage(id);
+        mvc.perform(en(post("/api/quiz/" + id + "/tentatives"), apprenant, "ETUDIANT")
+                        .content(reponsesJson(p, Arrays.asList(p.bonnes.get(0), p.bonnes.get(1), p.bonnes.get(2), p.mauvaises.get(3)))))
+                .andExpect(status().isCreated());
+
+        mvc.perform(en(get("/api/quiz/tentatives?etudiantId=" + apprenant), FORMATEUR, "ENSEIGNANT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].quizId").value(id))
+                .andExpect(jsonPath("$.data[0].coursId").value(COURS))
+                .andExpect(jsonPath("$.data[0].nbCorrectes").value(3))
+                .andExpect(jsonPath("$.data[0].nbQuestions").value(4))
+                .andExpect(jsonPath("$.data[0].pourcentage").value(75))
+                .andExpect(jsonPath("$.data[0].reussie").value(true))
+                .andExpect(jsonPath("$.data[0].dateTentative").exists());
+        mvc.perform(en(get("/api/quiz/tentatives?etudiantId=" + apprenant), apprenant, "ETUDIANT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(1)));
+        mvc.perform(en(get("/api/quiz/tentatives?etudiantId=" + apprenant), ADMIN, "ADMIN")).andExpect(status().isOk());
+    }
+
+    @Test
+    void contrat6_reserveALApprenantLuiMemeAuxFormateursEtAdmins() throws Exception {
+        mvc.perform(en(get("/api/quiz/tentatives?etudiantId=311"), 312L, "ETUDIANT")).andExpect(status().isForbidden());
+        mvc.perform(en(get("/api/quiz/tentatives"), FORMATEUR, "ENSEIGNANT")).andExpect(status().isBadRequest());
+        mvc.perform(en(get("/api/quiz/tentatives?etudiantId=311"), FORMATEUR, "ENSEIGNANT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
     void lesNotionsRateesDUnAutreApprenantSontReserveesAuxFormateursEtAdmins() throws Exception {
         mvc.perform(en(get("/api/quiz/notions-ratees?etudiantId=304"), 305L, "ETUDIANT")).andExpect(status().isForbidden());
         mvc.perform(en(get("/api/quiz/notions-ratees?etudiantId=304"), FORMATEUR, "ENSEIGNANT")).andExpect(status().isOk());

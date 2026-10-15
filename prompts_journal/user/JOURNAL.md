@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 18 — 2026-10-15 — Branche integration/user-cours-quiz : ce qui manquait dans Cours et Quiz, test complet de l'IA
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : ajouter dans les modules Cours et Quiz ce dont l'IA du module User a besoin, sur une branche à part (`integration/user-cours-quiz`, sans toucher à `integration/quiz-cours`), puis tester toute l'IA
+- **Contexte fourni** : contrats 6 à 8 proposés (branche `docs/contrat-user-ia`), plan du lot 2 validé avec le membre Cours (signal toutes les 60 s, 55 s minimum, plafond 600 min par jour, mise à jour atomique)
+- **Prompt** :
+  > okay i need u to do the work needed in my other teammate work and don't push it to the integration branch just add what we need and push it to another branch in integration named user-cours-quiz ! when all done run a complete test for my ia and give me the final result !
+- **Résultat** :
+  - Cours, lot 2 : `POST /api/cours/{id}/activite` (apprenant inscrit, cours publié) ; +1 minute par une seule requête `update` atomique si au moins 55 s depuis le dernier signal accepté, plafond de 600 min par jour ; `tempsPasseMinutes` à 0 à l'inscription ; chaque signal date l'activité. Le lecteur envoie le signal toutes les 60 s, onglet visible et apprenant inscrit seulement.
+  - Cours, contrat 8 : `GET /api/cours/inscriptions/toutes` (ADMIN).
+  - Quiz, contrat 6 : `GET /api/quiz/tentatives?etudiantId=` (l'apprenant lui-même, ENSEIGNANT, ADMIN ; 400 sans `etudiantId`).
+  - IA (module User) : description du profil « Décrocheur » reformulée sans le mot « risque », vu par l'apprenant ; modèle réentraîné.
+  - Tests ajoutés : 6 dans Cours (170), 2 dans Quiz (17).
+- **Vérification** : user-service 89/89, cours-service 170/170, quiz-service 17/17, ai-service 535 réussis ; test complet par la gateway, 22/22 : 2 apprenants réels (Lina rate le quiz à 20 %, 1 chapitre sur 3 ; Sami réussit à 100 %, tous les chapitres) ; toutes les sources DISPONIBLES, indicateurs complets ; profils K-Means « Décrocheur » et « Régulier » ; recommandation du 2e cours ; risque Random Forest : Lina élevé 72 % (note basse, peu de temps, peu de cours), Sami à surveiller 58 % ; contrats 6 et 8 et leurs refus (403) ; navigateur : le lecteur envoie bien un signal après 60 s, pages Progrès, Apprenants et IA admin, 0 erreur console.
+- **Gardé / modifié / rejeté** :
+  - Corrigé : la page Progrès affichait « risque d'abandon » (description du profil) : contraire à la règle « le risque n'est jamais montré à l'apprenant ».
+  - Faux problème : le temps restait à 1 minute pendant le test ; la cause était le script de test (MySQL à l'heure de Tunis, services Java en UTC), pas le code.
+  - Non fait : le lot 3 de Cours (`formateurValide` à la publication), inutile pour l'IA ; le texte des contrats 6 à 8 reste dans sa PR (`docs/contrat-user-ia`, conflit dans `CONTRATS_API.md`).
+  - Limite : les minutes du test ont été accélérées en reculant le dernier signal en base (on n'attend pas 6 vraies minutes) ; les modèles restent entraînés sur les 200 apprenants simulés.
+- **Captures** : `captures/2026-10-15_18_progres_ia_complete.png`, `captures/2026-10-15_18_apprenants_risque_reel.png`, `captures/2026-10-15_18_admin_ia.png`
+- **Leçon** : vérifier les textes vus par l'apprenant avec un vrai parcours : un mot interdit peut se cacher dans une description générée par le modèle.
+
 ### 17 — 2026-10-15 — Intégration des modules Quiz et Cours : l'IA du module User sur de vraies données
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

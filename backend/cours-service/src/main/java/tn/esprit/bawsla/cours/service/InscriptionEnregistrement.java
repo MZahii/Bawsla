@@ -19,6 +19,9 @@ import tn.esprit.bawsla.cours.repository.InscriptionRepository;
 @Service
 public class InscriptionEnregistrement {
 
+    static final int ECART_MIN_SECONDES = 55;
+    static final int PLAFOND_MINUTES_JOUR = 600;
+
     private final InscriptionRepository inscriptionRepository;
     private final ChapitreTermineRepository termineRepository;
 
@@ -49,6 +52,22 @@ public class InscriptionEnregistrement {
         Inscription inscription = inscriptionRepository.findById(inscriptionId).orElseThrow();
         termineRepository.supprimer(inscriptionId, chapitreId);
         synchroniser(inscription, total);
+    }
+
+    /**
+     * Lot 2 : un signal d'activité du lecteur (toutes les 60 s, onglet visible). +1 minute seulement si au moins
+     * {@value #ECART_MIN_SECONDES} s se sont écoulées depuis le dernier signal accepté, dans la limite de {@value #PLAFOND_MINUTES_JOUR}
+     * minutes par jour. Chaque signal date l'activité. Renvoie true si la minute a été comptée.
+     */
+    @Transactional
+    public boolean signalerActivite(Long inscriptionId) {
+        LocalDateTime maintenant = LocalDateTime.now();
+        int compte = inscriptionRepository.compterUneMinute(inscriptionId, maintenant, maintenant.minusSeconds(ECART_MIN_SECONDES),
+                maintenant.toLocalDate(), PLAFOND_MINUTES_JOUR);
+        if (compte == 0) {
+            inscriptionRepository.dater(inscriptionId, maintenant);
+        }
+        return compte == 1;
     }
 
     /** Suppression définitive de l'inscription et de ses chapitres terminés. */

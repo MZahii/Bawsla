@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
+import { Component, DestroyRef, DOCUMENT, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -33,6 +33,8 @@ export class Lecteur implements OnInit {
   private readonly snack = inject(MatSnackBar);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly auth = inject(AuthService);
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
   readonly id = input(0, { transform: numberAttribute });
 
   protected readonly etat = signal<Etat>('chargement');
@@ -76,7 +78,10 @@ export class Lecteur implements OnInit {
     this.service.findById(this.id()).subscribe({
       next: (c) => {
         this.cours.set(c);
-        if (this.estApprenant()) this.chargerProgression(c.id);
+        if (this.estApprenant()) {
+          this.chargerProgression(c.id);
+          this.suivreLeTemps(c.id);
+        }
         this.service.chapitres(c.id).subscribe({
           next: (l) => {
             this.chapitres.set(l);
@@ -97,6 +102,19 @@ export class Lecteur implements OnInit {
     });
   }
 
+
+  /**
+   * Temps passé (lot 2) : un signal toutes les 60 s, seulement si l'apprenant est inscrit et l'onglet visible. Le serveur ignore les
+   * signaux trop rapprochés (plusieurs onglets) et plafonne la journée ; une erreur est sans conséquence pour la lecture.
+   */
+  private suivreLeTemps(coursId: number): void {
+    const minuteur = setInterval(() => {
+      if (this.document.visibilityState === 'visible' && this.progression()) {
+        this.service.signalerActivite(coursId).subscribe({ error: () => undefined });
+      }
+    }, 60_000);
+    this.destroyRef.onDestroy(() => clearInterval(minuteur));
+  }
 
   private chargerProgression(coursId: number): void {
     this.service.maProgression(coursId).subscribe({
