@@ -260,35 +260,40 @@ class ResumerRequest(ForumModel):
     messages: list[MessageFil] = Field(min_length=1, max_length=200)
 
 
+class PucesLLM(CamelModel):
+    puces: list[str] = Field(default_factory=list, max_length=8)
+
+
 class ResumerResponse(CamelModel):
     puces: list[str] = Field(min_length=1, max_length=5)
     version_prompt: str
     fournisseur: str | None = None
 
 
-# ---------------------------------------------------------------- POST /regrouper
+# ---------------------------------------------------------------- POST /nommer-groupes
+# Le regroupement (K-Means, k choisi par silhouette) est calculé par forum-service, qui possède les vecteurs ;
+# l'ai-service ne fait que nommer chaque groupe à partir de ses titres (sans donnée personnelle).
 
 
-class QuestionVecteur(ForumModel):
-    id: int
-    titre: str = Field(max_length=300)
-    vecteur: list[float] = Field(min_length=1)
+class GroupeTitres(ForumModel):
+    titres: list[str] = Field(min_length=1, max_length=20)
 
 
-class RegrouperRequest(ForumModel):
-    questions: list[QuestionVecteur] = Field(min_length=1, max_length=2000)
+class NommerGroupesRequest(ForumModel):
+    groupes: list[GroupeTitres] = Field(min_length=1, max_length=8)
 
 
-class Groupe(CamelModel):
-    nom: str
-    ids: list[int]
-    taille: int
+class NommerGroupesResponse(CamelModel):
+    """noms[i] = nom du groupe i ; repli = noms tirés des mots fréquents (LLM indisponible ou réponse invalide)."""
+
+    noms: list[str]
+    repli: bool = False
+    version_prompt: str
+    fournisseur: str | None = None
 
 
-class RegrouperResponse(CamelModel):
-    groupes: list[Groupe]
-    k: int
-    silhouette: float | None = None
+class NomsLLM(CamelModel):
+    noms: list[str] = Field(default_factory=list, max_length=8)
 
 
 # ---------------------------------------------------------------- POST /ameliorer
@@ -301,8 +306,17 @@ class AmeliorerRequest(ForumModel):
 
 
 class AmeliorerResponse(CamelModel):
+    """repli = suggestions des seules règles (LLM indisponible) : titre inchangé, pas d'étiquette."""
+
     titre: str
     manques: list[str] = Field(default_factory=list)
     etiquettes: list[str] = Field(default_factory=list, max_length=3)
+    repli: bool = False
     version_prompt: str
     fournisseur: str | None = None
+
+
+class AmeliorationLLM(CamelModel):
+    titre: str = Field(default="", max_length=300)
+    manques: list[str] = Field(default_factory=list, max_length=5)
+    etiquettes: list[str] = Field(default_factory=list, max_length=10)

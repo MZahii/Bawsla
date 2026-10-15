@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import tn.esprit.bawsla.forum.entity.Discussion;
+import tn.esprit.bawsla.forum.entity.enums.StatutDiscussion;
 import tn.esprit.bawsla.forum.entity.enums.TypeDiscussion;
 
 public interface DiscussionRepository extends JpaRepository<Discussion, Long>, JpaSpecificationExecutor<Discussion> {
@@ -66,4 +67,16 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Long>, J
     List<Long> nonLues(@Param("userId") Long userId, @Param("coursId") Long coursId);
 
     long countByAuteurIdAndMasqueeTrue(Long auteurId);
+
+    /** Fils résolus les plus vus d'un cours, pas encore en FAQ (suggestions « Ajouter à la FAQ »). */
+    @Query("select d from Discussion d where d.coursId = :coursId and d.supprimeeLe is null and d.masquee = false "
+            + "and d.faq = false and d.statut = :statut order by d.nbVues desc, d.id desc")
+    List<Discussion> resoluesPlusVues(@Param("coursId") Long coursId, @Param("statut") StatutDiscussion statut,
+                                      Pageable page);
+
+    /** Questions d'un cours sans aucune réponse humaine, publiées avant une date (apprenants bloqués). */
+    @Query("select d from Discussion d where d.coursId = :coursId and d.type = :type and d.nbReponses = 0 "
+            + "and d.supprimeeLe is null and d.masquee = false and d.creeLe < :avant order by d.creeLe desc")
+    List<Discussion> sansReponseAvant(@Param("coursId") Long coursId, @Param("type") TypeDiscussion type,
+                                      @Param("avant") LocalDateTime avant);
 }

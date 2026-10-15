@@ -12,7 +12,7 @@ from app.modules.forum.schemas import (
     IndexerRequest,
     ModererRequest,
     ModererResponse,
-    RegrouperRequest,
+    NommerGroupesRequest,
     RepondreGeneralResponse,
     RepondreRequest,
     RepondreResponse,
@@ -72,7 +72,8 @@ def test_la_reponse_generale_n_a_ni_source_ni_confiance():
         (VectoriserRequest, {"textes": ["a"], "tache": "AUTRE"}),
         (RepondreRequest, {"question": ""}),
         (RepondreRequest, {"question": "q", "mode": "GENERAL"}),
-        (RegrouperRequest, {"questions": []}),
+        (NommerGroupesRequest, {"groupes": []}),
+        (NommerGroupesRequest, {"groupes": [{"titres": []}]}),
     ],
 )
 def test_les_bornes_sont_controlees(schema, corps):

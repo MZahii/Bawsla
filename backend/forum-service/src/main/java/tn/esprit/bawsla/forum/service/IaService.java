@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import tn.esprit.bawsla.forum.client.AidesIaDto;
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
 import tn.esprit.bawsla.forum.client.ModererIaDto;
@@ -134,6 +135,32 @@ public class IaService {
                     .filter(r -> r.categorie() != null);
         } catch (RuntimeException e) {
             log.warn("Modération automatique indisponible : {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /** Résumé « En bref » d'un fil, ou vide si l'IA ne répond pas (l'encadré n'est alors pas affiché). */
+    public Optional<AidesIaDto.ResumerReponse> resumer(AidesIaDto.ResumerRequete requete) {
+        return facultatif(() -> donnees(ia.resumer(identites.jeton(), requete)), "Résumé");
+    }
+
+    /** Suggestions « Améliorer ma question », ou vide si l'ai-service ne répond pas. */
+    public Optional<AidesIaDto.AmeliorerReponse> ameliorer(AidesIaDto.AmeliorerRequete requete) {
+        return facultatif(() -> donnees(ia.ameliorer(identites.jeton(), requete)), "Aide à la rédaction");
+    }
+
+    /** Noms des thèmes (un par groupe, dans l'ordre), ou vide si l'ai-service ne répond pas. */
+    public Optional<List<String>> nommerGroupes(List<List<String>> titres) {
+        return facultatif(() -> donnees(ia.nommerGroupes(identites.jeton(), new AidesIaDto.NommerRequete(
+                titres.stream().map(AidesIaDto.GroupeTitres::new).toList()))), "Nom des thèmes")
+                .map(AidesIaDto.NommerReponse::noms).filter(noms -> noms.size() == titres.size());
+    }
+
+    private static <T> Optional<T> facultatif(Supplier<T> appel, String quoi) {
+        try {
+            return Optional.ofNullable(appel.get());
+        } catch (RuntimeException e) {
+            log.warn("{} indisponible : {}", quoi, e.getMessage());
             return Optional.empty();
         }
     }

@@ -10,13 +10,17 @@ from app.core.llm_client import LLMClient, get_llm_client
 from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
-from app.modules.forum import moderation, nlp, rag
+from app.modules.forum import aides, moderation, nlp, rag
 from app.modules.forum.config import ForumAiSettings, get_forum_ai_settings
 from app.modules.forum.schemas import (
+    AmeliorerRequest,
+    AmeliorerResponse,
     IndexerRequest,
     IndexerResponse,
     ModererRequest,
     ModererResponse,
+    NommerGroupesRequest,
+    NommerGroupesResponse,
     QuestionsSimilairesRequest,
     QuestionsSimilairesResponse,
     ReformulerRequest,
@@ -25,6 +29,8 @@ from app.modules.forum.schemas import (
     RepondreGeneralResponse,
     RepondreRequest,
     RepondreResponse,
+    ResumerRequest,
+    ResumerResponse,
     VectoriserRequest,
     VectoriserResponse,
 )
@@ -102,6 +108,42 @@ async def moderer(
 ) -> ApiResponse[ModererResponse]:
     """Catégorie, score et raison : règles sans LLM d'abord, puis LLM ; accepte le message si le LLM est absent."""
     return ApiResponse.ok(await moderation.moderer(body, llm, sanitizer, reglages))
+
+
+@router.post("/resumer", response_model=ApiResponse[ResumerResponse])
+async def resumer(
+    body: ResumerRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[ResumerResponse]:
+    """« En bref » d'un fil long : 3 à 5 puces (problème, cause, solution retenue), à partir du fil seulement."""
+    return ApiResponse.ok(await aides.resumer(body, llm, sanitizer, reglages))
+
+
+@router.post("/ameliorer", response_model=ApiResponse[AmeliorerResponse])
+async def ameliorer(
+    body: AmeliorerRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[AmeliorerResponse]:
+    """« Améliorer ma question » : titre plus clair, ce qui manque, étiquettes existantes ; règles seules sans LLM."""
+    return ApiResponse.ok(await aides.ameliorer(body, llm, sanitizer, reglages))
+
+
+@router.post("/nommer-groupes", response_model=ApiResponse[NommerGroupesResponse])
+async def nommer_groupes(
+    body: NommerGroupesRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[NommerGroupesResponse]:
+    """Nom de chaque thème de l'onglet Tendances (groupes calculés par forum-service) ; mots fréquents sans LLM."""
+    return ApiResponse.ok(await aides.nommer_groupes(body, llm, sanitizer, reglages))
 
 
 @router.post("/questions-similaires", response_model=ApiResponse[QuestionsSimilairesResponse])

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import tn.esprit.bawsla.forum.client.AidesIaDto;
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
 import tn.esprit.bawsla.forum.client.ModererIaDto;
@@ -121,6 +122,33 @@ class FauxIa implements IaClient {
 
     static ModererIaDto.Reponse verdict(String categorie, double score) {
         return new ModererIaDto.Reponse(categorie, score, "Détecté par le test", null, "v3", "faux");
+    }
+
+    @Override
+    public ApiResponse<AidesIaDto.ResumerReponse> resumer(String authorization, AidesIaDto.ResumerRequete requete) {
+        appel(authorization, requete);
+        return ApiResponse.ok(new AidesIaDto.ResumerReponse(List.of("Problème : " + requete.titre(),
+                "Messages lus : " + requete.messages().size(), "Solution : condition dans le ON"), "v2", "faux"));
+    }
+
+    @Override
+    public ApiResponse<AidesIaDto.AmeliorerReponse> ameliorer(String authorization,
+                                                             AidesIaDto.AmeliorerRequete requete) {
+        appel(authorization, requete);
+        return ApiResponse.ok(new AidesIaDto.AmeliorerReponse("Pourquoi mon LEFT JOIN perd-il des lignes ?",
+                List.of("Ajoute ta requête."), requete.etiquettesExistantes().stream().limit(1).toList(), false, "v2",
+                "faux"));
+    }
+
+    /** Nom de chaque groupe : « Thème » suivi du premier mot du premier titre (déterministe). */
+    @Override
+    public ApiResponse<AidesIaDto.NommerReponse> nommerGroupes(String authorization, AidesIaDto.NommerRequete requete) {
+        appel(authorization, requete);
+        List<String> noms = new ArrayList<>();
+        for (int i = 0; i < requete.groupes().size(); i++) {
+            noms.add("Thème " + (i + 1) + " : " + requete.groupes().get(i).titres().get(0).split(" ")[0]);
+        }
+        return ApiResponse.ok(new AidesIaDto.NommerReponse(noms, false, "v2", "faux"));
     }
 
     private void appel(String authorization, Object requete) {

@@ -7,6 +7,57 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 07 — 2026-10-15 — Lot 7 : résumé, aide à la rédaction, tendances, statistiques
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : `resumer`, `ameliorer`, regroupement par thème et nommage, statistiques (plan §4.4, §4.6, §4.7,
+  §7.6 et §7.7) ; outils du studio (FAQ, apprenants bloqués) et vue d'ensemble / supervision de l'admin ;
+  routes IA du forum décrites dans `CONTRATS_API.md`.
+- **Contexte fourni** : plan §4.4 à §4.7, §6.1, §6.2, §8 ; DTO du lot 1 ; `StatistiquesService` du lot 3.
+- **Prompt** : suite du prompt de l'entrée 05.
+- **Résultat** :
+  - **ai-service** : `aides.py` et prompts v1 → v2 (`resumer` : 3 à 5 puces problème / cause / solution retenue,
+    25 mots au plus, sans nom ; `ameliorer` : titre de 8 à 15 mots, 3 manques au plus, étiquettes prises
+    UNIQUEMENT dans la liste fournie ; `nommer_groupes` : 2 à 5 mots, noms distincts). Replis sans LLM : règles pour
+    les manques, mots fréquents pour les noms de thèmes.
+  - **forum-service** : `Regroupement` (K-Means sphérique, k-means++ à graine fixe, 10 départs, k de 2 à 8 par
+    silhouette) ; `TendancesService` (thèmes des 30 derniers jours mis en cache 1 h, questions par chapitre,
+    suggestions de FAQ, demandes de réponse générale, apprenants bloqués sous pseudonyme « Apprenant A », ajout à
+    la FAQ) ; `AidesService` (« En bref » au-delà de 6 messages, régénéré quand le nombre de messages change, ancien
+    résumé gardé sans IA ; « Améliorer ma question ») ; `SupervisionService` (vue d'ensemble admin, supervision de
+    La Vigie) ; `TendancesController`.
+  - **Socle (commit séparé `chore(socle)`, ajouts)** : `CONTRATS_API.md`, contrat 5 complété avec les 9 routes IA
+    du forum, ligne des endpoints internes du forum mise à jour, historique.
+- **Vérification** : `mvnw clean test` 140 verts dont 16 nouveaux (`TendancesTest`, `RegroupementTest`) ;
+  `pytest tests/forum` 86 verts, couverture de branches 99 % (`aides.py` 100 %) ; suite Python complète 198 verts.
+- **Gardé / modifié / rejeté** :
+  - **Rejeté : scikit-learn.** Le plan le disait « déjà installé » : faux, ni scikit-learn ni numpy ne sont dans
+    l'ai-service. Plutôt qu'une PR socle sur `requirements.txt` (numpy, scipy, scikit-learn), le regroupement est
+    calculé en Java dans forum-service, qui possède les vecteurs et calcule déjà les cosinus ; l'ai-service ne fait
+    que nommer les groupes (`/nommer-groupes` remplace `/regrouper`, qui n'était pas encore implémentée).
+  - **Défaut trouvé par les tests** : avec un seul départ k-means++, six questions sur deux sujets nets donnaient
+    des groupes 4 / 2. Mesure faite avant de corriger : les cosinus montraient bien deux groupes (0,77 à 1 dedans,
+    0,17 à 0,43 entre les deux) ; c'était un mauvais optimum local (silhouette −0,09 pour k = 2 contre 0,55 attendu).
+    Corrigé avec 10 départs et la plus faible inertie, comme `n_init=10` de scikit-learn ; test dédié.
+  - Le test de supervision ne voyait aucun fournisseur : toutes ses questions s'abstenaient sans appeler le LLM
+    (comportement voulu). Le test publie maintenant la question mesurée au lot 5.
+  - Un résumé enregistré avec un identifiant fixé passe par `merge` : la date de `@PrePersist` ne revenait pas dans
+    l'objet renvoyé. La date est posée avec l'horloge du service.
+- **Décisions non couvertes par le plan** :
+  - Pas de thème en dessous de 4 questions ; au plus 500 questions (les plus récentes), d'un seul modèle
+    d'embedding (le plus représenté).
+  - « En bref » : messages masqués exclus ; réponse de La Vigie exclue en mode examen (pas de solution par le
+    résumé) ; réponses marquées [ACCEPTÉE] / [APPROUVÉE] pour que la solution retenue soit reconnue.
+  - Apprenant bloqué : question sans aucune réponse humaine depuis plus de 24 h (une réponse de La Vigie ne suffit
+    pas).
+  - Supervision : « données personnelles masquées » = signalements de l'IA de catégorie DONNEES_PERSONNELLES (le
+    Sanitizer ne renvoie pas ses compteurs à forum-service).
+- **Captures** : `captures/2026-10-15_08_lot7-tests-tendances.png`
+- **Leçon** : un algorithme d'apprentissage non supervisé se teste sur des données dont on connaît la réponse ;
+  la sonde qui a trouvé le défaut est devenue le test unitaire.
+
+---
+
 ### 06 — 2026-10-15 — Lot 6 : sécurité et modération
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

@@ -52,12 +52,16 @@ def prompt(tache: str, version: str | None) -> Prompt:
 
 # Enregistrement des tâches (en fin de fichier : les modules de prompts n'importent rien d'ici).
 from app.modules.forum.prompts import (  # noqa: E402
+    ameliorer_v1,
+    ameliorer_v2,
     guider_v1,
     guider_v2,
     guider_v3,
     moderer_v1,
     moderer_v2,
     moderer_v3,
+    nommer_groupes_v1,
+    nommer_groupes_v2,
     reformuler_v1,
     reformuler_v2,
     reformuler_v3,
@@ -67,6 +71,8 @@ from app.modules.forum.prompts import (  # noqa: E402
     repondre_v1,
     repondre_v2,
     repondre_v3,
+    resumer_v1,
+    resumer_v2,
 )
 
 enregistrer("reformuler", reformuler_v1, reformuler_v2, reformuler_v3)
@@ -74,3 +80,6 @@ enregistrer("repondre", repondre_v1, repondre_v2, repondre_v3)
 enregistrer("guider", guider_v1, guider_v2, guider_v3)
 enregistrer("repondre_general", repondre_general_v1, repondre_general_v2, repondre_general_v3)
 enregistrer("moderer", moderer_v1, moderer_v2, moderer_v3)
+enregistrer("resumer", resumer_v1, resumer_v2)
+enregistrer("ameliorer", ameliorer_v1, ameliorer_v2)
+enregistrer("nommer_groupes", nommer_groupes_v1, nommer_groupes_v2)

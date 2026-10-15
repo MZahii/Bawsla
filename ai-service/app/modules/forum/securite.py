@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from app.core.sanitizer import Sanitizer
 
 BALISES_DONNEES = ("question", "passage", "passages", "historique", "message", "messages", "titre", "contenu",
-                   "titres", "etiquettes", "fil")
+                   "titres", "etiquettes", "fil", "groupe")
 _BALISE = re.compile(r"<\s*/?\s*(" + "|".join(BALISES_DONNEES) + r")\b[^>]*>", re.IGNORECASE)
 BALISE_RETIREE = "[balise retirée]"
 
