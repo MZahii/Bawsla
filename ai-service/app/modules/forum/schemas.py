@@ -239,6 +239,14 @@ class ModererResponse(CamelModel):
     fournisseur: str | None = None
 
 
+class ModerationLLM(CamelModel):
+    """Sortie attendue du LLM pour /moderer (v1 ne renvoie que la catégorie)."""
+
+    categorie: Categorie
+    score: float = Field(default=0.5, ge=0, le=1)
+    raison: str = Field(default="", max_length=600)
+
+
 # ---------------------------------------------------------------- POST /resumer
 
 

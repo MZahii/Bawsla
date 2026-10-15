@@ -12,4 +12,6 @@ public interface CommentaireRepository extends JpaRepository<Commentaire, Long> 
     List<Commentaire> findByDiscussionIdAndSupprimeLeIsNullOrderByCreeLeAsc(Long discussionId);
 
     long countByAuteurIdAndCreeLeAfter(Long auteurId, LocalDateTime depuis);
+
+    long countByAuteurIdAndMasqueTrue(Long auteurId);
 }

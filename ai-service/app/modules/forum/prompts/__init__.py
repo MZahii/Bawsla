@@ -55,6 +55,9 @@ from app.modules.forum.prompts import (  # noqa: E402
     guider_v1,
     guider_v2,
     guider_v3,
+    moderer_v1,
+    moderer_v2,
+    moderer_v3,
     reformuler_v1,
     reformuler_v2,
     reformuler_v3,
@@ -70,3 +73,4 @@ enregistrer("reformuler", reformuler_v1, reformuler_v2, reformuler_v3)
 enregistrer("repondre", repondre_v1, repondre_v2, repondre_v3)
 enregistrer("guider", guider_v1, guider_v2, guider_v3)
 enregistrer("repondre_general", repondre_general_v1, repondre_general_v2, repondre_general_v3)
+enregistrer("moderer", moderer_v1, moderer_v2, moderer_v3)

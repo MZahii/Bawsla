@@ -64,4 +64,6 @@ public interface DiscussionRepository extends JpaRepository<Discussion, Long>, J
               and not exists (select l.id from Lecture l where l.discussionId = d.id and l.userId = :userId
                                 and l.dernierLuLe >= d.derniereActiviteLe)""")
     List<Long> nonLues(@Param("userId") Long userId, @Param("coursId") Long coursId);
+
+    long countByAuteurIdAndMasqueeTrue(Long auteurId);
 }

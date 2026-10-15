@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
+import tn.esprit.bawsla.forum.client.ModererIaDto;
 import tn.esprit.bawsla.forum.client.ReformulerIaDto;
 import tn.esprit.bawsla.forum.client.RepondreIaDto;
 import tn.esprit.bawsla.forum.client.VectoriserIaDto;
@@ -36,6 +37,8 @@ class FauxIa implements IaClient {
     final List<Object> corps = new CopyOnWriteArrayList<>();
     final List<String> jetons = new CopyOnWriteArrayList<>();
     final AtomicInteger indexations = new AtomicInteger();
+    /** Modération : premier mot-clé contenu dans le message → verdict ; sinon OK. */
+    final Map<String, ModererIaDto.Reponse> moderations = new java.util.concurrent.ConcurrentSkipListMap<>();
 
     void remettre() {
         panne = false;
@@ -44,6 +47,7 @@ class FauxIa implements IaClient {
         corps.clear();
         jetons.clear();
         indexations.set(0);
+        moderations.clear();
     }
 
     @Override
@@ -104,6 +108,19 @@ class FauxIa implements IaClient {
         appel(authorization, requete);
         return ApiResponse.ok(new RepondreIaDto.ReponseGenerale(GENERALE, List.of("Les versions évoluent vite"),
                 List.of("La documentation officielle"), "v3", "faux"));
+    }
+
+    @Override
+    public ApiResponse<ModererIaDto.Reponse> moderer(String authorization, ModererIaDto.Requete requete) {
+        appel(authorization, requete);
+        String texte = (requete.titre() == null ? "" : requete.titre()) + " " + requete.contenu();
+        return ApiResponse.ok(moderations.entrySet().stream().filter(e -> texte.contains(e.getKey()))
+                .map(Map.Entry::getValue).findFirst()
+                .orElse(new ModererIaDto.Reponse("OK", 0, "Rien à signaler", null, "v3", "faux")));
+    }
+
+    static ModererIaDto.Reponse verdict(String categorie, double score) {
+        return new ModererIaDto.Reponse(categorie, score, "Détecté par le test", null, "v3", "faux");
     }
 
     private void appel(String authorization, Object requete) {

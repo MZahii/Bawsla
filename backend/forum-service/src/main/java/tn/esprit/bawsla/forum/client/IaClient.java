@@ -34,6 +34,10 @@ public interface IaClient {
     ApiResponse<RepondreIaDto.Reponse> repondre(@RequestHeader("Authorization") String authorization,
                                                 @RequestBody RepondreIaDto.Requete corps);
 
+    @PostMapping("/api/ai/forum/moderer")
+    ApiResponse<ModererIaDto.Reponse> moderer(@RequestHeader("Authorization") String authorization,
+                                              @RequestBody ModererIaDto.Requete corps);
+
     @PostMapping("/api/ai/forum/repondre-general")
     ApiResponse<RepondreIaDto.ReponseGenerale> repondreGeneral(@RequestHeader("Authorization") String authorization,
                                                                @RequestBody RepondreIaDto.RequeteGenerale corps);

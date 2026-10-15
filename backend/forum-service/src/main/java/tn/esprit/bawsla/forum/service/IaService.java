@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
+import tn.esprit.bawsla.forum.client.ModererIaDto;
 import tn.esprit.bawsla.forum.client.ReformulerIaDto;
 import tn.esprit.bawsla.forum.client.RepondreIaDto;
 import tn.esprit.bawsla.forum.client.VectoriserIaDto;
@@ -124,6 +125,17 @@ public class IaService {
     public RepondreIaDto.ReponseGenerale repondreGeneral(String question) {
         return obligatoire(() -> donnees(ia.repondreGeneral(identites.jeton(),
                 new RepondreIaDto.RequeteGenerale(question))), "Réponse générale vide");
+    }
+
+    /** Verdict de modération, ou vide si l'IA est indisponible (le message reste publié). */
+    public Optional<ModererIaDto.Reponse> moderer(String titre, String contenu) {
+        try {
+            return Optional.ofNullable(donnees(ia.moderer(identites.jeton(), new ModererIaDto.Requete(titre, contenu))))
+                    .filter(r -> r.categorie() != null);
+        } catch (RuntimeException e) {
+            log.warn("Modération automatique indisponible : {}", e.getMessage());
+            return Optional.empty();
+        }
     }
 
     private static <T> T obligatoire(Supplier<T> appel, String siVide) {

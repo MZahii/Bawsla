@@ -44,4 +44,6 @@ public interface ReponseRepository extends JpaRepository<Reponse, Long> {
     @Query("select r.discussionId, min(r.creeLe) from Reponse r where r.discussionId in :ids "
             + "and r.supprimeeLe is null group by r.discussionId")
     List<Object[]> premieresReponses(@Param("ids") Collection<Long> ids);
+
+    long countByAuteurIdAndMasqueeTrue(Long auteurId);
 }

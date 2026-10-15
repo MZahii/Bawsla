@@ -10,11 +10,13 @@ from app.core.llm_client import LLMClient, get_llm_client
 from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
-from app.modules.forum import nlp, rag
+from app.modules.forum import moderation, nlp, rag
 from app.modules.forum.config import ForumAiSettings, get_forum_ai_settings
 from app.modules.forum.schemas import (
     IndexerRequest,
     IndexerResponse,
+    ModererRequest,
+    ModererResponse,
     QuestionsSimilairesRequest,
     QuestionsSimilairesResponse,
     ReformulerRequest,
@@ -88,6 +90,18 @@ async def repondre_general(
 ) -> ApiResponse[RepondreGeneralResponse]:
     """Niveau 3, sur demande de l'apprenant uniquement : sans source ni confiance (forum-service en décide)."""
     return ApiResponse.ok(await rag.repondre_general(body, llm, sanitizer, reglages))
+
+
+@router.post("/moderer", response_model=ApiResponse[ModererResponse])
+async def moderer(
+    body: ModererRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[ModererResponse]:
+    """Catégorie, score et raison : règles sans LLM d'abord, puis LLM ; accepte le message si le LLM est absent."""
+    return ApiResponse.ok(await moderation.moderer(body, llm, sanitizer, reglages))
 
 
 @router.post("/questions-similaires", response_model=ApiResponse[QuestionsSimilairesResponse])
