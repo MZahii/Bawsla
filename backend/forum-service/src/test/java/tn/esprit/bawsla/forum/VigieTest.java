@@ -279,6 +279,25 @@ class VigieTest extends BaseApiTest {
     }
 
     @Test
+    void leStudioListeLesReponsesAVerifierPuisValidees() throws Exception {
+        long q1 = publier(YASSINE, questionDuCours());
+        long q2 = publier(SARA, questionSur(HORS_COURS));
+        en(FORMATRICE, ENSEIGNANT, get("/api/forum/vigie").param("coursId", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].discussionId").value(q2))
+                .andExpect(jsonPath("$.data[0].reponse.statut").value("HORS_COURS"))
+                .andExpect(jsonPath("$.data[1].discussionTitre").value(DANS_LE_COURS));
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/vigie/{id}/valider", idVigie(q1))).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, get("/api/forum/vigie").param("coursId", "5")).andExpect(jsonPath("$.data", hasSize(1)));
+        en(FORMATRICE, ENSEIGNANT, get("/api/forum/vigie").param("coursId", "5").param("filtre", "VALIDEE"))
+                .andExpect(jsonPath("$.data[0].discussionId").value(q1));
+        en(SARA, ETUDIANT, get("/api/forum/vigie").param("coursId", "5")).andExpect(status().isForbidden());
+        en(FORMATRICE, ENSEIGNANT, get("/api/forum/vigie").param("coursId", "5").param("filtre", "x"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void uneAbstentionNeSeValidePas() throws Exception {
         long q = publier(YASSINE, questionSur(HORS_COURS));
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/vigie/{id}/valider", idVigie(q)))

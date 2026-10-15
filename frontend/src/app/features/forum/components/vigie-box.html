@@ -1,0 +1,148 @@
+@if (generale()) {
+  <!-- Niveau 3 : réponse générale, hors cours, jamais fusionnée avec la réponse sourcée -->
+  <section class="generale" aria-label="Réponse générale de La Vigie, hors cours">
+    <header class="g-head">
+      <mat-icon aria-hidden="true">explore</mat-icon>
+      <span class="label">Généré par l’IA</span>
+      <span class="muted">· Réponse générale</span>
+      <mat-icon class="public" aria-hidden="true">public</mat-icon>
+    </header>
+    <p class="bandeau" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ r().avertissement || 'Réponse générale, hors cours, non vérifiée : à confirmer avec ton formateur.' }}</p>
+    <p class="texte" dir="auto">{{ r().texte }}</p>
+    @if (r().incertitudes.length) {
+      <p class="sous">Ce dont La Vigie n’est pas sûre</p>
+      <ul>@for (x of r().incertitudes; track $index) { <li dir="auto">{{ x }}</li> }</ul>
+    }
+    @if (r().aVerifier.length) {
+      <p class="sous">À vérifier</p>
+      <ul>@for (x of r().aVerifier; track $index) { <li dir="auto">{{ x }}</li> }</ul>
+    }
+    @if (!prive()) { <ng-container [ngTemplateOutlet]="avisTpl" /> }
+  </section>
+} @else {
+  <bw-ai-box [label]="'Généré par l’IA'" [heading]="r().niveau === 'FORUM' ? 'La Vigie · d’après le forum' : 'La Vigie · d’après le cours'">
+    @switch (r().statut) {
+      @case ('EN_ATTENTE') {
+        <bw-ai-loading message="La Vigie cherche dans le cours…" />
+      }
+      @case ('ERREUR') {
+        <p class="etat"><mat-icon aria-hidden="true">error</mat-icon> La Vigie n’a pas pu répondre pour le moment. Le formateur peut relancer la réponse.</p>
+      }
+      @case ('HORS_COURS') {
+        <p class="etat"><mat-icon aria-hidden="true">travel_explore</mat-icon> {{ r().texte }}</p>
+        @if (generaleDisponible()) {
+          <button type="button" bwButton="secondaire" [bwLoading]="occupe()" [disabled]="occupe()" (click)="demanderGenerale.emit()">
+            <mat-icon aria-hidden="true">public</mat-icon> Voir une réponse générale (hors cours)
+          </button>
+        }
+      }
+      @default {
+        <div class="badges">
+          @if (r().verifieeParFormateur) { <span class="pill ok"><mat-icon aria-hidden="true">verified</mat-icon> Vérifiée par le formateur</span> }
+          @if (r().statut === 'REJETEE') { <span class="pill ko">Rejetée (visible du formateur seulement)</span> }
+          @if (r().confiance !== undefined && r().confiance !== null) {
+            <span class="confiance" [attr.data-niveau]="r().niveauConfiance" matTooltip="Calculée à partir de la pertinence des passages et des citations vérifiées, pas déclarée par l’IA.">
+              <span class="jauge" aria-hidden="true"><span [style.width.%]="r().confiance"></span></span>
+              {{ libelleConfiance() }} <span class="muted num">({{ r().confiance }} / 100)</span>
+            </span>
+          }
+        </div>
+        @if (r().avertissement) { <p class="avert small"><mat-icon aria-hidden="true">info</mat-icon>{{ r().avertissement }}</p> }
+
+        @if (guidee()) {
+          <ol class="indices" aria-live="polite">
+            @for (x of r().indices.slice(0, indicesVus()); track $index) {
+              <li><strong>Indice {{ $index + 1 }}</strong> <span dir="auto">{{ x }}</span></li>
+            }
+          </ol>
+          <div class="ligne">
+            @if (indicesVus() < r().indices.length) {
+              <button type="button" bwButton="secondaire" (click)="indicesVus.set(indicesVus() + 1)"><mat-icon aria-hidden="true">lightbulb</mat-icon> Un autre indice</button>
+            }
+            @if (r().texte && !complete()) {
+              <button type="button" bwButton="fantome" (click)="complete.set(true)">Voir la réponse complète</button>
+            }
+          </div>
+        }
+
+        @if (montrerTexte() && r().texte) {
+          <p class="texte" dir="auto">
+            @for (m of morceaux(); track $index) {
+              @if ('numero' in m) {
+                <button type="button" class="ref" [attr.aria-expanded]="ouverte() === m.numero" [attr.aria-label]="'Source ' + m.numero" (click)="basculer(m.numero)">[{{ m.numero }}]</button>
+              } @else {<span>{{ m.texte }}</span>}
+            }
+          </p>
+          @if (moderateur() && r().texteCorrige) {
+            <p class="sous">Correction publiée</p>
+            <p class="texte" dir="auto">{{ r().texteCorrige }}</p>
+          }
+        }
+
+        @if (sourcee() && r().sources.length) {
+          <ul class="sources" bwAiSource>
+            @for (s of r().sources; track s.numero) {
+              <li [class.ouverte]="ouverte() === s.numero">
+                <button type="button" class="src-head" [attr.aria-expanded]="ouverte() === s.numero" (click)="basculer(s.numero)">
+                  <span class="num">[{{ s.numero }}]</span>
+                  <mat-icon aria-hidden="true">{{ s.origine === 'FORUM' ? 'forum' : 'menu_book' }}</mat-icon>
+                  <span class="grow">Source : {{ origine(s) }}</span>
+                  <mat-icon aria-hidden="true">{{ ouverte() === s.numero ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+                @if (ouverte() === s.numero) {
+                  <blockquote dir="auto">
+                    @if (passage(s); as p) { {{ p.avant }}<mark>{{ p.cite }}</mark>{{ p.apres }} } @else { {{ s.passage }} }
+                  </blockquote>
+                  @if (s.lien) {
+                    <a class="lien" [routerLink]="s.lien.split('?')[0]" [queryParams]="s.origine === 'COURS' ? { chapitre: s.chapitreId, page: s.page } : null">
+                      <mat-icon aria-hidden="true">open_in_new</mat-icon>{{ s.origine === 'FORUM' ? 'Ouvrir le fil' : 'Ouvrir dans le cours' }}
+                    </a>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (!prive() && r().statut !== 'REJETEE') { <ng-container [ngTemplateOutlet]="avisTpl" /> }
+      }
+    }
+
+    @if (moderateur() && !prive()) {
+      @if (edition(); as mode) {
+        <div class="edition">
+          <label class="small" [for]="'ed-' + r().id">{{ mode === 'corriger' ? 'Texte corrigé (l’original est conservé)' : 'Motif du rejet' }}</label>
+          <textarea [id]="'ed-' + r().id" dir="auto" [rows]="mode === 'corriger' ? 5 : 2" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)"></textarea>
+          <div class="ligne">
+            <button type="button" bwButton="fantome" (click)="edition.set(null)">Annuler</button>
+            <button type="button" [bwButton]="mode === 'corriger' ? 'principal' : 'danger'" [disabled]="occupe() || (mode === 'corriger' && !brouillon().trim())" (click)="confirmerEdition()">
+              {{ mode === 'corriger' ? 'Publier la correction' : 'Rejeter la réponse' }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="actions">
+          <button type="button" bwButton="fantome" [disabled]="occupe()" (click)="regenerer.emit()"><mat-icon aria-hidden="true">refresh</mat-icon> Régénérer</button>
+          @if (sourcee() && r().statut !== 'REJETEE') {
+            <button type="button" bwButton="fantome" [disabled]="occupe()" (click)="ouvrirEdition('rejeter')"><mat-icon aria-hidden="true">block</mat-icon> Rejeter</button>
+            <button type="button" bwButton="secondaire" [disabled]="occupe()" (click)="ouvrirEdition('corriger')"><mat-icon aria-hidden="true">edit</mat-icon> Corriger</button>
+            @if (r().statut === 'GENEREE') {
+              <button type="button" bwButton="principal" [disabled]="occupe()" (click)="valider.emit()"><mat-icon aria-hidden="true">check</mat-icon> Valider</button>
+            }
+          }
+        </div>
+      }
+    }
+  </bw-ai-box>
+}
+
+<ng-template #avisTpl>
+  <div class="avis">
+    <span class="small muted">Cette réponse t’a aidé ?</span>
+    <button type="button" class="avis-btn" [class.on]="r().monAvis === true" [attr.aria-pressed]="r().monAvis === true" (click)="avis.emit(true)">
+      <mat-icon aria-hidden="true">thumb_up</mat-icon> Utile <span class="num">{{ r().utileOui }}</span>
+    </button>
+    <button type="button" class="avis-btn" [class.on]="r().monAvis === false" [attr.aria-pressed]="r().monAvis === false" (click)="avis.emit(false)">
+      <mat-icon aria-hidden="true">thumb_down</mat-icon> Pas utile <span class="num">{{ r().utileNon }}</span>
+    </button>
+  </div>
+</ng-template>

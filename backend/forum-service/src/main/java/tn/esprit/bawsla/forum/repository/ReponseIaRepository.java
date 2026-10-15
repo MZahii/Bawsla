@@ -31,4 +31,6 @@ public interface ReponseIaRepository extends JpaRepository<ReponseIa, Long> {
     List<ReponseIa> findByDiscussionIdAndNiveauOrderByCreeLeDescIdDesc(Long discussionId, NiveauReponseIa niveau);
 
     boolean existsByDiscussionId(Long discussionId);
+
+    List<ReponseIa> findByCoursIdAndDiscussionIdIsNotNullOrderByCreeLeDescIdDesc(Long coursId);
 }

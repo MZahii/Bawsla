@@ -1,0 +1,206 @@
+<bw-page-header title="Forum" subtitle="Santé du forum sur toute la plateforme, cas graves, sanctions, supervision de La Vigie." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Forum' }]">
+  <mat-select class="sel" [value]="periode()" (valueChange)="periode.set($event); chargerVue()" aria-label="Période">
+    <mat-option [value]="7">7 derniers jours</mat-option>
+    <mat-option [value]="30">30 derniers jours</mat-option>
+    <mat-option [value]="90">90 derniers jours</mat-option>
+  </mat-select>
+</bw-page-header>
+
+@if (erreur(); as msg) { <p class="bandeau" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p> }
+
+<section class="card">
+  <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+    <!-- 1. Vue d'ensemble -->
+    <mat-tab label="Vue d’ensemble">
+      <div class="onglet">
+        @if (stats(); as s) {
+          <div class="grid-4">
+            <bw-kpi label="Questions" [value]="s.global.questions" icon="help" />
+            <bw-kpi label="Taux de résolution" [value]="pourcent(s.global.tauxResolution)" icon="task_alt" />
+            <bw-kpi label="1re réponse (moyenne)" [value]="s.global.delaiPremiereReponseHeures !== undefined && s.global.delaiPremiereReponseHeures !== null ? s.global.delaiPremiereReponseHeures + ' h' : '–'" icon="schedule" />
+            <bw-kpi label="Signalements ouverts" [value]="s.signalementsOuverts" icon="flag" />
+          </div>
+          @if (s.global.parSemaine.length) {
+            <bw-chart type="line" [labels]="semaines(s)" [series]="serieSemaines(s)" [height]="220" ariaLabel="Questions par semaine" />
+          }
+          <div class="grid-2">
+            <section>
+              <h2 class="h">Cours les plus actifs</h2>
+              <table class="simple"><thead><tr><th>Cours</th><th>Questions</th><th>Résolution</th></tr></thead>
+                <tbody>@for (c of s.coursActifs; track c.coursId) { <tr><td>{{ c.coursTitre }}</td><td class="num">{{ c.questions }}</td><td class="num">{{ pourcent(c.tauxResolution) }}</td></tr> } @empty { <tr><td colspan="3" class="muted">Aucune question sur la période.</td></tr> }</tbody>
+              </table>
+            </section>
+            <section>
+              <h2 class="h">Où personne ne répond</h2>
+              <table class="simple"><thead><tr><th>Cours</th><th>Sans réponse</th><th>Formateur</th></tr></thead>
+                <tbody>@for (c of s.coursSansReponse; track c.coursId) { <tr><td>{{ c.coursTitre }}</td><td class="num">{{ c.sansReponse }}</td><td class="small">n° {{ c.enseignantId ?? '–' }} (à relancer)</td></tr> } @empty { <tr><td colspan="3" class="muted">Toutes les questions ont une réponse.</td></tr> }</tbody>
+              </table>
+            </section>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- 2. Modération -->
+    <mat-tab label="Modération">
+      <div class="onglet">
+        <div class="toolbar">
+          <mat-button-toggle-group [value]="statutFile()" (change)="statutFile.set($event.value); chargerFile()" aria-label="Statut">
+            <mat-button-toggle value="OUVERT">Ouverts</mat-button-toggle>
+            <mat-button-toggle value="CONFIRME">Confirmés</mat-button-toggle>
+            <mat-button-toggle value="REJETE">Rejetés</mat-button-toggle>
+            <mat-button-toggle value="TOUS">Tous</mat-button-toggle>
+          </mat-button-toggle-group>
+          <mat-select class="sel" [value]="categorie()" (valueChange)="categorie.set($event); chargerFile()" aria-label="Catégorie de l’IA">
+            <mat-option [value]="null">Toutes les catégories</mat-option>
+            @for (c of listeCategories; track c) { <mat-option [value]="c">{{ categories[c] }}</mat-option> }
+          </mat-select>
+          <mat-slide-toggle [checked]="escalades()" (change)="escalades.set($event.checked); chargerFile()">Escalades et IA seulement</mat-slide-toggle>
+        </div>
+        @for (s of file(); track s.id) {
+          <article class="signalement">
+            <div class="s-haut">
+              @if (s.categorieIa) { <span class="pill ia">IA : {{ categories[s.categorieIa] }} ({{ s.scoreIa }})</span> } @else { <span class="pill plain">{{ motifs[s.motif] }}</span> }
+              @if (s.escalade) { <span class="pill accent">Escaladé par le formateur</span> }
+              @if (s.cibleMasquee) { <span class="pill ko">Masqué</span> }
+              <span class="small muted">{{ s.coursTitre }} · {{ s.creeLe | tempsRelatif }}</span>
+            </div>
+            <p class="extrait" dir="auto">« {{ s.extrait }} »</p>
+            <p class="small muted">Auteur : <button type="button" class="lien" (click)="voirMembre(s.auteurCible?.id)">{{ s.auteurCible?.nom ?? '–' }}</button>
+              · Signalé par {{ s.signalePar?.nom ?? 'la modération automatique' }} @if (s.raisonIa) { · {{ s.raisonIa }} }
+              @if (s.discussionId) { · <a [routerLink]="['/admin/forum', s.discussionId]">voir le fil</a> }</p>
+            @if (s.statut === 'OUVERT') {
+              <div class="decision">
+                <input class="input" [ngModel]="motifDecision()[s.id] ?? ''" (ngModelChange)="motif(s.id, $event)" placeholder="Motif (obligatoire)" [attr.aria-label]="'Motif pour le signalement ' + s.id" />
+                <button type="button" bwButton="fantome" (click)="decider(s, 'REJETE', false)">Rejeter</button>
+                <button type="button" bwButton="danger" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+              </div>
+            } @else { <p class="small">{{ s.statut === 'CONFIRME' ? 'Confirmé' : 'Rejeté' }} : {{ s.decision }}</p> }
+          </article>
+        } @empty { <bw-empty-state icon="verified_user" title="File vide" message="Aucun signalement ne correspond à ces filtres." /> }
+      </div>
+    </mat-tab>
+
+    <!-- 3. Membres et sanctions -->
+    <mat-tab label="Membres et sanctions">
+      <div class="onglet">
+        <div class="toolbar">
+          <label class="small" for="membre">Numéro du membre</label>
+          <input id="membre" class="input court" type="number" min="1" [ngModel]="membreId()" (ngModelChange)="membreId.set($event)" />
+          <button type="button" bwButton="secondaire" (click)="voirMembre(membreId() ?? undefined)">Voir l’historique</button>
+        </div>
+        @if (historique(); as h) {
+          <section class="membre">
+            <h2 class="h">{{ h.membre.nom }} <span class="muted small">· {{ h.reputation.niveauLibelle }}, {{ h.reputation.points }} points</span></h2>
+            <p class="small">{{ h.messagesMasques }} message(s) masqué(s) · {{ h.signalementsRecus.length }} signalement(s) reçu(s) · {{ h.sanctions.length }} sanction(s)</p>
+            <div class="sanction-form">
+              <mat-select class="sel" [value]="typeSanction()" (valueChange)="typeSanction.set($event)" aria-label="Type de sanction">
+                <mat-option value="AVERTISSEMENT">Avertir</mat-option>
+                <mat-option value="LECTURE_SEULE">Lecture seule</mat-option>
+                <mat-option value="SUSPENSION">Suspendre</mat-option>
+              </mat-select>
+              @if (typeSanction() !== 'AVERTISSEMENT') {
+                <mat-select class="sel" [value]="duree()" (valueChange)="duree.set($event)" aria-label="Durée">
+                  <mat-option [value]="24">24 heures</mat-option>
+                  <mat-option [value]="168">7 jours</mat-option>
+                  <mat-option [value]="720">30 jours</mat-option>
+                  <mat-option [value]="null">Jusqu’à levée</mat-option>
+                </mat-select>
+              }
+              <input class="input" [ngModel]="motifSanction()" (ngModelChange)="motifSanction.set($event)" placeholder="Motif (obligatoire, visible du membre)" aria-label="Motif de la sanction" />
+              <button type="button" bwButton="danger" (click)="sanctionner()">Appliquer</button>
+            </div>
+            <ul class="small">@for (s of h.sanctions; track s.id) { <li>{{ s.type }} – {{ s.motif }} ({{ s.active ? 'active' : 'terminée' }}, {{ s.dateDebut | tempsRelatif }})</li> }</ul>
+          </section>
+        }
+        <h2 class="h mt">Sanctions actives</h2>
+        <table class="simple">
+          <thead><tr><th>Membre</th><th>Type</th><th>Motif</th><th>Fin</th><th><span class="bw-visually-hidden">Actions</span></th></tr></thead>
+          <tbody>
+            @for (s of sanctions(); track s.id) {
+              <tr><td>{{ s.membre.nom }}</td><td>{{ s.type }}</td><td>{{ s.motif }}</td><td class="small">{{ s.dateFin ? (s.dateFin | slice: 0 : 16) : 'jusqu’à levée' }}</td>
+                <td><button type="button" bwButton="fantome" (click)="lever(s)">Lever</button></td></tr>
+            } @empty { <tr><td colspan="5" class="muted">Aucune sanction active.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </mat-tab>
+
+    <!-- 4. Supervision de La Vigie -->
+    <mat-tab label="Supervision de La Vigie">
+      <div class="onglet">
+        @if (supervision(); as s) {
+          <div class="grid-4">
+            <bw-kpi label="Appels" [value]="s.appels" icon="explore" />
+            <bw-kpi label="Jetons estimés" [value]="s.jetonsEstimes" icon="token" />
+            <bw-kpi label="Taux d’abstention" [value]="pourcent(s.tauxAbstention)" icon="travel_explore" />
+            <bw-kpi label="Jugée utile" [value]="pourcent(s.tauxUtile)" icon="thumb_up" />
+            <bw-kpi label="Injections bloquées" [value]="s.injectionsBloquees" icon="shield" />
+            <bw-kpi label="Données personnelles" [value]="s.donneesPersonnellesMasquees" icon="privacy_tip" />
+            <bw-kpi label="Version de prompt" [value]="s.versionPromptActive ?? '–'" icon="description" />
+          </div>
+          <div class="grid-2">
+            <section>
+              <h2 class="h">Réponses par niveau</h2>
+              <bw-chart type="doughnut" [labels]="['Cours', 'Forum', 'Générale (hors cours)']" [series]="serieNiveaux(s)" [height]="220" ariaLabel="Réponses par niveau" />
+              <p class="small">Fournisseurs : @for (f of fournisseurs(s); track f.nom) { <span class="pill plain">{{ f.nom }} : {{ f.n }}</span> } @empty { <span class="muted">aucun appel</span> }</p>
+            </section>
+            <section>
+              <h2 class="h">Appels par jour</h2>
+              @if (s.appelsParJour.length) { <bw-chart type="bar" [labels]="jours(s)" [series]="serieJours(s)" [height]="220" ariaLabel="Appels par jour" /> }
+              <h2 class="h mt">Sujets demandés en réponse générale</h2>
+              <ul class="small">@for (x of s.sujetsGeneraux; track x.libelle) { <li dir="auto">{{ x.libelle }}</li> } @empty { <li class="muted">Aucun : le contenu des cours suffit.</li> }</ul>
+            </section>
+          </div>
+          <div><button type="button" bwButton="secondaire" (click)="reindexerTout()"><mat-icon aria-hidden="true">refresh</mat-icon> Réindexer tous les cours</button></div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- 5. Réglages -->
+    <mat-tab label="Réglages">
+      <div class="onglet reglages">
+        @for (r of reglagesConnus; track r.cle) {
+          <label class="reglage"><span><strong>{{ r.libelle }}</strong><span class="small muted block">{{ r.aide }}</span></span>
+            <input class="input" [ngModel]="valeurs()[r.cle] ?? ''" (ngModelChange)="modifierValeur(r.cle, $event)" [attr.aria-label]="r.libelle" />
+          </label>
+        }
+        <div><button type="button" bwButton="secondaire" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
+      </div>
+    </mat-tab>
+
+    <!-- 6. Journal -->
+    <mat-tab label="Journal">
+      <div class="onglet">
+        <div class="toolbar">
+          <mat-select class="sel" [value]="filtresJournal().action ?? null" (valueChange)="filtrerJournal({ action: $event ?? undefined })" aria-label="Action">
+            <mat-option [value]="null">Toutes les actions</mat-option>
+            @for (a of actions; track a) { <mat-option [value]="a">{{ a }}</mat-option> }
+          </mat-select>
+          <label class="small">Du <input class="input court" type="date" (change)="filtrerJournal({ du: $any($event.target).value || undefined })" /></label>
+          <label class="small">Au <input class="input court" type="date" (change)="filtrerJournal({ au: $any($event.target).value || undefined })" /></label>
+          <span class="grow"></span>
+          <button type="button" bwButton="secondaire" (click)="exporter()"><mat-icon aria-hidden="true">download</mat-icon> Exporter en CSV</button>
+        </div>
+        @if (journal(); as j) {
+          <div class="table-wrap">
+            <table class="simple">
+              <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Cible</th><th>Motif</th></tr></thead>
+              <tbody>
+                @for (l of j.contenu; track l.id) {
+                  <tr><td class="small num">{{ l.creeLe | slice: 0 : 16 }}</td><td class="small">{{ l.role === 'IA' ? 'IA' : 'n° ' + l.acteurId + ' (' + l.role + ')' }}</td><td><span class="pill plain">{{ l.action }}</span></td>
+                    <td class="small">{{ l.cibleType }} {{ l.cibleId ?? '' }}</td><td class="small" dir="auto">{{ l.motif ?? '' }}</td></tr>
+                } @empty { <tr><td colspan="5" class="muted">Aucune décision enregistrée.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+          <div class="pages">
+            <button type="button" bwButton="fantome" [disabled]="j.page === 0" (click)="chargerJournal(j.page - 1)">Précédent</button>
+            <span class="small muted">Page {{ j.page + 1 }} · {{ j.total }} décisions</span>
+            <button type="button" bwButton="fantome" [disabled]="!j.suivante" (click)="chargerJournal(j.page + 1)">Suivant</button>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>

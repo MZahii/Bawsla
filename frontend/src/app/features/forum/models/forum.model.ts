@@ -244,3 +244,22 @@ export interface VoteRequest {
   cibleId: number;
   valeur: -1 | 0 | 1;
 }
+
+/** Avant publication : données personnelles détectées (sans IA), à signaler à l'auteur. */
+export interface Verification {
+  donneesPersonnelles: boolean;
+  alertes: string[];
+}
+
+/** « Pour toi » : fils résolus liés aux notions ratées dans les quiz ; disponible = false si quiz-service ne répond pas. */
+export interface PourToi {
+  disponible: boolean;
+  notions: { notion: string; coursId?: number; discussions: DiscussionResume[] }[];
+}
+
+/** Cours tel que lu dans GET /api/cours (contrat 1), réduit à ce dont le forum a besoin. */
+export interface CoursOption {
+  id: number;
+  titre: string;
+  enseignantId?: number;
+}

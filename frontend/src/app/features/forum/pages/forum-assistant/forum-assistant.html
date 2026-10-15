@@ -1,0 +1,57 @@
+<bw-page-header title="Demander au cours" subtitle="Pose ta question en privé à La Vigie : elle répond à partir du cours, sources à l’appui. Rien n’est publié." [crumbs]="[{ label: 'Forum', link: '/app/forum' }, { label: 'Demander au cours' }]" />
+
+<div class="layout">
+  <aside class="card historique" aria-label="Mes conversations">
+    <div class="card-head"><h2>Mes conversations</h2></div>
+    <div class="card-body">
+      <button type="button" bwButton="secondaire" bwBlock (click)="nouvelle()"><mat-icon aria-hidden="true">add</mat-icon> Nouvelle conversation</button>
+    </div>
+    <ul>
+      @for (c of conversations(); track c.id) {
+        <li><button type="button" class="conv" [class.on]="active()?.id === c.id" (click)="ouvrir(c.id)">
+          <strong dir="auto">{{ c.titre ?? 'Conversation' }}</strong><span class="small muted">{{ c.coursTitre }} · {{ c.derniereActiviteLe | tempsRelatif }}</span>
+        </button></li>
+      } @empty { <li class="small muted vide">Aucune conversation pour l’instant.</li> }
+    </ul>
+  </aside>
+
+  <section class="card fil" aria-label="Conversation avec La Vigie">
+    <div class="card-head entete">
+      <mat-select class="sel" [value]="coursId()" (valueChange)="coursId.set($event)" [disabled]="!!active()?.messages?.length" placeholder="Choisis le cours" aria-label="Cours">
+        @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+      </mat-select>
+      @if (active()?.messages?.length) {
+        <button type="button" bwButton="secondaire" (click)="publier()"><mat-icon aria-hidden="true">publish</mat-icon> Publier comme question</button>
+      }
+    </div>
+
+    <div class="messages" aria-live="polite">
+      @for (m of active()?.messages ?? []; track m.id) {
+        @if (m.role === 'APPRENANT') {
+          <p class="bulle moi" dir="auto">{{ m.texte }}</p>
+        } @else if (m.reponse) {
+          <app-vigie-box class="vigie" [reponse]="m.reponse" [prive]="true" />
+        }
+      } @empty {
+        <bw-empty-state icon="explore" title="Pose ta première question" message="Exemple : « Quelle différence entre WHERE et HAVING ? ». Tu peux enchaîner : « et avec un GROUP BY ? »." />
+      }
+      @if (envoi()) { <bw-ai-loading message="La Vigie cherche dans le cours…" /> }
+      <span #fin></span>
+    </div>
+
+    <form class="saisie" (ngSubmit)="envoyer()">
+      <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" aria-label="Mode de réponse">
+        <mat-button-toggle value="DIRECTE">Réponse directe</mat-button-toggle>
+        <mat-button-toggle value="GUIDEE">Guide-moi</mat-button-toggle>
+        <mat-button-toggle value="GENERAL">Réponse générale (hors cours)</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if (mode() === 'GENERAL') { <p class="small avert"><mat-icon aria-hidden="true">public</mat-icon> Réponse générale : sans source, non vérifiée, à confirmer avec ton formateur.</p> }
+      @if (erreur(); as msg) { <p class="small erreur" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p> }
+      <div class="ligne">
+        <textarea name="texte" dir="auto" rows="2" maxlength="2000" [ngModel]="texte()" (ngModelChange)="texte.set($event)"
+                  (keydown.enter)="entree($any($event))" placeholder="Ta question (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)" aria-label="Ta question"></textarea>
+        <button type="submit" bwButton="ia" [disabled]="!texte().trim() || envoi()"><mat-icon aria-hidden="true">send</mat-icon> Envoyer</button>
+      </div>
+    </form>
+  </section>
+</div>

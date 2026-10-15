@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,6 +23,7 @@ import tn.esprit.bawsla.forum.dto.CorrectionVigieRequest;
 import tn.esprit.bawsla.forum.dto.MessageVigieRequest;
 import tn.esprit.bawsla.forum.dto.MessageVigieResponse;
 import tn.esprit.bawsla.forum.dto.ModerationActionRequest;
+import tn.esprit.bawsla.forum.dto.VigieAVerifier;
 import tn.esprit.bawsla.forum.dto.VigieFilResponse;
 import tn.esprit.bawsla.forum.dto.VigieResponse;
 import tn.esprit.bawsla.forum.service.AssistantService;
@@ -56,6 +58,14 @@ public class VigieController {
     @PostMapping("/discussions/{id}/vigie/general")
     public ApiResponse<VigieResponse> general(@PathVariable Long id, CurrentUser user) {
         return ApiResponse.ok(vigie.general(id, user));
+    }
+
+    /** Studio : réponses de La Vigie d'un cours (formateur du cours ou admin). */
+    @GetMapping("/vigie")
+    public ApiResponse<List<VigieAVerifier>> duCours(@RequestParam Long coursId,
+                                                     @RequestParam(required = false) String filtre,
+                                                     CurrentUser user) {
+        return ApiResponse.ok(vigie.duCours(coursId, filtre, user));
     }
 
     @PostMapping("/vigie/{id}/avis")

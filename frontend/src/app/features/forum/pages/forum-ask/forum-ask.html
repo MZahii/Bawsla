@@ -1,65 +1,157 @@
-<nav class="crumbs" aria-label="Fil d’Ariane">
-  <a routerLink="/app/forum">Forum</a>
-  <mat-icon aria-hidden="true">chevron_right</mat-icon>
-  <span aria-current="page">Nouvelle question</span>
-</nav>
+<bw-page-header title="Poser une question" subtitle="Une bonne question a un titre précis et dit ce que tu as déjà essayé." [crumbs]="[{ label: 'Forum', link: base }, { label: 'Nouvelle question' }]" />
+
+@if (restaure()) {
+  <p class="bandeau info" role="status"><mat-icon aria-hidden="true">history</mat-icon> Brouillon restauré.
+    <button type="button" bwButton="fantome" (click)="toutEffacer()">Repartir de zéro</button></p>
+}
+@if (conversationId()) {
+  <p class="bandeau ia" role="status"><mat-icon aria-hidden="true">explore</mat-icon> Question préparée avec La Vigie : sa réponse sera jointe au fil.</p>
+}
 
 <div class="layout">
-  <form class="form" (submit)="$event.preventDefault()">
-    <h2 class="bw-h1">Poser une question</h2>
-    <p class="bw-muted intro">Un titre précis aide l’IA et les autres à te répondre plus vite.</p>
+  <form class="card card-pad formulaire" (ngSubmit)="publier()" novalidate>
+    <div class="ligne-2">
+      <div class="champ">
+        <label for="cours">Cours <span aria-hidden="true">*</span></label>
+        <mat-select id="cours" class="sel" [value]="coursId()" (valueChange)="changerCours($event)" placeholder="Choisis le cours" aria-required="true">
+          @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+        </mat-select>
+      </div>
+      <div class="champ">
+        <label for="type">Type</label>
+        <mat-select id="type" class="sel" [value]="type()" (valueChange)="type.set($event)">
+          <mat-option value="QUESTION">Question</mat-option>
+          <mat-option value="DISCUSSION">Discussion</mat-option>
+          @if (!apprenant()) { <mat-option value="ANNONCE">Annonce</mat-option> }
+        </mat-select>
+      </div>
+    </div>
+    @if (chapitreId() || page()) {
+      <p class="small muted">Rattachée au chapitre n° {{ chapitreId() }}@if (page()) {, page {{ page() }}}.</p>
+    }
 
-    <mat-form-field appearance="outline">
-      <mat-label>Titre de ta question</mat-label>
-      <input matInput name="titre" required [ngModel]="titre()" (ngModelChange)="titre.set($event)" maxlength="140" />
-      <mat-hint>Au moins 10 caractères. Exemple : « Pourquoi Eureka ne voit pas mon service ? »</mat-hint>
-      <mat-hint align="end">{{ titre().length }}/140</mat-hint>
-    </mat-form-field>
+    <div class="champ">
+      <label for="titre">Titre <span aria-hidden="true">*</span></label>
+      <input id="titre" class="input" dir="auto" maxlength="200" [ngModel]="titre()" (ngModelChange)="changerTitre($event)" name="titre"
+             placeholder="Ex. : Pourquoi mon LEFT JOIN renvoie autant de lignes qu’un INNER JOIN ?" aria-describedby="aide-titre" />
+      <span id="aide-titre" class="small muted">Au moins 10 caractères. Les questions proches s’affichent pendant que tu écris.</span>
+    </div>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Cours concerné</mat-label>
-      <mat-select name="cours" [value]="coursId()" (valueChange)="coursId.set($event)">
-        <mat-option [value]="null">Aucun cours en particulier</mat-option>
-        @for (c of cours; track c.id) {
-          <mat-option [value]="c.id">{{ c.titre }}</mat-option>
+    <section class="proches" aria-live="polite" aria-label="Questions proches">
+      @if (rechercheEnCours()) {
+        <p class="small muted"><mat-icon aria-hidden="true">sync</mat-icon> Recherche de questions proches…</p>
+      } @else if (similaires(); as s) {
+        @if (s.similaires.length) {
+          <p class="small"><strong>{{ s.similaires.length }} question{{ s.similaires.length > 1 ? 's' : '' }} proche{{ s.similaires.length > 1 ? 's' : '' }}</strong>
+            @if (!s.semantique) { <span class="muted"> (recherche par mots-clés)</span> }</p>
+          @for (x of s.similaires; track x.discussionId) {
+            <article class="proche">
+              <div class="p-haut">
+                <span class="pill" [class.ok]="x.statut === 'RESOLUE'">{{ x.statut === 'RESOLUE' ? 'Résolue' : x.nbReponses + ' réponse(s)' }}</span>
+                <span class="pill plain">{{ x.proximite === 'TRES_PROCHE' ? 'Très proche' : 'Proche' }}</span>
+                <a [routerLink]="[base, x.discussionId]" target="_blank" class="p-titre" dir="auto">{{ x.titre }}</a>
+              </div>
+              <p class="small muted" dir="auto">{{ x.extrait }}</p>
+              <button type="button" bwButton="secondaire" (click)="reponseTrouvee(x.discussionId)"><mat-icon aria-hidden="true">check</mat-icon> Ça répond à ma question</button>
+            </article>
+          }
+        } @else {
+          <p class="small muted"><mat-icon aria-hidden="true">check_circle</mat-icon> Rien de proche : ta question est nouvelle.</p>
         }
-      </mat-select>
-      <mat-hint>L’IA cherchera la réponse dans ce cours en priorité.</mat-hint>
-    </mat-form-field>
+      }
+    </section>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Détails</mat-label>
-      <textarea matInput name="contenu" rows="7" required [ngModel]="contenu()" (ngModelChange)="contenu.set($event)"></textarea>
-      <mat-hint>Ce que tu as essayé, le résultat obtenu et celui que tu attendais.</mat-hint>
-    </mat-form-field>
+    <div class="champ">
+      <span class="label">Détails <span aria-hidden="true">*</span></span>
+      <app-forum-editeur [(valeur)]="contenu" libelle="Détails de la question" [modele]="modele" [lignes]="10"
+                         placeholder="Explique ce que tu essaies de faire, ce que tu as essayé, et colle le message d’erreur." />
+    </div>
 
-    <div class="actions">
-      <a bwButton="fantome" routerLink="/app/forum">Annuler</a>
-      <button type="submit" bwButton="principal" [disabled]="!valide()">Publier ma question</button>
+    <div class="champ">
+      <label for="etiquette">Étiquettes <span class="muted small">(jusqu’à 5)</span></label>
+      <div class="etiquettes">
+        @for (e of etiquettes(); track e) {
+          <span class="pill plain">{{ e }} <button type="button" class="x" (click)="retirerEtiquette(e)" [attr.aria-label]="'Retirer ' + e"><mat-icon>close</mat-icon></button></span>
+        }
+        <input id="etiquette" class="input mini" [ngModel]="saisieEtiquette()" (ngModelChange)="chercherEtiquettes($event)" name="etiquette"
+               (keydown.enter)="$event.preventDefault(); ajouterEtiquette(saisieEtiquette())" placeholder="sql, jointures…" [disabled]="etiquettes().length >= 5" />
+      </div>
+      @if (suggestionsEtiquettes().length) {
+        <div class="suggestions" role="listbox" aria-label="Étiquettes existantes">
+          @for (s of suggestionsEtiquettes(); track s.id) {
+            <button type="button" role="option" class="tag" (click)="ajouterEtiquette(s.libelle)">{{ s.libelle }} <span class="muted">({{ s.nbUtilisations }})</span></button>
+          }
+        </div>
+      }
+    </div>
+
+    @if (apprenant()) {
+      <mat-checkbox [checked]="anonyme()" (change)="anonyme.set($event.checked)">Publier anonymement (le formateur du cours voit ton nom)</mat-checkbox>
+    }
+
+    @if (alertes().length) {
+      <div class="bandeau warn" role="alert">
+        <mat-icon aria-hidden="true">privacy_tip</mat-icon>
+        <div>
+          @for (a of alertes(); track a) { <p>{{ a }}</p> }
+          <div class="actions"><button type="button" bwButton="fantome" (click)="alertes.set([])">Je modifie mon message</button>
+            <button type="button" bwButton="secondaire" (click)="publierQuandMeme()">Publier quand même</button></div>
+        </div>
+      </div>
+    }
+    @if (doublon(); as d) {
+      <div class="bandeau warn" role="alert">
+        <mat-icon aria-hidden="true">content_copy</mat-icon>
+        <div>
+          <p>{{ d }}</p>
+          @if (similaires()?.doublonId; as id) { <p><a [routerLink]="[base, id]">Lire la question déjà résolue</a></p> }
+          <div class="actions"><button type="button" bwButton="secondaire" (click)="publierQuandMeme()">Publier quand même</button></div>
+        </div>
+      </div>
+    }
+    @if (erreur(); as msg) { <p class="bandeau erreur" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p> }
+
+    <div class="actions fin">
+      <a bwButton="fantome" [routerLink]="base">Annuler</a>
+      <button type="submit" bwButton="principal" [bwLoading]="envoi()" [disabled]="!valide() || envoi()">Publier la question</button>
     </div>
   </form>
 
-  <aside class="similar" aria-labelledby="similar-title" aria-live="polite">
-    <h3 id="similar-title">Questions similaires déjà posées</h3>
-    @if (similaires().length > 0) {
-      <p class="bw-muted hint">Ta réponse est peut-être déjà là.</p>
-      <ul>
-        @for (s of similaires(); track s.id) {
-          <li>
-            <a [routerLink]="['/app/forum', s.id]">
-              <span class="s-title">{{ s.titre }}</span>
-              <span class="s-meta">
-                @if (s.resolue) {
-                  <span class="resolue"><mat-icon aria-hidden="true">check_circle</mat-icon> résolue</span>
-                }
-                {{ s.reponses }} {{ s.reponses > 1 ? 'réponses' : 'réponse' }}
-              </span>
-            </a>
-          </li>
-        }
+  <aside class="stack">
+    <section class="card card-pad">
+      <h2 class="h">Améliorer ma question</h2>
+      <p class="small muted">La Vigie propose un titre plus clair, ce qui manque, et des étiquettes déjà utilisées. Tu choisis ce que tu gardes.</p>
+      <button type="button" bwButton="ia" [bwLoading]="ameliorationEnCours()" [disabled]="ameliorationEnCours()" (click)="ameliorer()">
+        <mat-icon aria-hidden="true">explore</mat-icon> Améliorer ma question
+      </button>
+      @if (ameliorationEnCours()) { <bw-ai-loading message="La Vigie relit ta question…" /> }
+      @if (amelioration(); as a) {
+        <bw-ai-box heading="Suggestions" class="mt-s">
+          @if (a.titre && a.titre !== titre()) {
+            <p class="small"><strong>Titre proposé</strong></p>
+            <p dir="auto">{{ a.titre }}</p>
+            <button type="button" bwButton="secondaire" (click)="accepterTitre(a.titre)">Utiliser ce titre</button>
+          }
+          @if (a.manques.length) {
+            <p class="small"><strong>Ce qui manque</strong></p>
+            <ul>@for (m of a.manques; track m) { <li>{{ m }}</li> }</ul>
+          }
+          @if (a.etiquettes.length) {
+            <p class="small"><strong>Étiquettes</strong></p>
+            <div class="etiquettes">@for (e of a.etiquettes; track e) { <button type="button" class="tag" (click)="ajouterEtiquette(e)">+ {{ e }}</button> }</div>
+          }
+          @if (!a.manques.length && !a.etiquettes.length && (!a.titre || a.titre === titre())) { <p>Ta question est claire, rien à ajouter.</p> }
+        </bw-ai-box>
+      }
+    </section>
+    <section class="card card-pad conseils">
+      <h2 class="h">Pour une réponse rapide</h2>
+      <ul class="small">
+        <li>Un titre qui nomme la notion (« LEFT JOIN », « GROUP BY »).</li>
+        <li>Le code ou la requête dans un bloc de code.</li>
+        <li>Le message d’erreur exact, copié tel quel.</li>
+        <li>Pas de données personnelles (téléphone, email).</li>
       </ul>
-    } @else {
-      <p class="bw-muted hint">Commence à écrire ton titre : les questions proches s’afficheront ici.</p>
-    }
+    </section>
   </aside>
 </div>

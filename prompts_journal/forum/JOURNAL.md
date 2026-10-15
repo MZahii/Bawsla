@@ -7,6 +7,62 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 08 — 2026-10-15 — Lot 8 : front du forum (apprenant, formateur, admin)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : services et modèles, puis les pages dans l'ordre du plan (accueil, nouvelle question, fil,
+  assistant, mon activité, notifications, studio formateur à 6 onglets, espace admin à 6 sections, aperçu pour les
+  accueils) et le commit `chore(socle)` des branchements (plan §7, §7.8, §10, §11 lot 8).
+- **Contexte fourni** : `DESIGN.md` en entier, composants de `shared/` et `shared/ui/`, classes de `_app.scss`, pages
+  forum du template (sur données de démo), modèles TypeScript du lot 1.
+- **Prompt** : suite du prompt de l'entrée 05.
+- **Résultat** :
+  - Modèles : comparaison automatique des 69 `record` Java avec les interfaces TypeScript (script) : tout concordait,
+    il ne manquait que `VigieFil`, `Verification`, `PourToi`, `VigieAVerifier`.
+  - Services : `ForumService` (membre), `VigieService` (La Vigie, assistant, aides), `ModerationForumService`
+    (formateur et admin) ; toujours `API_BASE_URL`, export CSV téléchargé par HttpClient (le JWT ne part pas avec un
+    lien).
+  - Composants du module : `ForumMarkdown` (HTML échappé d'abord, puis gras, italique, liens http(s), listes,
+    citations, code et blocs de code avec « Copier »), `ForumEditeur` (barre d'outils, aperçu, compteur, modèle de
+    question), `VigieBox` (citations [n] cliquables, sources dépliables avec la citation surlignée dans le passage,
+    « Ouvrir dans le cours », jauge de confiance calculée, Guide-moi indice par indice, abstention et bouton
+    « Voir une réponse générale », encadré séparé en pointillés pour le niveau 3, Valider / Corriger / Rejeter /
+    Régénérer), `DiscussionLigne`, `ForumApercu`.
+  - Pages : accueil (recherche sémantique ou « Mots exacts », filtres dans l'URL, épinglés, Charger plus, Pour toi,
+    sans réponse, classement, ma carte, raccourcis / n j k ?, bouton « Demander au cours ») ; nouvelle question
+    (questions proches en direct avec anti-rebond de 600 ms, « Ça répond à ma question », étiquettes avec
+    autocomplétion, « Améliorer ma question », données personnelles signalées avant publication, doublon probable,
+    brouillon restauré) ; fil (votes optimistes, meilleure réponse, approbation, réactions, commentaires, citer,
+    ancres #r-123, historique, signalement, outils de modération, réponse de La Vigie relue toutes les 3 s tant
+    qu'elle est en attente) ; assistant ; mon activité ; notifications ; studio ; admin.
+  - Backend : `GET /api/forum/vigie?coursId&filtre` (onglet « Réponses de La Vigie » du studio), avec son test.
+  - **Socle (commit séparé `chore(socle)`)** : une ligne de route `/admin/forum`, une entrée de menu admin, la
+    cloche branchée sur les notifications du forum (compteur relu toutes les 30 s), `<app-forum-apercu>` dans les
+    accueils apprenant et formateur (bloc de démo retiré).
+- **Vérification** : `ng build` sans erreur ni avertissement ; aucun HEX dans `features/forum` ; aucune importation
+  de `core/demo` dans le forum ; `mvnw test` 141 verts.
+- **Gardé / modifié / rejeté** :
+  - **Rejeté : marked, dompurify, highlight.js** (plan §10). Un rendu Markdown limité, qui échappe le HTML avant
+    toute mise en forme, suffit au forum et évite une PR sur `package.json` ; Angular nettoie en plus tout
+    `innerHTML`. Pas de coloration syntaxique (bloc de code lisible, bouton « Copier »).
+  - Quatre avertissements « ?? inutile » du compilateur : types rendus `Partial<Record<…>>`, build propre.
+  - Le compilateur refuse dans un gabarit l'opérateur virgule et les fonctions fléchées : remplacés par des
+    méthodes.
+  - Deux heredocs Bash trop longs ont échoué à l'analyse : fichiers écrits avec l'outil d'écriture.
+- **Décisions non couvertes par le plan** :
+  - Sélecteur de cours plutôt que des puces : le catalogue peut compter beaucoup de cours. Le studio ne montre que
+    les cours dont l'utilisateur est le formateur (`enseignantId`), l'admin les voit tous.
+  - L'assistant est une page (`/app/forum/assistant`) ouverte par le bouton flottant, plutôt qu'un panneau latéral.
+  - Le compteur de cas ouverts dans le menu admin n'est pas branché : il demanderait de la logique dans
+    `admin-shell.ts` ; la page admin l'affiche.
+  - Un formateur publie une annonce par `/studio/forum/nouvelle` (même page, type « Annonce »).
+  - Captures d'écran de l'interface reportées au lot 10 (pile complète nécessaire : Docker n'était pas démarré).
+- **Captures** : `captures/2026-10-15_09_lot8-front-build.png`
+- **Leçon** : vérifier les modèles front contre les DTO par un script plutôt qu'à l'œil : 69 records comparés en
+  une seconde.
+
+---
+
 ### 07 — 2026-10-15 — Lot 7 : résumé, aide à la rédaction, tendances, statistiques
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

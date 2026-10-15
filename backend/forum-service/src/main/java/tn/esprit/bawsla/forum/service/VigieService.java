@@ -23,6 +23,7 @@ import tn.esprit.bawsla.forum.common.exception.ForbiddenException;
 import tn.esprit.bawsla.forum.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.forum.common.security.CurrentUser;
 import tn.esprit.bawsla.forum.dto.SourceVigie;
+import tn.esprit.bawsla.forum.dto.VigieAVerifier;
 import tn.esprit.bawsla.forum.dto.VigieFilResponse;
 import tn.esprit.bawsla.forum.dto.VigieResponse;
 import tn.esprit.bawsla.forum.entity.AvisVigie;
@@ -260,6 +261,49 @@ public class VigieService {
         boolean disponible = g == null && principale.map(r -> r.getStatut() == StatutReponseIa.HORS_COURS)
                 .orElse(false) && generaleAutorisee(fil.discussion().getCoursId()) == null;
         return new VigieFilResponse(p, g, disponible);
+    }
+
+    /**
+     * Réponses de La Vigie des fils d'un cours, pour son formateur ou l'admin (la plus récente de chaque niveau par
+     * fil). filtre : A_VERIFIER (générées non validées, faible confiance d'abord, hors cours, erreurs), VALIDEE,
+     * CORRIGEE, REJETEE ou TOUTES.
+     */
+    public List<VigieAVerifier> duCours(Long coursId, String filtre, CurrentUser user) {
+        acces.exigerModerateur(acces.contexte(user, coursId));
+        String f = filtre == null || filtre.isBlank() ? "A_VERIFIER" : filtre.toUpperCase();
+        java.util.Set<String> vues = new java.util.HashSet<>();
+        List<ReponseIa> retenues = reponseIaRepository.findByCoursIdAndDiscussionIdIsNotNullOrderByCreeLeDescIdDesc(
+                        coursId).stream()
+                .filter(r -> vues.add(r.getDiscussionId() + ":" + (r.getNiveau() == NiveauReponseIa.GENERAL)))
+                .filter(r -> switch (f) {
+                    case "A_VERIFIER" -> r.getStatut() == StatutReponseIa.GENEREE
+                            || r.getStatut() == StatutReponseIa.HORS_COURS || r.getStatut() == StatutReponseIa.ERREUR;
+                    case "VALIDEE", "CORRIGEE", "REJETEE" -> r.getStatut().name().equals(f);
+                    case "TOUTES" -> true;
+                    default -> throw new BadRequestException("Filtre inconnu : " + filtre);
+                })
+                .sorted(java.util.Comparator.comparingInt((ReponseIa r) -> priorite(r))
+                        .thenComparing(ReponseIa::getCreeLe, java.util.Comparator.reverseOrder()))
+                .toList();
+        Map<Long, String> titres = discussionRepository.findAllById(retenues.stream().map(ReponseIa::getDiscussionId)
+                        .distinct().toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Discussion::getId, Discussion::getTitre));
+        boolean examen = modeExamen(coursId);
+        return retenues.stream().filter(r -> titres.containsKey(r.getDiscussionId()))
+                .map(r -> new VigieAVerifier(r.getDiscussionId(), titres.get(r.getDiscussionId()),
+                        mapper.vers(r, true, examen, null, List.of())))
+                .toList();
+    }
+
+    /** Ordre de l'onglet « à vérifier » : erreurs, faible confiance, hors cours, puis le reste. */
+    private static int priorite(ReponseIa r) {
+        if (r.getStatut() == StatutReponseIa.ERREUR) {
+            return 0;
+        }
+        if (r.getStatut() == StatutReponseIa.GENEREE && r.getConfiance() != null && r.getConfiance() < 50) {
+            return 1;
+        }
+        return r.getStatut() == StatutReponseIa.HORS_COURS ? 2 : 3;
     }
 
     // ------------------------------------------------------------------ Avis et décisions du formateur

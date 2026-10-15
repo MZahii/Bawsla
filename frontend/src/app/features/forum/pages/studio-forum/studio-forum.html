@@ -1,0 +1,189 @@
+<bw-page-header title="Forum de mes cours" subtitle="Ne laisse aucune question sans réponse, contrôle La Vigie et vois où tes apprenants bloquent." [crumbs]="[{ label: 'Studio', link: '/studio' }, { label: 'Forum' }]">
+  <a bwButton="principal" routerLink="/studio/forum/nouvelle" [queryParams]="{ coursId: coursId() }"><mat-icon aria-hidden="true">campaign</mat-icon> Publier une annonce</a>
+</bw-page-header>
+
+@if (!cours().length) {
+  <bw-empty-state icon="forum" title="Aucun cours à piloter" [message]="erreur() ?? 'Le forum de tes cours apparaîtra ici dès que tu auras un cours publié.'" />
+} @else {
+  <div class="toolbar">
+    <label class="small" for="cours">Cours</label>
+    <mat-select id="cours" class="sel" [value]="coursId()" (valueChange)="choisir($event)" aria-label="Cours">
+      @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+    </mat-select>
+  </div>
+
+  @if (stats(); as s) {
+    <div class="grid-4 kpis">
+      <bw-kpi label="Questions cette semaine" [value]="s.questions" icon="help" />
+      <bw-kpi label="Sans réponse" [value]="s.sansReponse" icon="hourglass_top" />
+      <bw-kpi label="1re réponse (moyenne)" [value]="s.delaiPremiereReponseHeures !== undefined && s.delaiPremiereReponseHeures !== null ? s.delaiPremiereReponseHeures + ' h' : '–'" icon="schedule" />
+      <bw-kpi label="Taux de résolution" [value]="pourcent(s.tauxResolution)" icon="task_alt" />
+      <bw-kpi label="La Vigie jugée utile" [value]="pourcent(s.tauxVigieUtile)" icon="explore" />
+    </div>
+  }
+
+  <section class="card mt">
+    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+      <!-- 1. À traiter -->
+      <mat-tab [label]="'À traiter (' + (urgentes().length + faibles().length) + ')'">
+        <div class="onglet">
+          <h2 class="h">Sans réponse depuis plus de 24 h</h2>
+          @for (d of urgentes(); track d.id) { <app-discussion-ligne [discussion]="d" base="/studio/forum" [compacte]="true" /> }
+          @empty { <p class="muted small">Aucune question en attente depuis plus de 24 h. Bravo !</p> }
+          <h2 class="h mt">Réponses de La Vigie à vérifier</h2>
+          @for (v of faibles(); track v.reponse.id) {
+            <a class="mini" [routerLink]="['/studio/forum', v.discussionId]">
+              <span class="pill" [class.warn]="v.reponse.statut !== 'ERREUR'" [class.ko]="v.reponse.statut === 'ERREUR'">{{ v.reponse.statut === 'HORS_COURS' ? 'Hors cours' : v.reponse.statut === 'ERREUR' ? 'Erreur' : 'Confiance faible' }}</span>
+              <span dir="auto">{{ v.discussionTitre }}</span>
+            </a>
+          } @empty { <p class="muted small">Rien à vérifier.</p> }
+          @if (bloques().length) {
+            <h2 class="h mt">Où bloquent mes apprenants</h2>
+            <ul class="bloques">
+              @for (b of bloques(); track b.pseudo) {
+                <li><strong>{{ b.pseudo }}</strong> : {{ b.questionsSansReponse }} question{{ b.questionsSansReponse > 1 ? 's' : '' }} sans réponse
+                  @for (id of b.discussionIds; track id) { <a [routerLink]="['/studio/forum', id]">fil n° {{ id }}</a> }</li>
+              }
+            </ul>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- 2. Réponses de La Vigie -->
+      <mat-tab label="Réponses de La Vigie">
+        <div class="onglet">
+          <mat-button-toggle-group [value]="filtreVigie()" (change)="filtreVigie.set($event.value); chargerVigie()" aria-label="Filtrer les réponses">
+            <mat-button-toggle value="A_VERIFIER">À valider</mat-button-toggle>
+            <mat-button-toggle value="VALIDEE">Validées</mat-button-toggle>
+            <mat-button-toggle value="CORRIGEE">Corrigées</mat-button-toggle>
+            <mat-button-toggle value="REJETEE">Rejetées</mat-button-toggle>
+          </mat-button-toggle-group>
+          @for (v of reponsesVigie(); track v.reponse.id) {
+            <div class="vigie">
+              <a class="lien-fil" [routerLink]="['/studio/forum', v.discussionId]" dir="auto">{{ v.discussionTitre }}</a>
+              <app-vigie-box [reponse]="v.reponse" [moderateur]="true" [occupe]="occupe()" (valider)="decisionVigie('valider', v.reponse)"
+                             (corriger)="decisionVigie('corriger', v.reponse, $event)" (rejeter)="decisionVigie('rejeter', v.reponse, $event)" (regenerer)="regenerer(v.discussionId)" />
+            </div>
+          } @empty { <bw-empty-state icon="explore" title="Aucune réponse dans cette catégorie" /> }
+        </div>
+      </mat-tab>
+
+      <!-- 3. Signalements -->
+      <mat-tab [label]="'Signalements (' + file().length + ')'">
+        <div class="onglet">
+          <mat-button-toggle-group [value]="statutFile()" (change)="statutFile.set($event.value); chargerFile()" aria-label="Statut">
+            <mat-button-toggle value="OUVERT">Ouverts</mat-button-toggle>
+            <mat-button-toggle value="CONFIRME">Confirmés</mat-button-toggle>
+            <mat-button-toggle value="REJETE">Rejetés</mat-button-toggle>
+            <mat-button-toggle value="TOUS">Tous</mat-button-toggle>
+          </mat-button-toggle-group>
+          @for (s of file(); track s.id) {
+            <article class="signalement">
+              <div class="s-haut">
+                @if (s.categorieIa) { <span class="pill ia">IA : {{ categories[s.categorieIa] }} ({{ s.scoreIa }})</span> } @else { <span class="pill plain">{{ motifs[s.motif] }}</span> }
+                @if (s.cibleMasquee) { <span class="pill ko">Masqué</span> }
+                @if (s.escalade) { <span class="pill accent">Transmis à l’administration</span> }
+                <span class="small muted">{{ s.creeLe | tempsRelatif }}</span>
+              </div>
+              <p class="extrait" dir="auto">« {{ s.extrait }} »</p>
+              <p class="small muted">
+                Auteur : {{ s.auteurCible?.nom ?? '–' }} · Signalé par {{ s.signalePar?.nom ?? 'la modération automatique' }}
+                @if (s.raisonIa) { · {{ s.raisonIa }} } @if (s.commentaire) { · « {{ s.commentaire }} » }
+                @if (s.discussionId) { · <a [routerLink]="['/studio/forum', s.discussionId]">voir le fil</a> }
+              </p>
+              @if (s.statut === 'OUVERT') {
+                <div class="decision">
+                  <input class="input" [ngModel]="motifDecision()[s.id] ?? ''" (ngModelChange)="motif(s.id, $event)" placeholder="Motif de la décision (obligatoire)" [attr.aria-label]="'Motif pour le signalement ' + s.id" />
+                  <button type="button" bwButton="fantome" (click)="decider(s, 'REJETE', false)">Rejeter</button>
+                  <button type="button" bwButton="secondaire" (click)="decider(s, 'OUVERT', false, true)">Transmettre à l’administration</button>
+                  <button type="button" bwButton="danger" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                </div>
+              } @else { <p class="small">Décision : {{ s.statut === 'CONFIRME' ? 'confirmé' : 'rejeté' }} – {{ s.decision }}</p> }
+            </article>
+          } @empty { <bw-empty-state icon="flag" title="Aucun signalement" message="La modération automatique et les membres signalent ici les messages à examiner." /> }
+        </div>
+      </mat-tab>
+
+      <!-- 4. Tendances -->
+      <mat-tab label="Tendances">
+        <div class="onglet">
+          @if (tendances(); as t) {
+            <div class="grid-2">
+              <section>
+                <h2 class="h">Thèmes des 30 derniers jours</h2>
+                @for (th of t.themes; track th.nom) {
+                  <article class="theme">
+                    <div class="s-haut"><strong>{{ th.nom }}</strong><span class="pill ia plain">{{ pourcent(th.part) }}</span><span class="small muted">{{ th.taille }} questions</span></div>
+                    <div class="bar-cell"><span class="bar"><span [style.width.%]="th.part * 100"></span></span></div>
+                    <ul class="small">@for (e of th.exemples; track $index) { <li dir="auto">{{ e }}</li> }</ul>
+                  </article>
+                } @empty { <p class="muted small">Il faut au moins 4 questions pour dégager des thèmes.</p> }
+                <p class="small muted">Thèmes regroupés automatiquement et nommés par La Vigie à partir des titres seuls.</p>
+              </section>
+              <section>
+                <h2 class="h">Questions par chapitre</h2>
+                @if (t.parChapitre.length) {
+                  <bw-chart type="hbar" [labels]="libellesChapitres(t)" [series]="seriesChapitres(t)" [height]="220" ariaLabel="Questions par chapitre" />
+                } @else { <p class="muted small">Pas encore de question.</p> }
+              </section>
+            </div>
+            <div class="grid-2 mt">
+              <section>
+                <h2 class="h">Ajouter à la FAQ du cours</h2>
+                @for (d of t.suggestionsFaq; track d.id) {
+                  <div class="faq"><app-discussion-ligne class="grow" [discussion]="d" base="/studio/forum" [compacte]="true" />
+                    <button type="button" bwButton="secondaire" (click)="ajouterFaq(d)">Ajouter à la FAQ</button></div>
+                } @empty { <p class="muted small">Les fils résolus les plus vus apparaîtront ici.</p> }
+              </section>
+              <section>
+                <h2 class="h">Contenu manquant</h2>
+                <p class="small muted">Sujets pour lesquels des apprenants ont demandé une réponse générale (hors cours).</p>
+                <ul class="small">@for (s of t.demandesGenerales; track s.libelle) { <li dir="auto">{{ s.libelle }} <span class="muted">({{ s.valeur }})</span></li> } @empty { <li class="muted">Aucune demande.</li> }</ul>
+              </section>
+            </div>
+          } @else { <p class="muted">Calcul des tendances…</p> }
+        </div>
+      </mat-tab>
+
+      <!-- 5. Index du cours -->
+      <mat-tab label="Index du cours">
+        <div class="onglet">
+          @if (index(); as i) {
+            <dl class="index">
+              <dt>État</dt><dd><span class="pill" [class.ok]="i.statut === 'A_JOUR'" [class.warn]="i.statut === 'EN_COURS'" [class.ko]="i.statut === 'ERREUR'">{{ i.statut === 'A_JOUR' ? 'À jour' : i.statut === 'EN_COURS' ? 'En cours' : i.statut === 'ERREUR' ? 'Erreur' : 'Jamais indexé' }}</span></dd>
+              <dt>Passages</dt><dd class="num">{{ i.nbPassages }}</dd>
+              <dt>Modèle</dt><dd>{{ i.modeleEmbedding ?? '–' }}</dd>
+              <dt>Indexé</dt><dd>{{ i.indexeLe ? (i.indexeLe | tempsRelatif) : '–' }}</dd>
+              @if (i.sourceDemo) { <dt>Source</dt><dd>Texte de démonstration (le texte réel du cours n’est pas encore disponible)</dd> }
+              @if (i.erreur) { <dt>Erreur</dt><dd>{{ i.erreur }}</dd> }
+            </dl>
+          }
+          <button type="button" bwButton="secondaire" (click)="reindexer()"><mat-icon aria-hidden="true">refresh</mat-icon> Réindexer le cours</button>
+          <p class="small muted">La Vigie répond à partir de ces passages du cours et des réponses validées du forum.</p>
+        </div>
+      </mat-tab>
+
+      <!-- 6. Réglages -->
+      <mat-tab label="Réglages">
+        <div class="onglet reglages">
+          @if (reglages(); as r) {
+            <mat-slide-toggle [checked]="r.ouvert" (change)="modifierReglage('ouvert', $event.checked)">Forum ouvert aux apprenants</mat-slide-toggle>
+            <mat-slide-toggle [checked]="r.anonymatAutorise" (change)="modifierReglage('anonymatAutorise', $event.checked)">Publication anonyme autorisée</mat-slide-toggle>
+            <mat-slide-toggle [checked]="r.vigieActive" (change)="modifierReglage('vigieActive', $event.checked)">La Vigie répond aux questions</mat-slide-toggle>
+            <mat-slide-toggle [checked]="r.reponseGeneraleAutorisee" (change)="modifierReglage('reponseGeneraleAutorisee', $event.checked)">Réponse générale hors cours autorisée (sur demande)</mat-slide-toggle>
+            <mat-slide-toggle [checked]="r.modeExamen" (change)="modifierReglage('modeExamen', $event.checked)">Mode examen : indices seulement, pas de solution complète</mat-slide-toggle>
+            @if (r.modeExamen) {
+              <label class="small">Fin du mode examen
+                <input class="input" type="datetime-local" [ngModel]="r.modeExamenFin?.slice(0, 16)" (ngModelChange)="modifierReglage('modeExamenFin', $event)" />
+              </label>
+            }
+            <label class="small">Modèle de question propre au cours
+              <textarea class="input zone" rows="5" [ngModel]="r.questionModele ?? ''" (ngModelChange)="modifierReglage('questionModele', $event)"></textarea>
+            </label>
+            <div><button type="button" bwButton="secondaire" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </section>
+}

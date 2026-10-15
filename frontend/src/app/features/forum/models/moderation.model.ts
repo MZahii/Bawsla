@@ -76,8 +76,9 @@ export interface Signalement {
   creeLe: string;
 }
 
+/** statut OUVERT seulement avec escalader = true (transmettre à l'administration). */
 export interface DecisionRequest {
-  statut: Exclude<StatutSignalement, 'OUVERT'>;
+  statut: StatutSignalement;
   masquer: boolean;
   escalader: boolean;
   motif: string;

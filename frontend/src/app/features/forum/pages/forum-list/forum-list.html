@@ -1,70 +1,141 @@
-<bw-page-header title="Forum" subtitle="Pose tes questions sur les cours : l’IA propose une première réponse sourcée, la communauté et les formateurs complètent.">
-  <a bwButton="principal" routerLink="/app/forum/nouvelle"><mat-icon>add</mat-icon> Poser une question</a>
+<bw-page-header title="Forum" subtitle="Pose tes questions sur tes cours : La Vigie répond avec les passages du cours, la communauté et les formateurs complètent.">
+  <a bwButton="principal" routerLink="/app/forum/nouvelle"><mat-icon aria-hidden="true">add</mat-icon> Poser une question</a>
 </bw-page-header>
 
-<div class="layout">
-  <section class="card main">
-    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false" (selectedIndexChange)="choisirOnglet($event)">
-      @for (o of onglets; track o.id) { <mat-tab [label]="o.label" /> }
-    </mat-tab-group>
+<form class="recherche card" role="search" (ngSubmit)="chercher()">
+  <label class="field-search grande">
+    <mat-icon aria-hidden="true">search</mat-icon>
+    <input #champ name="q" dir="auto" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" placeholder="Cherche ou pose ta question… (raccourci /)" aria-label="Rechercher dans le forum" />
+  </label>
+  <mat-slide-toggle [checked]="lexical()" (change)="changer({ mode: $event.checked ? 'lexical' : 'semantique' })">Mots exacts</mat-slide-toggle>
+  <button type="submit" bwButton="secondaire">Chercher</button>
+  <button type="button" bwButton="fantome" (click)="poser()">Poser</button>
+</form>
 
-    <div class="toolbar card-body" style="margin: 0">
-      <label class="field-search grow">
-        <mat-icon aria-hidden="true">search</mat-icon>
-        <input [ngModel]="recherche()" (ngModelChange)="recherche.set($event)" placeholder="Rechercher dans le forum" aria-label="Rechercher dans le forum" />
-      </label>
-      <mat-select class="sel" [value]="coursId()" (valueChange)="coursId.set($event)" aria-label="Filtrer par cours" placeholder="Tous les cours">
+@if (aide()) {
+  <section class="card card-pad aide" aria-live="polite">
+    <strong>Raccourcis clavier</strong>
+    <span><kbd>/</kbd> rechercher</span><span><kbd>n</kbd> nouvelle question</span><span><kbd>j</kbd> / <kbd>k</kbd> fil suivant / précédent</span><span><kbd>?</kbd> afficher cette aide</span>
+  </section>
+}
+
+<div class="layout">
+  <aside class="filtres card" aria-label="Filtres">
+    <div class="bloc">
+      <label class="titre-bloc" for="cours">Cours</label>
+      <mat-select id="cours" class="sel" [value]="filtres().coursId ?? null" (valueChange)="changer({ coursId: $event ?? undefined })" aria-label="Filtrer par cours">
         <mat-option [value]="null">Tous les cours</mat-option>
-        @for (c of cours; track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
+        @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
       </mat-select>
     </div>
-    @if (tag(); as t) {
-      <p class="card-body active-tag small">Étiquette : <span class="tag">{{ t }}</span> <button type="button" class="icon-btn" (click)="tag.set(null)" aria-label="Retirer l’étiquette"><mat-icon>close</mat-icon></button></p>
-    }
+    <div class="bloc">
+      <p class="titre-bloc">Statut</p>
+      @for (s of statuts; track s.code) {
+        <button type="button" class="choix" [class.on]="(filtres().statut ?? '') === s.code" [attr.aria-pressed]="(filtres().statut ?? '') === s.code" (click)="changer({ statut: $any(s.code) || undefined })">{{ s.libelle }}</button>
+      }
+    </div>
+    <div class="bloc">
+      <p class="titre-bloc">Mes fils</p>
+      @for (f of mesFiltres; track f.code) {
+        <button type="button" class="choix" [class.on]="(filtres().filtre ?? '') === f.code" [attr.aria-pressed]="(filtres().filtre ?? '') === f.code" (click)="changer({ filtre: f.code || undefined })">
+          <mat-icon aria-hidden="true">{{ f.icone }}</mat-icon>{{ f.libelle }}
+        </button>
+      }
+    </div>
+    <div class="bloc">
+      <label class="titre-bloc" for="tri">Trier par</label>
+      <mat-select id="tri" class="sel" [value]="filtres().tri ?? 'activite'" (valueChange)="changer({ tri: $event })" aria-label="Trier">
+        @for (t of tris; track t.code) { <mat-option [value]="t.code">{{ t.libelle }}</mat-option> }
+      </mat-select>
+    </div>
+  </aside>
 
-    @for (d of discussions(); track d.id) {
-      <article class="row">
-        <div class="stats" aria-hidden="true">
-          <span><strong>{{ d.votes }}</strong> votes</span>
-          <span class="ans" [class.solved]="d.resolue" [class.zero]="d.reponses === 0">
-            @if (d.resolue) { <mat-icon>check</mat-icon> }<strong>{{ d.reponses }}</strong> réponses
-          </span>
-          <span class="muted">{{ d.vues }} vues</span>
-        </div>
-        <div class="content">
-          <a class="title" [routerLink]="['/app/forum', d.id]">{{ d.titre }}</a>
-          <p class="excerpt muted">{{ d.contenu }}</p>
-          <div class="meta">
-            @for (t of d.tags; track t) { <button type="button" class="tag" (click)="tag.set(t)">{{ t }}</button> }
-            <span class="grow"></span>
-            <bw-avatar [nom]="d.auteur" [size]="22" />
-            <span class="small"><strong>{{ d.auteur }}</strong> <span class="muted">{{ d.date }}, {{ d.cours }}</span></span>
-          </div>
-        </div>
-      </article>
-    } @empty {
-      <bw-empty-state icon="forum" title="Aucune discussion ne correspond" message="Change les filtres ou pose ta question." actionLabel="Réinitialiser les filtres" (action)="reinitialiser()" />
+  <section class="card liste" aria-labelledby="liste-titre">
+    <div class="card-head">
+      <h2 id="liste-titre">
+        @if (filtres().q) { Résultats pour « {{ filtres().q }} » } @else { Discussions }
+        <span class="sub">{{ total() }} fil{{ total() > 1 ? 's' : '' }}</span>
+      </h2>
+      <button type="button" bwButton="fantome" (click)="toutMarquerLu()"><mat-icon aria-hidden="true">done_all</mat-icon> Tout marquer comme lu</button>
+    </div>
+    @if (filtres().etiquette; as e) {
+      <p class="card-body actif small">Étiquette : <span class="pill plain">{{ e }}</span>
+        <button type="button" class="icon-btn" (click)="changer({ etiquette: '' })" aria-label="Retirer l’étiquette"><mat-icon>close</mat-icon></button>
+      </p>
+    }
+    <div aria-live="polite">
+      @if (erreur(); as msg) {
+        <p class="card-body bandeau-erreur"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p>
+      }
+      @for (d of discussions(); track d.id) {
+        <app-discussion-ligne [discussion]="d" (etiquette)="changer({ etiquette: $event })" />
+      } @empty {
+        @if (chargement()) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="squelette"><bw-skeleton width="70%" height="20px" /><bw-skeleton width="95%" /><bw-skeleton width="40%" /></div>
+          }
+        } @else if (!erreur()) {
+          <bw-empty-state icon="forum" title="Aucune discussion ne correspond" message="Change les filtres, ou pose ta question : La Vigie y répond en quelques secondes." actionLabel="Réinitialiser les filtres" (action)="reinitialiser()" />
+        }
+      }
+    </div>
+    @if (suivante()) {
+      <div class="plus"><button type="button" bwButton="secondaire" [bwLoading]="chargement()" (click)="chargerPlus()">Charger plus</button></div>
     }
   </section>
 
-  <aside class="stack">
-    <section class="card card-pad ia">
-      <h2><mat-icon>auto_awesome</mat-icon> L’IA répond en premier</h2>
-      <p class="small">Chaque nouvelle question reçoit une réponse proposée à partir des cours, avec le passage cité. Le formateur du cours peut la confirmer ou la corriger.</p>
-    </section>
-    <section class="card">
-      <div class="card-head"><h3>Étiquettes populaires</h3></div>
-      <div class="card-body tags">
-        @for (t of tags; track t) { <button type="button" class="tag" [class.on]="tag() === t" (click)="tag.set(t)">{{ t }}</button> }
-      </div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h3>Meilleurs contributeurs</h3><span class="sub">ce mois</span></div>
-      <ol class="top">
-        @for (c of contributeurs; track c.nom) {
-          <li><bw-avatar [nom]="c.nom" [size]="32" /><span class="t"><strong>{{ c.nom }}</strong><span class="muted small">{{ c.role }}</span></span><span class="num small">{{ c.points }} pts</span></li>
+  <aside class="stack colonne">
+    @if (reputation(); as r) {
+      <section class="card card-pad carte">
+        <div class="ma-carte">
+          <mat-icon aria-hidden="true">explore</mat-icon>
+          <div><strong>{{ r.niveauLibelle }}</strong><span class="muted small">{{ r.points }} points</span></div>
+          <a class="small lien" routerLink="/app/forum/moi">Mon activité</a>
+        </div>
+        @if (r.seuilProchainNiveau) {
+          <div class="barre" role="progressbar" [attr.aria-valuenow]="r.points" [attr.aria-valuemax]="r.seuilProchainNiveau" aria-label="Progression vers le niveau suivant">
+            <span [style.width.%]="(r.points / r.seuilProchainNiveau) * 100"></span>
+          </div>
+          <p class="small muted">Encore {{ r.seuilProchainNiveau - r.points }} points pour le niveau suivant.</p>
         }
-      </ol>
-    </section>
+        @if (prochainBadge(); as b) { <p class="small">Prochain badge : <strong>{{ b.libelle }}</strong> ({{ b.progression }} / {{ b.objectif }})</p> }
+      </section>
+    }
+
+    @if (pourToi(); as p) {
+      @if (p.disponible && p.notions.length) {
+        <section class="card">
+          <div class="card-head"><h3>Pour toi</h3><span class="sub">d’après tes quiz</span></div>
+          @for (n of p.notions; track n.notion) {
+            <div class="card-body notion">
+              <p class="small"><strong>{{ n.notion }}</strong></p>
+              @for (d of n.discussions; track d.id) { <a class="mini" [routerLink]="['/app/forum', d.id]" dir="auto">{{ d.titre }}</a> }
+            </div>
+          }
+        </section>
+      }
+    }
+
+    @if (sansReponse().length) {
+      <section class="card">
+        <div class="card-head"><h3>Sans réponse</h3><span class="sub">aide un autre apprenant</span></div>
+        <div class="card-body">
+          @for (d of sansReponse(); track d.id) { <a class="mini" [routerLink]="['/app/forum', d.id]" dir="auto">{{ d.titre }}</a> }
+        </div>
+      </section>
+    }
+
+    @if (classement().length) {
+      <section class="card">
+        <div class="card-head"><h3>Classement de la semaine</h3></div>
+        <ol class="top">
+          @for (c of classement(); track c.rang) {
+            <li><span class="num rang">{{ c.rang }}</span><bw-avatar [nom]="c.auteur.nom ?? 'Membre'" [size]="28" /><span class="t">{{ c.auteur.nom }}</span><span class="num small">+{{ c.points }}</span></li>
+          }
+        </ol>
+      </section>
+    }
   </aside>
 </div>
+
+<a class="fab" bwButton="ia" routerLink="/app/forum/assistant"><mat-icon aria-hidden="true">explore</mat-icon> Demander au cours</a>

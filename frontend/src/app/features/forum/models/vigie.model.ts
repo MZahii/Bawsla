@@ -113,3 +113,20 @@ export interface IndexCours {
   sourceDemo: boolean;
   erreur?: string;
 }
+
+/** La Vigie dans un fil : réponse principale (cours ou forum) et, à part, la réponse générale demandée. */
+export interface VigieFil {
+  principale?: VigieResponse;
+  generale?: VigieResponse;
+  /** Le bouton « Voir une réponse générale (hors cours) » peut être proposé. */
+  generaleDisponible: boolean;
+}
+
+/** Studio : réponse de La Vigie d'un fil du cours, à vérifier ou déjà décidée. */
+export interface VigieAVerifier {
+  discussionId: number;
+  discussionTitre: string;
+  reponse: VigieResponse;
+}
+
+export type FiltreVigie = 'A_VERIFIER' | 'VALIDEE' | 'CORRIGEE' | 'REJETEE' | 'TOUTES';

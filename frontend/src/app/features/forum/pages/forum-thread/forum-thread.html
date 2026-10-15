@@ -1,108 +1,258 @@
-@if (discussion(); as d) {
-  <nav class="crumbs" aria-label="Fil d’Ariane">
+@if (erreur(); as msg) {
+  <bw-empty-state icon="forum" title="Discussion introuvable" [message]="msg" actionLabel="Retour au forum" (action)="router.navigate([base])" />
+} @else if (d(); as d) {
+  <nav class="crumbs small" aria-label="Fil d’Ariane">
     <a [routerLink]="base">Forum</a>
     <mat-icon aria-hidden="true">chevron_right</mat-icon>
-    <span aria-current="page">Discussion</span>
+    @if (apprenant()) {
+      <a [routerLink]="lienCours(d).chemin" [queryParams]="lienCours(d).params">{{ d.coursTitre }}</a>
+    } @else { <span>{{ d.coursTitre }}</span> }
+    @if (d.chapitreId) { <mat-icon aria-hidden="true">chevron_right</mat-icon><span>Chapitre n° {{ d.chapitreId }}@if (d.page) {, page {{ d.page }}}</span> }
   </nav>
+
+  @if (d.fusionneeDansId) {
+    <p class="bandeau"><mat-icon aria-hidden="true">merge</mat-icon> Cette question est un doublon. <a [routerLink]="[base, d.fusionneeDansId]">Voir la discussion d’origine</a></p>
+  }
+  @if (d.masquee) { <p class="bandeau warn"><mat-icon aria-hidden="true">visibility_off</mat-icon> Discussion masquée par la modération : seuls toi et les modérateurs la voient.</p> }
 
   <div class="layout">
     <div class="main">
-      <article class="question">
-        <div class="q-tags">
-          @if (cours(); as c) {
-            <a [routerLink]="studio ? ['/studio/cours', c.id] : ['/app/explorer', c.id]"><bw-badge variant="categorie">{{ c.titre }}</bw-badge></a>
-          }
-          <span class="status" [class.resolue]="d.resolue">
-            <mat-icon aria-hidden="true">{{ d.resolue ? 'check_circle' : 'help' }}</mat-icon>
-            {{ d.resolue ? 'Résolue' : 'En attente de réponse' }}
-          </span>
+      <!-- Question -->
+      <article class="card post" aria-labelledby="titre-fil">
+        <div class="votes">
+          <button type="button" class="vote" [class.on]="d.monVote === 1" [attr.aria-pressed]="d.monVote === 1" aria-label="Voter pour la question" (click)="voter('DISCUSSION', d.id, d.monVote, 1)"><mat-icon>arrow_upward</mat-icon></button>
+          <span class="score num" aria-live="polite">{{ d.score }}</span>
+          <button type="button" class="vote" [class.on]="d.monVote === -1" [attr.aria-pressed]="d.monVote === -1" aria-label="Voter contre la question" (click)="voter('DISCUSSION', d.id, d.monVote, -1)"><mat-icon>arrow_downward</mat-icon></button>
         </div>
-        <h2 class="q-title">{{ d.titre }}</h2>
-        <p class="q-body">{{ d.contenu }}</p>
-        <p class="q-meta">
-          <span class="avatar" aria-hidden="true">{{ initiales(d.auteur) }}</span>
-          {{ d.auteur }}, {{ d.date }}
-        </p>
+        <div class="corps">
+          <div class="haut">
+            <span class="pill" [class.ok]="d.statut === 'RESOLUE'" [class.warn]="d.statut === 'OUVERTE' && d.nbReponses === 0">{{ statuts[d.statut] }}</span>
+            @if (d.type !== 'QUESTION') { <span class="pill accent plain">{{ d.type === 'ANNONCE' ? 'Annonce' : 'Discussion' }}</span> }
+            @if (d.epinglee) { <span class="pill plain"><mat-icon aria-hidden="true">push_pin</mat-icon> Épinglée</span> }
+            @if (d.verrouillee) { <span class="pill plain"><mat-icon aria-hidden="true">lock</mat-icon> Verrouillée</span> }
+            @if (d.faq) { <span class="pill plain">FAQ du cours</span> }
+          </div>
+
+          @if (edition(); as e) {
+            <input class="input" dir="auto" [ngModel]="e.titre" (ngModelChange)="edition.set({ titre: $event, contenu: e.contenu })" aria-label="Titre" />
+            <app-forum-editeur [valeur]="e.contenu" (valeurChange)="edition.set({ titre: e.titre, contenu: $event })" libelle="Contenu" />
+            <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="edition.set(null)">Annuler</button><button type="button" bwButton="secondaire" (click)="enregistrer()">Enregistrer</button></div>
+          } @else {
+            <h1 id="titre-fil" class="titre" dir="auto">{{ d.titre }}</h1>
+            <app-forum-markdown [texte]="d.contenu" />
+          }
+          @if (d.etiquettes.length) {
+            <div class="etiquettes">@for (e of d.etiquettes; track e) { <a class="tag" [routerLink]="base" [queryParams]="{ etiquette: e }">{{ e }}</a> }</div>
+          }
+          <div class="pied">
+            <div class="auteur">
+              <bw-avatar [nom]="d.auteur.nom ?? 'Anonyme'" [size]="32" />
+              <div>
+                <strong>{{ d.auteur.nom ?? 'Membre anonyme' }}</strong>
+                @if (d.auteur.formateurDuCours) { <span class="pill accent plain">Formateur</span> }
+                @if (d.auteur.niveauLibelle) { <span class="muted small"> · {{ d.auteur.niveauLibelle }}</span> }
+                <span class="muted small block">{{ d.creeLe | tempsRelatif }}@if (d.modifieLe) { · <button type="button" class="lien" (click)="voirVersions()">modifié</button>}</span>
+              </div>
+            </div>
+            <div class="outils">
+              <button type="button" class="icon-btn" [class.actif]="d.suivie" [attr.aria-pressed]="d.suivie" [matTooltip]="d.suivie ? 'Ne plus suivre' : 'Suivre'" [attr.aria-label]="d.suivie ? 'Ne plus suivre' : 'Suivre'" (click)="suivre()"><mat-icon>{{ d.suivie ? 'notifications_active' : 'notifications' }}</mat-icon></button>
+              <button type="button" class="icon-btn" [class.actif]="d.favori" [attr.aria-pressed]="d.favori" [matTooltip]="d.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'" [attr.aria-label]="d.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'" (click)="favori()"><mat-icon>{{ d.favori ? 'bookmark' : 'bookmark_border' }}</mat-icon></button>
+              <button type="button" class="icon-btn" matTooltip="Copier le lien" aria-label="Copier le lien" (click)="partager()"><mat-icon>link</mat-icon></button>
+              <button type="button" class="icon-btn" [matMenuTriggerFor]="plus" aria-label="Plus d’actions"><mat-icon>more_vert</mat-icon></button>
+              <mat-menu #plus="matMenu" xPosition="before">
+                @if (d.droits.modifier) { <button mat-menu-item type="button" (click)="modifier()"><mat-icon>edit</mat-icon>Modifier</button> }
+                <button mat-menu-item type="button" (click)="voirVersions()"><mat-icon>history</mat-icon>Historique des versions</button>
+                <button mat-menu-item type="button" [matMenuTriggerFor]="motifsQ"><mat-icon>flag</mat-icon>Signaler</button>
+                @if (moderateur()) {
+                  <button mat-menu-item type="button" (click)="outil('epingler', !d.epinglee)"><mat-icon>push_pin</mat-icon>{{ d.epinglee ? 'Désépingler' : 'Épingler' }}</button>
+                  <button mat-menu-item type="button" (click)="outil('verrouiller', !d.verrouillee)"><mat-icon>{{ d.verrouillee ? 'lock_open' : 'lock' }}</mat-icon>{{ d.verrouillee ? 'Déverrouiller' : 'Verrouiller' }}</button>
+                  <button mat-menu-item type="button" (click)="outil(d.masquee ? 'retablir' : 'masquer')"><mat-icon>{{ d.masquee ? 'visibility' : 'visibility_off' }}</mat-icon>{{ d.masquee ? 'Rétablir' : 'Masquer' }}</button>
+                }
+                @if (d.droits.supprimer) { <button mat-menu-item type="button" class="danger" (click)="supprimer()"><mat-icon>delete</mat-icon>Supprimer</button> }
+              </mat-menu>
+              <mat-menu #motifsQ="matMenu">
+                @for (m of motifs; track m.code) { <button mat-menu-item type="button" (click)="signaler('DISCUSSION', d.id, m.code)">{{ m.libelle }}</button> }
+              </mat-menu>
+            </div>
+          </div>
+          @if (versions(); as vs) {
+            <div class="versions">
+              <p class="small"><strong>Versions précédentes</strong></p>
+              @for (v of vs; track $index) { <details><summary class="small">{{ v.modifieLe | tempsRelatif }} : {{ v.titre }}</summary><app-forum-markdown [texte]="v.contenu" /></details> } @empty { <p class="small muted">Aucune version précédente.</p> }
+            </div>
+          }
+          <ng-container *ngTemplateOutlet="commentairesTpl; context: { reponseId: undefined }" />
+        </div>
       </article>
 
-      @if (ia(); as a) {
-        <bw-ai-box heading="Première piste">
-          <p class="ai-text">{{ a.contenu }}</p>
-          <div class="confidence" role="img" [attr.aria-label]="'Confiance de l’IA : ' + a.confiance + ' %'">
-            <span class="conf-label">Confiance</span>
-            <span class="conf-track"><span class="conf-fill" [style.width.%]="a.confiance"></span></span>
-            <span class="conf-value">{{ a.confiance }} %</span>
-          </div>
-          <span bwAiSource>
-            Source :
-            <a [routerLink]="['/app/cours', a.source.coursId, 'lecture']">{{ cours()?.titre }}</a>, chapitre « {{ a.source.chapitre }} », passage
-            « {{ a.source.passage }} »
-          </span>
+      <!-- En bref -->
+      @if (resume(); as r) {
+        <bw-ai-box heading="En bref" class="bloc">
+          <ul class="puces">@for (p of r.puces; track $index) { <li dir="auto">{{ p }}</li> }</ul>
+          <span bwAiSource>Résumé du fil ({{ r.nbMessages }} messages), sans autre source.</span>
         </bw-ai-box>
       }
 
-      <section aria-labelledby="answers-title">
-        <h3 id="answers-title" class="answers-title">
-          {{ reponses().length }} {{ reponses().length > 1 ? 'réponses' : 'réponse' }} de la communauté
-        </h3>
-        @for (r of reponses(); track $index) {
-          <article class="answer" [class.best]="r.meilleure">
-            <div class="vote">
-              <button
-                type="button"
-                class="vote-btn"
-                [attr.aria-pressed]="!!votes()[$index]"
-                [attr.aria-label]="'Cette réponse est utile (' + (r.votes + (votes()[$index] || 0)) + ' votes)'"
-                (click)="voter($index)"
-              >
-                <mat-icon aria-hidden="true">arrow_upward</mat-icon>
-              </button>
-              <span class="vote-count" aria-hidden="true">{{ r.votes + (votes()[$index] || 0) }}</span>
+      <!-- La Vigie -->
+      @if (vigie(); as v) {
+        <div class="bloc" aria-live="polite">
+          @if (v.principale; as p) {
+            <app-vigie-box [reponse]="p" [moderateur]="moderateur()" [generaleDisponible]="v.generaleDisponible && !moderateur()" [occupe]="vigieOccupee()"
+                           (avis)="avis(p, $event)" (valider)="validerVigie(p)" (corriger)="corrigerVigie(p, $event)" (rejeter)="rejeterVigie(p, $event)"
+                           (regenerer)="regenererVigie()" (demanderGenerale)="demanderGenerale()" />
+          }
+          @if (v.generale; as g) {
+            <app-vigie-box class="bloc" [reponse]="g" [moderateur]="moderateur()" [occupe]="vigieOccupee()" (avis)="avis(g, $event)" (valider)="validerVigie(g)" />
+          }
+        </div>
+      }
+
+      <!-- Réponses -->
+      <section class="bloc" aria-labelledby="titre-reponses">
+        <h2 id="titre-reponses" class="h2">{{ d.reponses.length }} {{ d.reponses.length > 1 ? 'réponses' : 'réponse' }}</h2>
+        @for (r of reponsesTriees(); track r.id) {
+          <article class="card post reponse" [id]="'r-' + r.id" [class.meilleure]="r.acceptee" [class.cible]="cible() === r.id">
+            <div class="votes">
+              <button type="button" class="vote" [class.on]="r.monVote === 1" [attr.aria-pressed]="r.monVote === 1" aria-label="Voter pour la réponse" (click)="voter('REPONSE', r.id, r.monVote, 1)"><mat-icon>arrow_upward</mat-icon></button>
+              <span class="score num">{{ r.score }}</span>
+              <button type="button" class="vote" [class.on]="r.monVote === -1" [attr.aria-pressed]="r.monVote === -1" aria-label="Voter contre la réponse" (click)="voter('REPONSE', r.id, r.monVote, -1)"><mat-icon>arrow_downward</mat-icon></button>
+              @if (r.acceptee) { <mat-icon class="coche" aria-label="Meilleure réponse">check_circle</mat-icon> }
             </div>
-            <div class="a-body">
-              <header class="a-head">
-                <span class="avatar" aria-hidden="true">{{ initiales(r.auteur) }}</span>
-                <span class="a-who">
-                  <strong>{{ r.auteur }}</strong>
-                  <span class="bw-muted">{{ roleLabels[r.role] }}, {{ r.date }}</span>
-                </span>
-                @if (r.meilleure) {
-                  <bw-badge variant="meilleure-reponse" />
+            <div class="corps">
+              <div class="haut">
+                @if (r.acceptee) { <bw-badge variant="meilleure-reponse">Meilleure réponse</bw-badge> }
+                @if (r.approuvee) { <span class="pill accent"><mat-icon aria-hidden="true">workspace_premium</mat-icon> Approuvée par le formateur</span> }
+                @if (r.masquee) { <span class="pill ko">Masquée</span> }
+              </div>
+              @if (editionReponse()?.id === r.id) {
+                <app-forum-editeur [valeur]="editionReponse()!.contenu" (valeurChange)="editionReponse.set({ id: r.id, contenu: $event })" libelle="Réponse" [lignes]="6" />
+                <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="editionReponse.set(null)">Annuler</button><button type="button" bwButton="secondaire" (click)="enregistrerReponse()">Enregistrer</button></div>
+              } @else if (r.contenu) {
+                <app-forum-markdown [texte]="r.contenu" />
+              } @else {
+                <p class="muted small">Contenu masqué par la modération.</p>
+              }
+              <div class="reactions" role="group" aria-label="Réactions">
+                @for (x of reactions; track x.type) {
+                  <button type="button" class="reaction" [class.on]="r.mesReactions.includes(x.type)" [attr.aria-pressed]="r.mesReactions.includes(x.type)" [attr.aria-label]="x.libelle" [matTooltip]="x.libelle" (click)="reagir(r, x.type)">
+                    <span aria-hidden="true">{{ x.emoji }}</span> <span class="num">{{ compte(r, x.type) }}</span>
+                  </button>
                 }
-              </header>
-              <p>{{ r.contenu }}</p>
+              </div>
+              <div class="pied">
+                <div class="auteur">
+                  <bw-avatar [nom]="r.auteur.nom ?? 'Anonyme'" [size]="28" />
+                  <div>
+                    <strong>{{ r.auteur.nom ?? 'Membre anonyme' }}</strong>
+                    @if (r.auteur.formateurDuCours) { <span class="pill accent plain">Formateur</span> }
+                    @if (r.auteur.niveauLibelle) { <span class="muted small"> · {{ r.auteur.niveauLibelle }}</span> }
+                    <span class="muted small block">{{ r.creeLe | tempsRelatif }}@if (r.modifieLe) { · modifié}</span>
+                  </div>
+                </div>
+                <div class="outils">
+                  @if (d.droits.accepter) {
+                    <button type="button" bwButton="secondaire" (click)="accepter(r)"><mat-icon aria-hidden="true">{{ r.acceptee ? 'close' : 'verified' }}</mat-icon> {{ r.acceptee ? 'Retirer' : 'Meilleure réponse' }}</button>
+                  }
+                  @if (moderateur()) {
+                    <button type="button" bwButton="fantome" (click)="approuver(r)"><mat-icon aria-hidden="true">workspace_premium</mat-icon> {{ r.approuvee ? 'Retirer l’approbation' : 'Approuver' }}</button>
+                  }
+                  @if (r.contenu) { <button type="button" class="icon-btn" matTooltip="Citer" aria-label="Citer cette réponse" (click)="citer(r.contenu)"><mat-icon>format_quote</mat-icon></button> }
+                  <button type="button" class="icon-btn" matTooltip="Copier le lien" aria-label="Copier le lien de la réponse" (click)="partager(r.id)"><mat-icon>link</mat-icon></button>
+                  <button type="button" class="icon-btn" [matMenuTriggerFor]="menuR" aria-label="Plus d’actions"><mat-icon>more_vert</mat-icon></button>
+                  <mat-menu #menuR="matMenu" xPosition="before">
+                    @if (r.droits.modifier && r.contenu) { <button mat-menu-item type="button" (click)="editionReponse.set({ id: r.id, contenu: r.contenu })"><mat-icon>edit</mat-icon>Modifier</button> }
+                    <button mat-menu-item type="button" [matMenuTriggerFor]="motifsR"><mat-icon>flag</mat-icon>Signaler</button>
+                    @if (moderateur()) { <button mat-menu-item type="button" (click)="masquerReponse(r)"><mat-icon>{{ r.masquee ? 'visibility' : 'visibility_off' }}</mat-icon>{{ r.masquee ? 'Rétablir' : 'Masquer' }}</button> }
+                    @if (r.droits.supprimer) { <button mat-menu-item type="button" class="danger" (click)="supprimerReponse(r)"><mat-icon>delete</mat-icon>Supprimer</button> }
+                  </mat-menu>
+                  <mat-menu #motifsR="matMenu">
+                    @for (m of motifs; track m.code) { <button mat-menu-item type="button" (click)="signaler('REPONSE', r.id, m.code)">{{ m.libelle }}</button> }
+                  </mat-menu>
+                </div>
+              </div>
+              <ng-container *ngTemplateOutlet="commentairesTpl; context: { reponseId: r.id }" />
             </div>
           </article>
         } @empty {
-          <p class="bw-muted">Personne n’a encore répondu. Si tu connais la réponse, lance-toi.</p>
+          <p class="muted">Pas encore de réponse humaine. Sois le premier à aider !</p>
         }
       </section>
 
-      <form class="reply" (submit)="$event.preventDefault()">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Ta réponse</mat-label>
-          <textarea matInput rows="4" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)" name="reponse"></textarea>
-          <mat-hint>Explique ton raisonnement, un extrait de code aide souvent.</mat-hint>
-        </mat-form-field>
-        <button type="submit" bwButton="principal" [disabled]="!brouillon().trim()">Publier ma réponse</button>
-      </form>
+      <!-- Répondre -->
+      @if (d.droits.repondre) {
+        <section class="card card-pad bloc repondre" id="repondre" aria-labelledby="titre-repondre">
+          <h2 id="titre-repondre" class="h2">Ta réponse</h2>
+          <app-forum-editeur [(valeur)]="reponse" libelle="Ta réponse" [lignes]="6" placeholder="Explique ta solution ; cite le cours si tu peux." />
+          <div class="ligne-actions">
+            @if (apprenant()) { <mat-checkbox [checked]="anonyme()" (change)="anonyme.set($event.checked)">Anonyme pour les autres apprenants</mat-checkbox> }
+            <span class="grow"></span>
+            <button type="button" bwButton="principal" [bwLoading]="envoi()" [disabled]="!reponse().trim() || envoi()" (click)="repondre()">Publier ma réponse</button>
+          </div>
+        </section>
+      } @else if (d.verrouillee) {
+        <p class="bandeau"><mat-icon aria-hidden="true">lock</mat-icon> Cette discussion est verrouillée : plus de nouvelles réponses.</p>
+      }
     </div>
 
-    <aside class="side" aria-label="À propos de la discussion">
-      <dl class="facts">
-        <div><dt>Réponses</dt><dd>{{ d.reponses }}</dd></div>
-        <div><dt>Vues</dt><dd>{{ d.vues }}</dd></div>
-      </dl>
-      @if (cours(); as c) {
-        <a class="side-link" [routerLink]="studio ? ['/studio/cours', c.id] : ['/app/explorer', c.id]">
-          <mat-icon aria-hidden="true">menu_book</mat-icon>
-          Revoir le cours lié
-        </a>
+    <!-- Colonne -->
+    <aside class="stack colonne">
+      <section class="card card-pad stats">
+        <p><mat-icon aria-hidden="true">visibility</mat-icon> {{ d.nbVues }} vues</p>
+        <p><mat-icon aria-hidden="true">notifications</mat-icon> {{ d.nbAbonnes }} abonnés</p>
+        <p><mat-icon aria-hidden="true">schedule</mat-icon> Activité {{ d.derniereActiviteLe | tempsRelatif }}</p>
+        <button type="button" [bwButton]="d.suivie ? 'fantome' : 'secondaire'" bwBlock (click)="suivre()">{{ d.suivie ? 'Ne plus suivre' : 'Suivre la discussion' }}</button>
+      </section>
+      @if (participants().length) {
+        <section class="card">
+          <div class="card-head"><h3>Participants</h3></div>
+          <div class="card-body participants">
+            @for (p of participants(); track p.nom) { <span class="part"><bw-avatar [nom]="p.nom" [size]="28" />{{ p.nom }}@if (p.formateur) { <span class="pill accent plain">Formateur</span> }</span> }
+          </div>
+        </section>
+      }
+      @if (liees().length) {
+        <section class="card">
+          <div class="card-head"><h3>Discussions liées</h3></div>
+          <div class="card-body">
+            @for (l of liees(); track l.discussionId) {
+              <a class="mini" [routerLink]="[base, l.discussionId]" dir="auto">@if (l.statut === 'RESOLUE') {<mat-icon class="ok" aria-label="Résolue">check_circle</mat-icon>}{{ l.titre }}</a>
+            }
+          </div>
+        </section>
+      }
+      @if (apprenant()) {
+        <a class="card card-pad chapitre" [routerLink]="lienCours(d).chemin" [queryParams]="lienCours(d).params"><mat-icon aria-hidden="true">menu_book</mat-icon> Ouvrir le cours</a>
       }
     </aside>
   </div>
+
+  <ng-template #commentairesTpl let-reponseId="reponseId">
+    @let cle = cleCommentaires(reponseId);
+    @let liste = commentairesDe(reponseId);
+    <div class="commentaires">
+      <button type="button" class="lien small" [attr.aria-expanded]="commentairesOuverts().has(cle)" (click)="basculerCommentaires(cle)">
+        {{ liste.length ? liste.length + ' commentaire' + (liste.length > 1 ? 's' : '') : 'Commenter' }}
+      </button>
+      @if (commentairesOuverts().has(cle)) {
+        <ul>
+          @for (c of liste; track c.id) {
+            <li [class.masque]="c.masque">
+              <span dir="auto">{{ c.contenu || 'Commentaire masqué.' }}</span>
+              <span class="muted"> – {{ c.auteur.nom ?? 'Anonyme' }}, {{ c.creeLe | tempsRelatif }}</span>
+              @if (moderateur()) { <button type="button" class="lien" (click)="masquerCommentaire(c)">{{ c.masque ? 'rétablir' : 'masquer' }}</button> }
+              <button type="button" class="lien" (click)="signaler('COMMENTAIRE', c.id, 'AUTRE')">signaler</button>
+            </li>
+          }
+        </ul>
+        @if (d.droits.repondre) {
+          <div class="ajout">
+            <input class="input" dir="auto" maxlength="600" [ngModel]="commentaire()[cle] ?? ''" (ngModelChange)="saisirCommentaire(cle, $event)" (keydown.enter)="commenter(reponseId)" placeholder="Ajouter un commentaire (600 caractères)" aria-label="Ajouter un commentaire" />
+            <button type="button" bwButton="secondaire" (click)="commenter(reponseId)">Commenter</button>
+          </div>
+        }
+      }
+    </div>
+  </ng-template>
 } @else {
-  <bw-empty-state icon="forum" title="Cette discussion n’existe pas ou a été supprimée.">
-    <a bwButton="principal" [routerLink]="base">Retour au forum</a>
-  </bw-empty-state>
+  <div class="card card-pad"><bw-skeleton width="60%" height="28px" /><br /><bw-skeleton /><br /><bw-skeleton width="80%" /></div>
 }
