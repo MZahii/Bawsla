@@ -9,6 +9,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 import org.slf4j.Logger;
@@ -62,6 +64,7 @@ public class IndexationService {
     private final TransactionTemplate transaction;
     private final boolean texteDemo;
     private final Clock horloge;
+    private final Map<Long, Object> verrous = new ConcurrentHashMap<>();
 
     public IndexationService(CoursClient coursClient, IaService ia, IndexCoursRepository indexRepository,
                              PassageCoursRepository passageRepository, AccesService acces, IdentiteService identites,
@@ -108,7 +111,20 @@ public class IndexationService {
     @TransactionalEventListener
     public void discussionCreee(DiscussionCreee e) {
         if (!indexRepository.existsById(e.coursId())) {
-            executeur.execute(identites.avecIdentite(() -> indexer(e.coursId(), false)));
+            executeur.execute(identites.avecIdentite(() -> assurerIndex(e.coursId())));
+        }
+    }
+
+    /**
+     * Garantit qu'un cours a été indexé au moins une fois, sur place : La Vigie l'appelle avant de chercher, sinon
+     * la toute première question d'un cours (qui déclenche aussi l'indexation) serait traitée avant l'index.
+     * Un verrou par cours évite deux indexations simultanées.
+     */
+    public void assurerIndex(Long coursId) {
+        synchronized (verrous.computeIfAbsent(coursId, id -> new Object())) {
+            if (!indexRepository.existsById(coursId)) {
+                indexer(coursId, false);
+            }
         }
     }
 

@@ -232,8 +232,8 @@ class EngagementApiTest extends BaseApiTest {
         long q = publierQuestion(YASSINE, TITRE);
         repondre(SARA, q, "Ta condition est dans le WHERE au lieu du ON.");
 
-        // 2 = le badge « Première question » et la réponse de Sara (la plus récente en tête).
-        en(YASSINE, ETUDIANT, get("/api/forum/notifications/compteur")).andExpect(jsonPath("$.data.nonLues").value(2));
+        // 3 = le badge « Première question », la réponse de La Vigie prête et celle de Sara (la plus récente en tête).
+        en(YASSINE, ETUDIANT, get("/api/forum/notifications/compteur")).andExpect(jsonPath("$.data.nonLues").value(3));
         en(YASSINE, ETUDIANT, get("/api/forum/notifications"))
                 .andExpect(jsonPath("$.data.contenu[0].type").value("REPONSE"))
                 .andExpect(jsonPath("$.data.contenu[0].discussionTitre").value(TITRE))
@@ -260,12 +260,13 @@ class EngagementApiTest extends BaseApiTest {
         long q = publierQuestion(YASSINE, TITRE);
         long rImen = repondre(FORMATRICE, q, "Regarde la clause ON.");
         repondre(SARA, q, "Je suis d'accord avec @Imen Trabelsi, et toi @Yassine Gharbi ?");
-        assertThat(types(FORMATRICE)).containsExactly("MENTION");
-        assertThat(types(YASSINE)).containsExactlyInAnyOrder("REPONSE", "MENTION");
+        // La question de ce test sort du texte de démonstration : La Vigie s'abstient et prévient la formatrice.
+        assertThat(types(FORMATRICE)).containsExactlyInAnyOrder("HORS_COURS", "MENTION");
+        assertThat(types(YASSINE)).containsExactlyInAnyOrder("VIGIE_PRETE", "REPONSE", "MENTION");
 
         en(YASSINE, ETUDIANT, post("/api/forum/reponses/{r}/commentaires", rImen), Map.of("contenu", "Merci !"))
                 .andExpect(status().isCreated());
-        assertThat(types(FORMATRICE)).containsExactlyInAnyOrder("MENTION", "COMMENTAIRE");
+        assertThat(types(FORMATRICE)).containsExactlyInAnyOrder("HORS_COURS", "MENTION", "COMMENTAIRE");
     }
 
     @Test
@@ -286,11 +287,11 @@ class EngagementApiTest extends BaseApiTest {
         repondre(FORMATRICE, q, "Deuxième.");
         long premiere = notifications.findAll().stream().filter(n -> n.getDestinataireId().equals(YASSINE))
                 .findFirst().orElseThrow().getId();
-        // Yassine a 3 notifications : son badge « Première question » puis les deux réponses.
+        // Yassine a 4 notifications : son badge « Première question », la réponse de La Vigie, puis les deux réponses.
         en(YASSINE, ETUDIANT, post("/api/forum/notifications/lues"), List.of(premiere))
-                .andExpect(jsonPath("$.data.nonLues").value(2));
+                .andExpect(jsonPath("$.data.nonLues").value(3));
         en(YASSINE, ETUDIANT, get("/api/forum/notifications").param("nonLues", "true"))
-                .andExpect(jsonPath("$.data.contenu", hasSize(2)));
+                .andExpect(jsonPath("$.data.contenu", hasSize(3)));
         en(YASSINE, ETUDIANT, post("/api/forum/notifications/lues")).andExpect(jsonPath("$.data.nonLues").value(0));
         // Marquer la notification d'un autre membre n'a aucun effet (Sara garde son badge et la réponse d'Imen).
         en(SARA, ETUDIANT, post("/api/forum/notifications/lues"), List.of(premiere))

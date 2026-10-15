@@ -29,4 +29,12 @@ public interface IaClient {
     @PostMapping("/api/ai/forum/reformuler")
     ApiResponse<ReformulerIaDto.Reponse> reformuler(@RequestHeader("Authorization") String authorization,
                                                     @RequestBody ReformulerIaDto.Requete corps);
+
+    @PostMapping("/api/ai/forum/repondre")
+    ApiResponse<RepondreIaDto.Reponse> repondre(@RequestHeader("Authorization") String authorization,
+                                                @RequestBody RepondreIaDto.Requete corps);
+
+    @PostMapping("/api/ai/forum/repondre-general")
+    ApiResponse<RepondreIaDto.ReponseGenerale> repondreGeneral(@RequestHeader("Authorization") String authorization,
+                                                               @RequestBody RepondreIaDto.RequeteGenerale corps);
 }

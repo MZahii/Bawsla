@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
 import tn.esprit.bawsla.forum.client.ReformulerIaDto;
+import tn.esprit.bawsla.forum.client.RepondreIaDto;
 import tn.esprit.bawsla.forum.client.VectoriserIaDto;
 import tn.esprit.bawsla.forum.common.ApiResponse;
 import tn.esprit.bawsla.forum.common.exception.ServiceUnavailableException;
@@ -18,14 +19,19 @@ import tn.esprit.bawsla.forum.service.Similarite;
 /**
  * Remplace l'ai-service (via la gateway) dans les tests : vecteurs déterministes par hachage des mots (deux textes
  * qui partagent des mots sont proches), reformulations fixes (derja → français), découpage simple par paragraphe.
+ * La Vigie répond en citant mot pour mot le début du premier passage (confiance fixe {@link #CONFIANCE}) ; en mode
+ * GUIDEE elle ajoute des indices. {@code horsCours} simule un modèle qui s'abstient malgré des passages.
  * {@code panne} simule une IA indisponible ; les corps reçus sont gardés pour vérifier qu'aucun identifiant ne part.
  */
 class FauxIa implements IaClient {
 
     static final String MODELE = "faux-hachage-64";
     static final int DIMENSION = 64;
+    static final int CONFIANCE = 82;
+    static final String GENERALE = "Kubernetes orchestre des conteneurs ; vérifie la documentation officielle.";
 
     volatile boolean panne;
+    volatile boolean horsCours;
     final Map<String, String> reformulations = new java.util.concurrent.ConcurrentHashMap<>();
     final List<Object> corps = new CopyOnWriteArrayList<>();
     final List<String> jetons = new CopyOnWriteArrayList<>();
@@ -33,6 +39,7 @@ class FauxIa implements IaClient {
 
     void remettre() {
         panne = false;
+        horsCours = false;
         reformulations.clear();
         corps.clear();
         jetons.clear();
@@ -72,6 +79,31 @@ class FauxIa implements IaClient {
         appel(authorization, requete);
         String requeteTechnique = reformulations.getOrDefault(requete.question(), requete.question());
         return ApiResponse.ok(new ReformulerIaDto.Reponse(requeteTechnique, "fr", "v3", "faux", false));
+    }
+
+    @Override
+    public ApiResponse<RepondreIaDto.Reponse> repondre(String authorization, RepondreIaDto.Requete requete) {
+        appel(authorization, requete);
+        if (horsCours || requete.passages().isEmpty()) {
+            return ApiResponse.ok(new RepondreIaDto.Reponse("", List.of(), 0, true, List.of(), "v3", "faux",
+                    List.of()));
+        }
+        RepondreIaDto.Passage p = requete.passages().get(0);
+        String citation = p.texte().length() > 60 ? p.texte().substring(0, 60) : p.texte();
+        RepondreIaDto.Source source = new RepondreIaDto.Source(1, p.id(), p.origine(), p.cours(), p.texte(),
+                p.chapitre(), p.page(), citation);
+        List<String> indices = "GUIDEE".equals(requete.mode())
+                ? List.of("Relis la définition [1]", "Observe les lignes sans correspondance [1]") : List.of();
+        return ApiResponse.ok(new RepondreIaDto.Reponse("D'après le cours : " + citation + " [1].", List.of(source),
+                CONFIANCE, false, indices, "v3", "faux", List.of()));
+    }
+
+    @Override
+    public ApiResponse<RepondreIaDto.ReponseGenerale> repondreGeneral(String authorization,
+                                                                      RepondreIaDto.RequeteGenerale requete) {
+        appel(authorization, requete);
+        return ApiResponse.ok(new RepondreIaDto.ReponseGenerale(GENERALE, List.of("Les versions évoluent vite"),
+                List.of("La documentation officielle"), "v3", "faux"));
     }
 
     private void appel(String authorization, Object requete) {

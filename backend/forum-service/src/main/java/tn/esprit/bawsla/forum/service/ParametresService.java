@@ -31,6 +31,7 @@ public class ParametresService {
     public static final String SEUIL_SIMILAIRE = "similarite.seuil";
     public static final String SEUIL_DOUBLON = "similarite.seuil-doublon";
     public static final String REPONSE_GENERALE = "vigie.reponse-generale-active";
+    public static final String SEUIL_PERTINENCE = "vigie.seuil-pertinence";
 
     /** Valeurs par défaut (plan §3.3, §3.7, §4.5) ; les seuils de similarité sont fixés par l'évaluation (§9). */
     private static final Map<String, String> DEFAUTS = new LinkedHashMap<>();
@@ -45,6 +46,7 @@ public class ParametresService {
         DEFAUTS.put(SEUIL_SIMILAIRE, "0.75");
         DEFAUTS.put(SEUIL_DOUBLON, "0.9");
         DEFAUTS.put(REPONSE_GENERALE, "true");
+        DEFAUTS.put(SEUIL_PERTINENCE, "0.55");
     }
 
     private final ParametreForumRepository parametreRepository;
@@ -120,7 +122,7 @@ public class ParametresService {
     private static void valider(String cle, String valeur) {
         try {
             switch (cle) {
-                case SEUIL_MASQUAGE, SEUIL_SIGNALEMENT, SEUIL_SIMILAIRE, SEUIL_DOUBLON -> {
+                case SEUIL_MASQUAGE, SEUIL_SIGNALEMENT, SEUIL_SIMILAIRE, SEUIL_DOUBLON, SEUIL_PERTINENCE -> {
                     double v = Double.parseDouble(valeur);
                     if (v < 0 || v > 1) {
                         throw new BadRequestException("Le réglage " + cle + " est compris entre 0 et 1");

@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,10 @@ import org.springframework.stereotype.Service;
 import tn.esprit.bawsla.forum.client.IaClient;
 import tn.esprit.bawsla.forum.client.IndexerIaDto;
 import tn.esprit.bawsla.forum.client.ReformulerIaDto;
+import tn.esprit.bawsla.forum.client.RepondreIaDto;
 import tn.esprit.bawsla.forum.client.VectoriserIaDto;
 import tn.esprit.bawsla.forum.common.ApiResponse;
+import tn.esprit.bawsla.forum.common.exception.BadRequestException;
 import tn.esprit.bawsla.forum.common.exception.ServiceUnavailableException;
 import tn.esprit.bawsla.forum.service.CacheTemporaire.Calcul;
 
@@ -106,6 +109,31 @@ public class IaService {
             }
             return r;
         } catch (ServiceUnavailableException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new ServiceUnavailableException("Le service d'IA est indisponible : " + e.getMessage());
+        }
+    }
+
+    /** Réponse sourcée de La Vigie ; lève ServiceUnavailableException si l'IA ne répond pas. */
+    public RepondreIaDto.Reponse repondre(RepondreIaDto.Requete requete) {
+        return obligatoire(() -> donnees(ia.repondre(identites.jeton(), requete)), "Réponse de La Vigie vide");
+    }
+
+    /** Réponse générale (niveau 3) ; lève ServiceUnavailableException si l'IA ne répond pas. */
+    public RepondreIaDto.ReponseGenerale repondreGeneral(String question) {
+        return obligatoire(() -> donnees(ia.repondreGeneral(identites.jeton(),
+                new RepondreIaDto.RequeteGenerale(question))), "Réponse générale vide");
+    }
+
+    private static <T> T obligatoire(Supplier<T> appel, String siVide) {
+        try {
+            T r = appel.get();
+            if (r == null) {
+                throw new ServiceUnavailableException(siVide);
+            }
+            return r;
+        } catch (ServiceUnavailableException | BadRequestException e) {
             throw e;
         } catch (RuntimeException e) {
             throw new ServiceUnavailableException("Le service d'IA est indisponible : " + e.getMessage());

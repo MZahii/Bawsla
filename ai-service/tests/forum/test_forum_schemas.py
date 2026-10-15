@@ -50,7 +50,7 @@ def test_les_entrees_se_lisent_en_camel_case():
 def test_la_reponse_suit_le_format_du_cahier_en_camel_case():
     reponse = RepondreResponse(
         reponse="LEFT JOIN garde les lignes de gauche [1].",
-        sources=[{"cours": "Bases de données", "passage": "…", "citation": "garde toutes les lignes"}],
+        sources=[{"numero": 1, "cours": "Bases de données", "passage": "…", "citation": "garde toutes les lignes"}],
         confiance=82,
         version_prompt="v3",
     )

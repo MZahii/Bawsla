@@ -10,7 +10,7 @@ from app.core.llm_client import LLMClient, get_llm_client
 from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
-from app.modules.forum import nlp
+from app.modules.forum import nlp, rag
 from app.modules.forum.config import ForumAiSettings, get_forum_ai_settings
 from app.modules.forum.schemas import (
     IndexerRequest,
@@ -19,6 +19,10 @@ from app.modules.forum.schemas import (
     QuestionsSimilairesResponse,
     ReformulerRequest,
     ReformulerResponse,
+    RepondreGeneralRequest,
+    RepondreGeneralResponse,
+    RepondreRequest,
+    RepondreResponse,
     VectoriserRequest,
     VectoriserResponse,
 )
@@ -60,6 +64,30 @@ async def reformuler(
 ) -> ApiResponse[ReformulerResponse]:
     """Requête technique autonome en français (derja, arabizi, anglais acceptés) ; repli sans LLM."""
     return ApiResponse.ok(await nlp.reformuler(body, llm, sanitizer, reglages))
+
+
+@router.post("/repondre", response_model=ApiResponse[RepondreResponse])
+async def repondre(
+    body: RepondreRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[RepondreResponse]:
+    """Réponse UNIQUEMENT à partir des passages fournis, citations vérifiées, confiance calculée, abstention."""
+    return ApiResponse.ok(await rag.repondre(body, llm, sanitizer, reglages))
+
+
+@router.post("/repondre-general", response_model=ApiResponse[RepondreGeneralResponse])
+async def repondre_general(
+    body: RepondreGeneralRequest,
+    user: CurrentUser = Depends(get_current_user),
+    llm: LLMClient = Depends(get_llm_client),
+    sanitizer: Sanitizer = Depends(get_sanitizer),
+    reglages: ForumAiSettings = Depends(get_forum_ai_settings),
+) -> ApiResponse[RepondreGeneralResponse]:
+    """Niveau 3, sur demande de l'apprenant uniquement : sans source ni confiance (forum-service en décide)."""
+    return ApiResponse.ok(await rag.repondre_general(body, llm, sanitizer, reglages))
 
 
 @router.post("/questions-similaires", response_model=ApiResponse[QuestionsSimilairesResponse])

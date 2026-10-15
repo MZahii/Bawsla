@@ -80,6 +80,7 @@ public class DiscussionService {
     private final PresentationService presentation;
     private final JournalService journal;
     private final RechercheService recherche;
+    private final AssistantService assistant;
     private final ApplicationEventPublisher evenements;
     private final Clock horloge;
 
@@ -87,7 +88,8 @@ public class DiscussionService {
                              VersionDiscussionRepository versionRepository, VueRepository vueRepository,
                              LectureRepository lectureRepository, AccesService acces, FilService fils,
                              EtiquetteService etiquettes, PresentationService presentation, JournalService journal,
-                             RechercheService recherche, ApplicationEventPublisher evenements, Clock horloge) {
+                             RechercheService recherche, AssistantService assistant,
+                             ApplicationEventPublisher evenements, Clock horloge) {
         this.discussionRepository = discussionRepository;
         this.reponseRepository = reponseRepository;
         this.versionRepository = versionRepository;
@@ -99,6 +101,7 @@ public class DiscussionService {
         this.presentation = presentation;
         this.journal = journal;
         this.recherche = recherche;
+        this.assistant = assistant;
         this.evenements = evenements;
         this.horloge = horloge;
     }
@@ -201,6 +204,9 @@ public class DiscussionService {
         etiquettes.affecter(d, req.etiquettes());
         discussionRepository.save(d);
         marquerLu(user.id(), d.getId());
+        if (req.conversationId() != null) {
+            assistant.attacher(d, req.conversationId(), user);
+        }
 
         evenements.publishEvent(new DiscussionCreee(d.getId(), d.getCoursId(), user.id(), d.getType(), d.isAnonyme()));
         return presentation.detail(d, ctx);

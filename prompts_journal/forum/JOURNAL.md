@@ -7,6 +7,65 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 05 — 2026-10-15 — Lot 5 : La Vigie, RAG, réponse sourcée, niveau 3, assistant privé
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : `repondre` (v1 → v3), vérification des citations, confiance calculée, abstention, mode Guide-moi,
+  niveau 3 `repondre-general` à la demande ; côté forum-service, génération asynchrone à la publication,
+  validation / correction / rejet par le formateur, assistant privé et « Publier comme question » (plan §4.2, §4.3,
+  §4.9).
+- **Contexte fourni** : plan §4.2 à §4.9, §6.2, §8 ; code des lots 2 à 4 ; travail du lot 5 déjà écrit sur le disque
+  (session interrompue), repris là où il s'était arrêté.
+- **Prompt** :
+  > Reprends le lot 5 du plan (prompts_journal/forum/PLAN_FORUM.md). Le travail non commité est sur le disque. Fais
+  > dans l'ordre :
+  > 1. Ajoute repondre et repondreGeneral dans FauxIa, puis mvnw clean test.
+  > 2. Corrige les 3 attentes de EngagementApiTest (la notification « réponse prête » de La Vigie est voulue).
+  > 3. Écris VigieTest (abstention sans LLM, sources et confiance, mode examen, niveau 3 refusé si désactivé ou en
+  > examen, droits de validation, assistant privé et publication).
+  > 4. Journal 05, captures, commit, git push origin feature/forum.
+  > Puis enchaîne les lots 6 à 10 avec un résumé court à la fin de chacun.
+- **Résultat** :
+  - **ai-service** : `rag.py`. Le modèle ne fait que proposer : chaque citation est revérifiée sans LLM
+    (rapidfuzz `partial_ratio` ≥ 90), une citation introuvable est retirée avec son `[n]`, et sans aucune citation
+    vérifiée la réponse devient l'abstention. Confiance calculée (40 % score de récupération, 30 % phrases citées,
+    30 % citations vérifiées), jamais recopiée du modèle. Prompts `repondre`, `guider` et `repondre_general` en
+    v1 → v3 (rôle, contexte, tâche, format, contraintes ; passages et question entre balises de données).
+  - **forum-service** : `RagService` (deux sources, cours et réponses validées du forum, cosinus + mots fusionnés
+    par RRF, bonus de 20 % pour le cours, top 4) ; `VigieService` (abstention SANS appel au LLM sous le seuil de
+    pertinence, notification au formateur, validation / correction avec l'original gardé / rejet, avis utile,
+    niveau 3) ; `BaseConnaissanceService` (réponses validées vectorisées dans `passage_forum`) ;
+    `AssistantService` (conversation privée, 6 derniers échanges pour condenser les questions de suivi,
+    brouillon « Publier comme question », réponse jointe au fil sans nouvel appel) ; `VigieController`.
+  - Tests : `FauxIa` répond en citant le premier passage (ou s'abstient sur demande) ; `VigieTest` (24 tests) ;
+    3 attentes d'`EngagementApiTest` corrigées (notification « réponse de La Vigie prête », et « hors cours » pour
+    la formatrice quand la question sort du texte de démonstration).
+- **Vérification** : `mvnw clean test` 107 verts dont 24 nouveaux ; `pytest tests/forum` 47 verts, couverture de
+  branches 98 % ; suite Python complète 159 verts. Contrôle de mutation : en désactivant le refus du niveau 3 en
+  mode examen, `laReponseGeneraleEstRefuseeEnModeExamen` échoue bien (200 au lieu de 403).
+- **Gardé / modifié / rejeté** :
+  - **Défaut trouvé par les tests** : la toute première question d'un cours lançait en même temps l'indexation du
+    cours et La Vigie ; La Vigie passait avant l'index et s'abstenait à tort (en production, avec le pool de
+    threads, c'était une course). Corrigé par `IndexationService.assurerIndex()` (verrou par cours, indexation sur
+    place si le cours ne l'a jamais été), appelé par La Vigie avant de chercher.
+  - Avant de soupçonner le seuil de pertinence (0,55), j'ai mesuré les scores réels avec le faux vectoriseur par
+    hachage : 0,45 pour la question d'origine, 0,71 pour une question proche du passage LEFT JOIN, 0,26 hors cours.
+    Le seuil n'a pas été touché (il se règle sur le vrai modèle au lot 9) ; les tests utilisent la question mesurée.
+  - Rejeté : la confiance auto-déclarée par le modèle (champ ignoré, la confiance est calculée).
+  - Git Bash a encore interprété des `\n` dans un heredoc Python : fichier réécrit avec l'outil d'écriture.
+- **Décisions non couvertes par le plan** :
+  - Seuil de pertinence provisoire 0,55 (`vigie.seuil-pertinence`, réglable par l'admin), 0,5 en mots-clés seuls.
+  - Mode examen : la réponse complète est générée mais cachée aux apprenants (indices seulement) ; le formateur la
+    voit. Passé la date de fin, elle redevient visible sans régénération.
+  - La réponse générale n'est proposée qu'après une abstention (409 sinon) et n'est générée qu'une fois par fil.
+  - Une question publiée depuis l'assistant reçoit une copie de la dernière réponse sourcée (pas la réponse
+    générale), seulement si la conversation appartient à l'auteur et porte sur le même cours.
+- **Captures** : `captures/2026-10-15_06_lot5-tests-vigie.png`
+- **Leçon** : une course entre deux tâches de fond ne se voit pas avec un exécuteur parallèle ; l'exécuteur
+  synchrone des tests l'a rendue reproductible à chaque fois.
+
+---
+
 ### 04 — 2026-10-15 — Lot 4 : NLP, embeddings, recherche sémantique, index des cours
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

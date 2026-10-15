@@ -153,6 +153,9 @@ class RepondreRequest(ForumModel):
 
 
 class SourceReponse(CamelModel):
+    """Source citée ; numero = le [n] utilisé dans le texte de la réponse."""
+
+    numero: int
     id: int | None = None
     origine: Origine = "COURS"
     cours: str
@@ -180,11 +183,33 @@ class RepondreResponse(CamelModel):
     alertes: list[str] = Field(default_factory=list)
 
 
+class CitationLLM(CamelModel):
+    passage: int
+    citation: str = Field(max_length=600)
+
+
+class ReponseLLM(CamelModel):
+    """Sortie attendue du LLM pour /repondre (modes DIRECTE et GUIDEE) ; tout est revérifié ensuite."""
+
+    reponse: str = Field(default="", max_length=6000)
+    hors_cours: bool = False
+    citations: list[CitationLLM] = Field(default_factory=list, max_length=20)
+    indices: list[str] = Field(default_factory=list, max_length=5)
+
+
 # ---------------------------------------------------------------- POST /repondre-general (niveau 3, sur demande)
 
 
 class RepondreGeneralRequest(ForumModel):
     question: str = Field(min_length=1, max_length=MAX_QUESTION)
+
+
+class ReponseGeneraleLLM(CamelModel):
+    """Sortie attendue du LLM pour /repondre-general."""
+
+    reponse: str = Field(min_length=1, max_length=4000)
+    incertitudes: list[str] = Field(default_factory=list, max_length=6)
+    a_verifier: list[str] = Field(default_factory=list, max_length=6)
 
 
 class RepondreGeneralResponse(CamelModel):
