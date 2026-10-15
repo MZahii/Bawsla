@@ -124,6 +124,15 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | `POST /api/ai/quiz/generer` | `{ "coursId": 1, "matiere": "Mathématiques", "theme": "…", "competences": ["…"], "niveauxBloom": ["APPLIQUER"], "difficulte": "INTERMEDIAIRE", "nbQuestions": 5 }` : `matiere` facultative (80 caractères au plus, la précision saisie pour « Autre »), `nbQuestions` entre 1 et 10, `competences` de 1 à 8, `niveauxBloom` parmi `MEMORISER`, `COMPRENDRE`, `APPLIQUER`, `ANALYSER`, `EVALUER`, `CREER`, et `difficulte` parmi `FACILE`, `INTERMEDIAIRE`, `AVANCE`, `DIFFICILE`, `MASTER` (`MOYEN` reste accepté et vaut `INTERMEDIAIRE`). **Aucun texte de cours.** | `{ "coursId": 1, "questions": [{ "enonce": "…", "niveauBloom": "APPLIQUER", "competence": "…", "choix": [{ "texte": "…", "estCorrecte": true }, { "texte": "…", "estCorrecte": false, "erreurAssociee": "…" }], "explication": "…", "statut": "VALIDEE" }], "nbValidees": 4, "nbRejetees": 1, "versionPrompt": "v2", "difficulte": "INTERMEDIAIRE", "fournisseur": "gemini", "alertes": [] }`. Chaque question a exactement 4 choix, dont 1 seul correct, et chaque mauvais choix porte une `erreurAssociee`. `statut` vaut `VALIDEE` ou `REJETEE` ; dans le second cas, `raisonRejet` est renseigné. |
 | `POST /api/ai/quiz/remedier` | `{ "notion": "…", "niveauBloom": "APPLIQUER", "enonce": "…", "choixDonne": "…", "bonneReponse": "…", "erreurAssociee": "…", "explication": "…" }`. **Aucun identifiant ni aucune donnée de l'apprenant.** | `{ "notion": "…", "raisonnement": "…", "explication": "…", "conseil": "…", "questionRattrapage": { "enonce": "…", "choix": [ … ], "explication": "…" }, "versionPrompt": "v1", "fournisseur": "gemini" }`. `questionRattrapage` est optionnelle et suit le même format qu'une question générée. `raisonnement` est réservé au formateur et à l'admin : il est omis de la réponse quand `X-User-Role` vaut `ETUDIANT`. |
 | `POST /api/ai/forum/questions-similaires` | `{ "question": "…", "coursId": 1, "limite": 5 }` | `{ "question": "…", "similaires": [{ "discussionId": 7, "titre": "…", "score": 0.82 }], "stub": true }` |
+| `POST /api/ai/forum/vectoriser` | `{ "textes": ["…"], "tache": "DOCUMENT" }` (`DOCUMENT` ou `REQUETE`, 1 à 100 textes) | `{ "vecteurs": [[0.01, …]], "modele": "gemini-embedding-001", "dimension": 768, "fournisseur": "gemini" }` (vecteurs normalisés) |
+| `POST /api/ai/forum/indexer` | `{ "coursId": 1, "texte": "…", "pages": [{ "numero": 1, "texte": "…" }], "chapitres": [{ "id": 3, "titre": "…", "contenu": "…" }] }` | `{ "passages": [{ "chapitreId": 3, "page": 12, "ordre": 0, "titreSection": "…", "texte": "…", "vecteur": [ … ] }], "modele": "…", "dimension": 768 }` (~800 caractères, 120 de chevauchement) |
+| `POST /api/ai/forum/reformuler` | `{ "question": "…", "historique": [{ "role": "APPRENANT", "texte": "…" }] }` | `{ "requete": "…", "langueDetectee": "fr", "versionPrompt": "v3", "repli": false }` (repli : question nettoyée telle quelle, sans LLM) |
+| `POST /api/ai/forum/repondre` | `{ "question": "…", "mode": "DIRECTE", "passages": [{ "id": 11, "origine": "COURS", "cours": "…", "chapitre": "…", "page": 12, "texte": "…", "score": 0.82 }] }` (`mode` : `DIRECTE` ou `GUIDEE`) | `{ "reponse": "… [1].", "sources": [{ "numero": 1, "id": 11, "origine": "COURS", "cours": "…", "passage": "…", "chapitre": "…", "page": 12, "citation": "…" }], "confiance": 82, "horsCours": false, "indices": [], "questionsSimilaires": [], "versionPrompt": "v3", "fournisseur": "gemini", "alertes": [] }`. Citations revérifiées sans LLM, confiance calculée, abstention si rien n'est vérifié. |
+| `POST /api/ai/forum/repondre-general` | `{ "question": "…" }` (niveau 3, sur demande de l'apprenant seulement) | `{ "reponse": "…", "incertitudes": ["…"], "aVerifier": ["…"], "versionPrompt": "v3", "fournisseur": "gemini" }` : ni source ni confiance |
+| `POST /api/ai/forum/moderer` | `{ "titre": "…", "contenu": "…" }` | `{ "categorie": "OK", "score": 0.0, "raison": "…", "regle": null, "versionPrompt": "v3", "fournisseur": "gemini" }` ; `categorie` parmi `OK`, `HORS_SUJET`, `IRRESPECTUEUX`, `SPAM`, `FUITE_EXAMEN`, `INJECTION`, `DONNEES_PERSONNELLES` ; `regle` = règle sans LLM qui a tranché (`repli` si le LLM est absent : message accepté) |
+| `POST /api/ai/forum/resumer` | `{ "titre": "…", "messages": [{ "role": "REPONSE", "texte": "…" }] }` (rôles `QUESTION`, `REPONSE`, `VIGIE`, `COMMENTAIRE`, jamais de nom) | `{ "puces": ["…"], "versionPrompt": "v2", "fournisseur": "gemini" }` (1 à 5 puces) |
+| `POST /api/ai/forum/ameliorer` | `{ "titre": "…", "contenu": "…", "etiquettesExistantes": ["sql"] }` | `{ "titre": "…", "manques": ["…"], "etiquettes": ["sql"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (étiquettes prises dans la liste fournie) |
+| `POST /api/ai/forum/nommer-groupes` | `{ "groupes": [{ "titres": ["…"] }] }` (groupes calculés par forum-service) | `{ "noms": ["…"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (un nom par groupe, dans l'ordre) |
 
 Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun :
 
@@ -139,6 +148,8 @@ Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun 
 
 Le module Quiz ne lit jamais le PDF ni le texte d'un cours : `generer` part uniquement des objectifs pédagogiques. Ces deux routes sont appelées par quiz-service, qui génère en asynchrone.
 
+Les routes `/api/ai/forum/*` (hors `questions-similaires`, stub d'origine conservé) sont appelées par forum-service avec le jeton de l'utilisateur, via la gateway. Tous les corps refusent un champ inconnu (`extra="forbid"`) : aucun nom, email ni identifiant d'utilisateur n'y entre. Version des prompts : `PROMPT_FORUM_VERSION` (v3 par défaut).
+
 Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du module), puis on documente sa ligne ici par PR.
 
 ---
@@ -150,7 +161,7 @@ Ils peuvent évoluer librement par leur propriétaire :
 - **user** : `POST /api/auth/register` et `POST /api/auth/login` (publics), `GET /api/users/me`, `GET /api/users` (ADMIN).
 - **cours** : `GET /api/cours?categorie=&niveau=`, `POST`, `PUT /{id}`, `DELETE /{id}` (ENSEIGNANT propriétaire ou ADMIN pour l'écriture).
 - **quiz** : `GET /api/quiz?coursId=`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`.
-- **forum** : `GET /api/forum/discussions?coursId=`, `GET /{id}`, `POST` (tout utilisateur), `PUT` et `DELETE /{id}` (auteur ou ADMIN).
+- **forum** : toutes les routes `/api/forum/**` (discussions, réponses, votes, La Vigie, assistant privé, modération, studio formateur, espace admin `/api/forum/admin/**`) sont décrites dans `prompts_journal/forum/PLAN_FORUM.md` §6.1.
 - **health** (publics) : `GET /api/{users|cours|quiz|forum|ai}/health`.
 
 ## Historique
@@ -159,3 +170,4 @@ Ils peuvent évoluer librement par leur propriétaire :
 |---|---|---|
 | 2026-10-04 | Version initiale du socle (contrats 1 à 5) | commit initial |
 | 2026-10-13 | Contrat 5 : génération de quiz par objectifs, remédiation, erreur 413. Contrat 2 : consommateurs. Contrat 3 : statut « prévu » (forme inchangée) | docs/contrat-quiz-ia |
+| 2026-10-15 | Contrat 5 : routes IA du forum (vectoriser, indexer, reformuler, repondre, repondre-general, moderer, resumer, ameliorer, nommer-groupes). Endpoints internes du forum | feature/forum |
