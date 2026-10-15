@@ -16,6 +16,7 @@ import {
 } from '../../core/demo/demo-plus';
 import { BwButton } from '../../shared';
 import { Avatar, BwChart, Kpi, Rating, Timeline, TimelineItem } from '../../shared/ui';
+import { ForumApercu } from '../../features/forum/components/forum-apercu';
 
 const CLE_ATTENTE = 'bawsla.formateur.enAttente';
 
@@ -27,7 +28,7 @@ const CLE_ATTENTE = 'bawsla.formateur.enAttente';
  */
 @Component({
   selector: 'app-teacher-home',
-  imports: [RouterLink, MatIconModule, BwButton, Avatar, BwChart, Kpi, Rating, Timeline],
+  imports: [RouterLink, MatIconModule, BwButton, Avatar, BwChart, Kpi, Rating, Timeline, ForumApercu],
   templateUrl: './teacher-home.html',
   styleUrl: './teacher-home.scss',
 })

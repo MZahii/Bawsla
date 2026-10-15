@@ -17,6 +17,7 @@ export class AdminShell {
       { label: 'Catalogue', link: '/admin/catalogue', icone: 'category' },
       { label: 'Certificats', link: '/admin/certificats', icone: 'workspace_premium' },
       { label: 'Ventes', link: '/admin/ventes', icone: 'payments' },
+      { label: 'Forum', link: '/admin/forum', icone: 'forum' },
     ] },
     { titre: 'Intelligence artificielle', items: [{ label: 'Supervision IA', link: '/admin/ia', icone: 'psychology', compteur: 4 }] },
     { titre: 'Système', items: [

@@ -4,10 +4,11 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { lireOnboarding } from '../../core/profil/onboarding';
-import { COURS, DISCUSSIONS, RECOMMANDATIONS, coursParId } from '../../core/demo/demo-data';
+import { COURS, RECOMMANDATIONS, coursParId } from '../../core/demo/demo-data';
 import { ACTIVITE_JOURS, CERTIFICATS, ECHEANCES, OBJECTIF_SEMAINE, meta, tuile } from '../../core/demo/demo-plus';
 import { BwButton } from '../../shared';
 import { CourseTile, Heatmap, ProgressRing, SectionHead } from '../../shared/ui';
+import { ForumApercu } from '../../features/forum/components/forum-apercu';
 
 /**
  * Accueil de l'espace apprenant : reprendre où on s'est arrêté, examen final disponible,
@@ -17,7 +18,7 @@ import { CourseTile, Heatmap, ProgressRing, SectionHead } from '../../shared/ui'
  */
 @Component({
   selector: 'app-student-home',
-  imports: [RouterLink, MatIconModule, BwButton, CourseTile, Heatmap, ProgressRing, SectionHead],
+  imports: [RouterLink, MatIconModule, BwButton, CourseTile, Heatmap, ProgressRing, SectionHead, ForumApercu],
   templateUrl: './student-home.html',
   styleUrl: './student-home.scss',
 })
@@ -47,7 +48,6 @@ export class StudentHome {
   protected readonly objectif = OBJECTIF_SEMAINE;
   protected readonly objectifPct = Math.round((OBJECTIF_SEMAINE.fait / OBJECTIF_SEMAINE.cible) * 100);
   protected readonly jours = ACTIVITE_JOURS;
-  protected readonly discussions = DISCUSSIONS.slice(0, 3);
   protected readonly icones: Record<string, string> = { quiz: 'quiz', rappel: 'flag', live: 'videocam', examen: 'assignment' };
   protected readonly date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
