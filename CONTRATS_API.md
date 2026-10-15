@@ -143,6 +143,72 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 ---
 
+> **Contrats 6 à 8 : proposés par le module User** pour son Machine Learning (sujet : « regroupe les étudiants selon leurs notes, leur temps passé et les cours suivis », « prédit le risque d'échec à partir de ses résultats aux quiz », « les étudiants au profil proche du tien ont suivi tel cours »). user-service les appelle par Feign, calcule des **indicateurs chiffrés** et n'envoie à ai-service **que ces nombres** (contrat 5, module User) : jamais de nom, d'email ni d'identifiant. En attendant leur mise en place, les modèles sont entraînés sur un jeu de données simulé.
+
+## 6. `GET /api/quiz/tentatives?etudiantId={id}`
+
+| | |
+|---|---|
+| Fournisseur | quiz-service |
+| Consommateurs | user-service (indicateurs du ML : note moyenne, quiz passés, bonnes réponses), front (tableau de bord formateur) |
+| Rôles | l'étudiant lui-même (`X-User-Id == etudiantId`), `ENSEIGNANT`, `ADMIN` |
+| Statut | **proposé** (les données existent déjà : entité `Tentative`) |
+
+`200` (une ligne par tentative corrigée, la plus récente d'abord) :
+```json
+{
+  "success": true,
+  "data": [
+    { "quizId": 4, "coursId": 1, "nbCorrectes": 7, "nbQuestions": 10, "pourcentage": 70, "reussie": true, "dateTentative": "2026-10-14T18:02:11" }
+  ]
+}
+```
+- `pourcentage` est un entier de 0 à 100 ; `reussie` suit la règle de réussite du quiz.
+- Tableau vide si l'apprenant n'a passé aucun quiz.
+- Erreurs : `400` si `etudiantId` est absent ; `403` si un étudiant demande les tentatives d'un autre étudiant.
+- Utilisation par user-service : `nbQuiz` = nombre de tentatives, `noteMoyenne` = moyenne de `pourcentage` / 100, `tauxReussite` = somme de `nbCorrectes` / somme de `nbQuestions`.
+
+## 7. `GET /api/cours/inscriptions?etudiantId={id}` et `GET /api/cours/{id}/inscriptions`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | user-service (indicateurs du ML : cours suivis, progression, temps passé, cours terminés ; page Apprenants du formateur), front |
+| Rôles | par `etudiantId` : l'étudiant lui-même, `ENSEIGNANT`, `ADMIN` ; par cours : l'`ENSEIGNANT` propriétaire du cours, `ADMIN` |
+| Statut | **proposé** : demande une entité `Inscription` dans cours-service (`etudiantId`, `coursId`, `dateInscription`, progression, temps passé), alimentée par le lecteur de cours |
+
+`200` (une ligne par inscription) :
+```json
+{
+  "success": true,
+  "data": [
+    { "etudiantId": 12, "coursId": 1, "dateInscription": "2026-10-01T09:00:00", "progression": 0.65, "tempsPasseMinutes": 240, "termine": false, "dateDerniereActivite": "2026-10-14T20:15:00" }
+  ]
+}
+```
+- `progression` de 0 à 1 (part des chapitres terminés) ; `termine` vaut `true` quand tous les chapitres le sont ; `tempsPasseMinutes` entier positif ; `dateDerniereActivite` facultative.
+- Par cours (`/api/cours/{id}/inscriptions`) : les inscrits d'un cours, pour la page Apprenants du formateur.
+- Erreurs : `400` si `etudiantId` est absent ; `403` si un étudiant demande les inscriptions d'un autre, ou un formateur celles d'un cours qui n'est pas le sien ; `404` si le cours n'existe pas.
+
+## 8. `GET /api/cours/inscriptions/toutes`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | user-service (entraînement du filtrage collaboratif : matrice apprenants × cours suivis) |
+| Rôles | `ADMIN` uniquement |
+| Statut | **proposé** (même entité `Inscription` que le contrat 7) |
+
+`200` :
+```json
+{ "success": true, "data": [ { "etudiantId": 12, "coursId": 1, "progression": 0.65, "termine": false } ] }
+```
+- Toutes les inscriptions de la plateforme, sans autre donnée sur l'apprenant.
+- user-service remplace `etudiantId` par un pseudonyme avant l'envoi à ai-service : le modèle ne voit jamais d'identifiant réel.
+- Erreur : `403` pour tout autre rôle que `ADMIN`.
+
+---
+
 ## Endpoints internes à chaque module (hors contrat)
 
 Ils peuvent évoluer librement par leur propriétaire :
@@ -159,3 +225,4 @@ Ils peuvent évoluer librement par leur propriétaire :
 |---|---|---|
 | 2026-10-04 | Version initiale du socle (contrats 1 à 5) | commit initial |
 | 2026-10-13 | Contrat 5 : génération de quiz par objectifs, remédiation, erreur 413. Contrat 2 : consommateurs. Contrat 3 : statut « prévu » (forme inchangée) | docs/contrat-quiz-ia |
+| 2026-10-15 | Contrats 6 (tentatives d'un apprenant, quiz-service), 7 et 8 (inscriptions, cours-service) proposés par le module User pour son Machine Learning | docs/contrat-user-ia |
