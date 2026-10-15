@@ -31,6 +31,8 @@ import tn.esprit.bawsla.cours.client.ResumeLocalIaRequestDto;
 import tn.esprit.bawsla.cours.client.NotionIaDto;
 import tn.esprit.bawsla.cours.client.SegmentIaDto;
 import tn.esprit.bawsla.cours.client.TraductionIaRequestDto;
+import tn.esprit.bawsla.cours.client.VisionIaDto;
+import tn.esprit.bawsla.cours.client.VisionIaRequestDto;
 import tn.esprit.bawsla.cours.common.ApiResponse;
 
 /**
@@ -71,6 +73,17 @@ public class FauxIa implements IaClient {
     public volatile String fournisseurExplication = "gemini";
     public volatile boolean minutageEstime = true;
 
+    // ---- lecture d'images par vision
+    public final List<VisionIaRequestDto> demandesVision = new CopyOnWriteArrayList<>();
+    public volatile String texteVision = "Texte lu par l'IA : une limite décrit le comportement d'une fonction près d'un point.";
+    public volatile boolean pageVideVision;
+    public volatile RuntimeException panneVision;
+    /** La panne ne se déclenche qu'après ce nombre d'appels réussis (0 : dès le premier). */
+    public volatile int panneVisionApres;
+    /** 0 : Gemini lit toutes les pages ; n : à partir du n-ième appel (1 = le premier), Gemini est indisponible et le modèle local lit à sa place. */
+    public volatile int localDepuis;
+    public volatile CountDownLatch blocageVision;
+
     // ---- résumé automatique local
     public final List<ResumeLocalIaRequestDto> demandesResumeLocal = new CopyOnWriteArrayList<>();
     public volatile String langueResume = "en";
@@ -99,6 +112,14 @@ public class FauxIa implements IaClient {
         fournisseurExplication = "gemini";
         minutageEstime = true;
 
+        demandesVision.clear();
+        texteVision = "Texte lu par l'IA : une limite décrit le comportement d'une fonction près d'un point.";
+        pageVideVision = false;
+        panneVision = null;
+        panneVisionApres = 0;
+        localDepuis = 0;
+        blocageVision = null;
+
         demandesResumeLocal.clear();
         langueResume = "en";
         modeResume = "abstractif";
@@ -109,8 +130,9 @@ public class FauxIa implements IaClient {
     // ------------------------------------------------------------------ fiche
 
     @Override
-    public ApiResponse<FicheIaDto> fiche(String authorization, FicheIaRequestDto corps) {
+    public ApiResponse<FicheIaDto> fiche(String authorization, FicheIaRequestDto corps, Request.Options delais) {
         autorisations.add(authorization);
+        this.delais.add("fiche=" + delais.readTimeoutMillis());
         demandesFiche.add(corps);
         attendre(blocageFiche);
         if (panneFiche != null) {
@@ -219,6 +241,25 @@ public class FauxIa implements IaClient {
         }
         return ApiResponse.ok(new AudioExplicationIaDto(fournisseurExplication, "audio/mpeg",
                 Base64.getEncoder().encodeToString(MP3_EXPLICATION), corps.segments().size() * 10_000L, minutageEstime, minutage));
+    }
+
+    @Override
+    public ApiResponse<VisionIaDto> vision(String authorization, VisionIaRequestDto corps, Request.Options delais) {
+        autorisations.add(authorization);
+        this.delais.add("vision=" + delais.readTimeoutMillis());
+        attendre(blocageVision);
+        if (panneVision != null && demandesVision.size() >= panneVisionApres) {
+            throw panneVision;
+        }
+        demandesVision.add(corps);
+        if (corps.forcerLocal() || (localDepuis > 0 && demandesVision.size() >= localDepuis)) {
+            return ApiResponse.ok(new VisionIaDto(texteVision + " (page " + corps.numero() + ", locale)", false, "microsoft/Florence-2-base",
+                    "local · Florence-2", "vision_v1"));
+        }
+        if (pageVideVision) {
+            return ApiResponse.ok(new VisionIaDto("", true, "gemini-test", "gemini", "vision_v1"));
+        }
+        return ApiResponse.ok(new VisionIaDto(texteVision + " (page " + corps.numero() + ")", false, "gemini-test", "gemini", "vision_v1"));
     }
 
     @Override

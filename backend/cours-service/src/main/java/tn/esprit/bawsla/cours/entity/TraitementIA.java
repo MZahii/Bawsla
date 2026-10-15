@@ -23,6 +23,7 @@ public class TraitementIA {
 
     public static final String PORTEE_FICHE = "FICHE";
     public static final String PORTEE_RESUME_LOCAL = "RESUME_LOCAL";
+    public static final String PORTEE_VISION = "VISION";
 
     public static String porteeExplication(LangueExplication langue, ModeExplication mode) {
         return "EXPLICATION:" + langue.code() + ":" + mode.name();
@@ -55,6 +56,11 @@ public class TraitementIA {
     private LocalDateTime fin;
 
     private Long dureeMs;
+
+    /** Avancement d'une étape qui traite plusieurs éléments (pages lues par vision) : avancement sur total. */
+    private Integer avancement;
+
+    private Integer total;
 
     /** Message lisible (jamais de clé, de prompt ni de trace technique). */
     @Column(length = 500)
@@ -95,6 +101,12 @@ public class TraitementIA {
 
     public LocalDateTime getFin() { return fin; }
     public void setFin(LocalDateTime fin) { this.fin = fin; }
+
+    public Integer getAvancement() { return avancement; }
+    public void setAvancement(Integer avancement) { this.avancement = avancement; }
+
+    public Integer getTotal() { return total; }
+    public void setTotal(Integer total) { this.total = total; }
 
     public Long getDureeMs() { return dureeMs; }
     public void setDureeMs(Long dureeMs) { this.dureeMs = dureeMs; }

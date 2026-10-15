@@ -19,6 +19,7 @@ import { Badge, BwButton, EmptyState } from '../../../../shared';
 import { Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
 import { CATEGORIES, MATIERE_AUTRE, NIVEAUX, PRECISION_MAX, PRECISION_MIN, formatDuree, formatTaille } from '../../models/cours.constantes';
 import { Chapitre, ChapitreRequest, Cours, CoursRequest, Niveau } from '../../models/cours.model';
+import { PagesLuesStudio } from '../../components/pages-lues-studio';
 import { StudioIa } from '../../components/studio-ia/studio-ia';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
@@ -49,7 +50,7 @@ const CHAPITRE_VIDE: FormChapitre = { id: null, titre: '', dureeMinutes: 20, con
   selector: 'app-studio-editeur',
   imports: [
     RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, Badge, BwButton, StudioIa,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, Badge, BwButton, PagesLuesStudio, StudioIa,
     Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
   templateUrl: './studio-editeur.html',

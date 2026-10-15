@@ -100,6 +100,9 @@ public class CoursService {
     @Transactional
     public void delete(Long id, CurrentUser user) {
         Cours cours = chargerPourEcriture(id, user);
+        for (PageDocument page : pageRepository.findByCoursIdAndImageStockageIsNotNullOrderByNumeroAsc(id)) {
+            stockage.supprimerApresValidation(StockageService.Type.PAGES, page.getImageStockage());
+        }
         pageRepository.supprimerDuCours(id);
         for (AudioRevision audio : audioRepository.findByCoursId(id)) {
             stockage.supprimerApresValidation(StockageService.Type.AUDIO, audio.getFichier());
@@ -136,7 +139,7 @@ public class CoursService {
     /** Contrat GET /api/cours/{id}/texte : texte du PDF (emails et téléphones masqués). */
     public CoursTexteResponse getTexte(Long id, CurrentUser user) {
         Cours cours = chargerVisible(id, user);
-        if (cours.getPdfStockage() == null) {
+        if (pageRepository.findByCoursIdOrderByNumeroAsc(id).isEmpty()) {
             return CoursTexteResponse.sansPdf(cours.getId());
         }
         List<PageTexte> pages = pageRepository.findByCoursIdOrderByNumeroAsc(id).stream()

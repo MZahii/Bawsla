@@ -6,13 +6,9 @@
 - Chargement et inférence passent par UN thread dédié (jamais deux chargements en parallèle, FastAPI n'est pas bloqué).
 """
 
-import asyncio
-import gc
 import logging
-import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -22,6 +18,7 @@ from app.modules.cours.explication.generation import CoursSansTexteError, nettoy
 from app.modules.cours.local import langue as detecteur
 from app.modules.cours.local.extractif import resumer_extractif
 from app.modules.cours.local.garde_fou import Controle, controle_extractif, evaluer
+from app.modules.cours.local.gestionnaire import GestionnaireModele, get_gestionnaire
 from app.modules.cours.local.schemas import (
     LangueNonSupporteeError,
     Longueur,
@@ -87,15 +84,30 @@ def decouper_en_morceaux(unites: list[Unite], mesurer: Callable[[str], int], tai
 
 
 class MoteurTransformers:
-    """Moteur réel : un seul modèle chargé à la fois, chargement paresseux, thread dédié, déchargement après inactivité."""
+    """Moteur réel : un seul modèle chargé à la fois, chargement paresseux, thread dédié, déchargement après inactivité.
 
-    def __init__(self, reglages: CoursAiSettings) -> None:
+    La mémoire et le thread sont ceux du gestionnaire commun (`local/gestionnaire.py`), partagé avec la lecture d'images locale.
+    """
+
+    def __init__(self, reglages: CoursAiSettings, gestionnaire: GestionnaireModele | None = None) -> None:
         self._reglages = reglages
-        self._executeur: ThreadPoolExecutor | None = None
-        self._verrou = threading.Lock()
-        self._charge: tuple[str, Any, Any] | None = None  # (nom, tokenizer, modele)
-        self._derniere_utilisation = 0.0
-        self._minuteur: threading.Timer | None = None
+        self._gestionnaire = gestionnaire or GestionnaireModele()
+
+    @property
+    def _charge(self) -> tuple[str, Any, Any] | None:
+        return self._gestionnaire.charge
+
+    @_charge.setter
+    def _charge(self, valeur: tuple[str, Any, Any] | None) -> None:
+        self._gestionnaire.charge = valeur
+
+    @property
+    def _derniere_utilisation(self) -> float:
+        return self._gestionnaire.derniere_utilisation
+
+    @_derniere_utilisation.setter
+    def _derniere_utilisation(self, valeur: float) -> None:
+        self._gestionnaire.derniere_utilisation = valeur
 
     def disponible(self) -> bool:
         return bibliotheques_presentes()
@@ -110,10 +122,7 @@ class MoteurTransformers:
     async def resumer(self, unites: list[Unite], langue: str, longueur: Longueur) -> ResultatAbstractif:
         if not self.disponible():
             raise ResumeLocalIndisponibleError()
-        if self._executeur is None:
-            self._executeur = ThreadPoolExecutor(max_workers=1, thread_name_prefix="resume-local")
-        boucle = asyncio.get_running_loop()
-        return await boucle.run_in_executor(self._executeur, self._resumer_bloquant, unites, langue, longueur)
+        return await self._gestionnaire.executer(self._resumer_bloquant, unites, langue, longueur)
 
     # ------------------------------------------------------------------ thread dédié
 
@@ -149,8 +158,7 @@ class MoteurTransformers:
                     resume = self._generer(tokenizer, modele, resume, mini, maxi, taille)
             return ResultatAbstractif(resume, nom, total, len(morceaux))
         finally:
-            self._derniere_utilisation = time.monotonic()
-            self._armer_liberation()
+            self._gestionnaire.utilise(self._reglages.resume_local_liberer_apres_secondes)
 
     @staticmethod
     def _generer(tokenizer: Any, modele: Any, texte: str, mini: int, maxi: int, taille: int) -> str:
@@ -169,15 +177,10 @@ class MoteurTransformers:
 
     def _obtenir(self, nom: str) -> tuple[Any, Any]:
         """Tokenizer et modèle de `nom` ; décharge un autre modèle d'abord (jamais deux en mémoire)."""
-        with self._verrou:
-            if self._charge and self._charge[0] == nom:
-                return self._charge[1], self._charge[2]
-            if self._charge:
-                log.info("Résumé local : déchargement de %s avant de charger %s", self._charge[0], nom)
-                self._decharger()
+
+        def charger() -> tuple[Any, Any]:
             from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-            debut = time.monotonic()
             try:
                 tokenizer = AutoTokenizer.from_pretrained(nom)
             except Exception:  # noqa: BLE001 - le tokenizer rapide plante pour certains modèles : repli sur la version Python
@@ -185,38 +188,13 @@ class MoteurTransformers:
                 tokenizer = AutoTokenizer.from_pretrained(nom, use_fast=False)
             modele = AutoModelForSeq2SeqLM.from_pretrained(nom)
             modele.eval()
-            self._charge = (nom, tokenizer, modele)
-            log.info("Résumé local : modèle %s chargé en %.1f s", nom, time.monotonic() - debut)
             return tokenizer, modele
 
-    def _decharger(self) -> None:
-        self._charge = None
-        gc.collect()
-
-    # ------------------------------------------------------------------ déchargement après inactivité
-
-    def _armer_liberation(self) -> None:
-        delai = self._reglages.resume_local_liberer_apres_secondes
-        if delai <= 0:
-            return
-        if self._minuteur:
-            self._minuteur.cancel()
-        self._minuteur = threading.Timer(delai, self.liberer_si_inactif)
-        self._minuteur.daemon = True
-        self._minuteur.start()
+        return self._gestionnaire.obtenir(nom, charger, "Résumé local")
 
     def liberer_si_inactif(self, maintenant: float | None = None) -> bool:
         """Décharge le modèle s'il est inactif depuis assez longtemps. Renvoie True si la mémoire a été libérée."""
-        delai = self._reglages.resume_local_liberer_apres_secondes
-        with self._verrou:
-            if not self._charge or delai <= 0:
-                return False
-            ecoule = (maintenant if maintenant is not None else time.monotonic()) - self._derniere_utilisation
-            if ecoule < delai:
-                return False
-            log.info("Résumé local : modèle %s inactif depuis %.0f s, déchargé", self._charge[0], ecoule)
-            self._decharger()
-            return True
+        return self._gestionnaire.liberer_si_inactif(self._reglages.resume_local_liberer_apres_secondes, maintenant)
 
 
 def _capacite(tokenizer: Any, modele: Any) -> int:
@@ -238,7 +216,7 @@ def get_moteur(reglages: CoursAiSettings) -> MoteurTransformers:
     """Moteur unique du processus (un seul modèle en mémoire, un seul thread d'inférence)."""
     global _moteur
     if _moteur is None:
-        _moteur = MoteurTransformers(reglages)
+        _moteur = MoteurTransformers(reglages, get_gestionnaire())
     return _moteur
 
 

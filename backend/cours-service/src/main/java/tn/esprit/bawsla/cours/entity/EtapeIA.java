@@ -11,5 +11,7 @@ public enum EtapeIA {
     TRADUCTION,
     /** Résumé automatique local (modèle Hugging Face ou phrases clés), après TEXTE puis avant AUDIO. */
     RESUME,
+    /** Lecture des pages sans texte (PDF scanné, images) par vision ; avancement n/total. */
+    LECTURE_IMAGES,
     AUDIO
 }

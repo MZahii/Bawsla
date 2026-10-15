@@ -12,10 +12,10 @@ import tn.esprit.bawsla.cours.entity.TraitementIA;
 public record TraitementResponse(String execution, boolean enCours, List<Etape> etapes) {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Etape(EtapeIA etape, StatutTraitement statut, Long dureeMs, String erreur) {
+    public record Etape(EtapeIA etape, StatutTraitement statut, Long dureeMs, String erreur, Integer avancement, Integer total) {
 
         static Etape from(TraitementIA t) {
-            return new Etape(t.getEtape(), t.getStatut(), t.getDureeMs(), t.getErreur());
+            return new Etape(t.getEtape(), t.getStatut(), t.getDureeMs(), t.getErreur(), t.getAvancement(), t.getTotal());
         }
     }
 

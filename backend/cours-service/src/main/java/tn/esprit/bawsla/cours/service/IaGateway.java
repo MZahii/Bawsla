@@ -13,10 +13,14 @@ import org.springframework.stereotype.Component;
 import feign.FeignException;
 import feign.Request;
 import tn.esprit.bawsla.cours.client.AudioExplicationIaDto;
+import tn.esprit.bawsla.cours.client.IaInjoignableException;
+import tn.esprit.bawsla.cours.client.IaTimeoutException;
 import tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto;
 import tn.esprit.bawsla.cours.client.AudioIaRequestDto;
 import tn.esprit.bawsla.cours.client.ResumeLocalIaDto;
 import tn.esprit.bawsla.cours.client.ResumeLocalIaRequestDto;
+import tn.esprit.bawsla.cours.client.VisionIaDto;
+import tn.esprit.bawsla.cours.client.VisionIaRequestDto;
 import tn.esprit.bawsla.cours.client.ExplicationIaDto;
 import tn.esprit.bawsla.cours.client.ExplicationIaRequestDto;
 import tn.esprit.bawsla.cours.client.FideliteExplicationIaDto;
@@ -53,6 +57,8 @@ public class IaGateway {
     private final Request.Options delaiAudio;
     private final Request.Options delaiControle;
     private final Request.Options delaiResume;
+    private final Request.Options delaiFiche;
+    private final Request.Options delaiVision;
 
     /**
      * Délais de lecture PAR APPEL (le client Feign garde son délai par défaut pour les autres appels).
@@ -63,12 +69,16 @@ public class IaGateway {
                      @Value("${cours.ia.delai-script-secondes:330}") int delaiScriptSecondes,
                      @Value("${cours.ia.delai-audio-secondes:420}") int delaiAudioSecondes,
                      @Value("${cours.ia.delai-controle-secondes:30}") int delaiControleSecondes,
-                     @Value("${cours.ia.delai-resume-secondes:300}") int delaiResumeSecondes) {
+                     @Value("${cours.ia.delai-resume-secondes:300}") int delaiResumeSecondes,
+                     @Value("${cours.ia.delai-fiche-secondes:330}") int delaiFicheSecondes,
+                     @Value("${cours.ia.delai-vision-secondes:120}") int delaiVisionSecondes) {
         this.client = client;
         this.delaiScript = delai(delaiScriptSecondes);
         this.delaiAudio = delai(delaiAudioSecondes);
         this.delaiControle = delai(delaiControleSecondes);
         this.delaiResume = delai(delaiResumeSecondes);
+        this.delaiFiche = delai(delaiFicheSecondes);
+        this.delaiVision = delai(delaiVisionSecondes);
     }
 
     private static Request.Options delai(int lectureSecondes) {
@@ -76,7 +86,7 @@ public class IaGateway {
     }
 
     public FicheIaDto fiche(String authorization, FicheIaRequestDto corps) {
-        return donnees(appeler(() -> client.fiche(exiger(authorization), corps)));
+        return donnees(appeler(() -> client.fiche(exiger(authorization), corps, delaiFiche)));
     }
 
     public FideliteIaDto fidelite(String authorization, FideliteIaRequestDto corps) {
@@ -123,6 +133,11 @@ public class IaGateway {
         return donnees(appeler(() -> client.resumeLocal(exiger(authorization), corps, delaiResume)));
     }
 
+    /** Transcription d'une page par vision (Gemini seul : en quota, l'IA répond 503 « Lecture des images indisponible… »). */
+    public VisionIaDto vision(String authorization, VisionIaRequestDto corps) {
+        return donnees(appeler(() -> client.vision(exiger(authorization), corps, delaiVision)));
+    }
+
     private static Long dureeEntete(String valeur) {
         try {
             return valeur == null ? null : Long.valueOf(valeur.strip());
@@ -151,14 +166,36 @@ public class IaGateway {
         } catch (BawslaException e) {
             throw e;
         } catch (FeignException e) {
-            // status() = -1 : connexion impossible ou délai dépassé. On ne recopie pas le message technique.
+            // status() = -1 : pas de réponse. On distingue le délai dépassé (IA_TIMEOUT) de la connexion impossible (IA_INJOIGNABLE).
             log.warn("Appel à l'IA en échec (statut {})", e.status());
-            throw new ServiceUnavailableException(e.status() < 0
-                    ? "Le service d'IA est injoignable pour le moment."
-                    : "Le service d'IA a répondu une erreur (" + e.status() + ").");
+            if (e.status() == 504) {
+                throw new IaTimeoutException();
+            }
+            if (e.status() < 0) {
+                throw sansReponse(e);
+            }
+            throw new ServiceUnavailableException("Le service d'IA a répondu une erreur (" + e.status() + ").");
         } catch (RuntimeException e) {
             log.warn("Appel à l'IA en échec : {}", e.getClass().getSimpleName());
-            throw new ServiceUnavailableException("Le service d'IA est injoignable pour le moment.");
+            throw sansReponse(e);
         }
+    }
+
+    /** Délai de lecture dépassé -> IaTimeoutException ; connexion refusée, hôte introuvable ou autre -> IaInjoignableException. */
+    public static ServiceUnavailableException sansReponse(Throwable erreur) {
+        boolean delai = false;
+        for (Throwable t = erreur; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            String message = String.valueOf(t.getMessage()).toLowerCase();
+            if (t instanceof java.net.ConnectException || t instanceof java.net.UnknownHostException
+                    || t instanceof java.net.NoRouteToHostException || message.contains("connect timed out")
+                    || message.contains("connection refused")) {
+                return new IaInjoignableException();
+            }
+            if (t instanceof java.net.SocketTimeoutException || t instanceof java.util.concurrent.TimeoutException
+                    || t instanceof java.net.http.HttpTimeoutException || message.contains("read timed out")) {
+                delai = true;
+            }
+        }
+        return delai ? new IaTimeoutException() : new IaInjoignableException();
     }
 }

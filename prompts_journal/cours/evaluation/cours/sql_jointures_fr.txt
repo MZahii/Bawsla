@@ -1,0 +1,15 @@
+Les jointures SQL
+
+Une base de données relationnelle range l'information dans plusieurs tables liées entre elles par des clés. Chaque table décrit un seul type d'objet : une table etudiants contient les étudiants, une table cours contient les cours, et une table inscriptions relie les deux. Cette organisation évite de répéter la même information à plusieurs endroits, mais elle oblige à recomposer l'information quand on veut la lire. C'est le rôle de la jointure.
+
+La clé primaire d'une table identifie chaque ligne de façon unique. La clé étrangère est une colonne qui contient la clé primaire d'une autre table : elle crée le lien entre les deux. Dans la table inscriptions, les colonnes etudiant_id et cours_id sont des clés étrangères qui pointent vers les tables etudiants et cours.
+
+La jointure interne, écrite INNER JOIN, ne garde que les lignes qui ont une correspondance dans les deux tables. Par exemple, la requête SELECT e.nom, c.titre FROM inscriptions i INNER JOIN etudiants e ON e.id = i.etudiant_id INNER JOIN cours c ON c.id = i.cours_id renvoie uniquement les étudiants inscrits à un cours existant. Un étudiant qui n'est inscrit nulle part n'apparaît pas dans le résultat.
+
+La jointure externe gauche, écrite LEFT JOIN, garde toutes les lignes de la table de gauche, même quand il n'y a pas de correspondance dans la table de droite. Les colonnes de la table de droite valent alors NULL. La requête SELECT e.nom, c.titre FROM etudiants e LEFT JOIN inscriptions i ON i.etudiant_id = e.id LEFT JOIN cours c ON c.id = i.cours_id liste tous les étudiants, y compris ceux qui ne suivent aucun cours. Pour retrouver uniquement les étudiants sans cours, on ajoute la condition WHERE c.id IS NULL.
+
+Il faut bien distinguer la condition ON et la clause WHERE. La condition ON décrit comment relier les deux tables. La clause WHERE filtre le résultat final, après la jointure. Si l'on place dans le WHERE un filtre sur la table de droite d'un LEFT JOIN, les lignes sans correspondance disparaissent et la jointure se comporte comme une jointure interne. Pour garder ces lignes, le filtre doit se placer dans la condition ON.
+
+La jointure croisée, écrite CROSS JOIN, produit le produit cartésien : chaque ligne de la première table est associée à chaque ligne de la seconde. Avec 10 étudiants et 5 cours, on obtient 50 lignes. Elle sert rarement, par exemple pour générer toutes les combinaisons possibles d'étudiants et de cours à planifier.
+
+Points à retenir. Une jointure relie des tables grâce à une clé primaire et à une clé étrangère. INNER JOIN ne garde que les correspondances. LEFT JOIN garde toute la table de gauche. Le filtre d'un LEFT JOIN sur la table de droite se place dans la condition ON et non dans le WHERE. Un oubli de condition de jointure produit un produit cartésien, souvent très volumineux.

@@ -93,12 +93,17 @@ public class FichierService {
         cours.setPdfTaille((long) octets.length);
         stockage.supprimerApresValidation(Type.PDF, ancien);
 
-        pageRepository.supprimerDuCours(coursId);
+        // Seules les pages du PDF sont remplacées : les images déposées par le formateur restent, renumérotées à la suite.
+        List<PageDocument> images = pageRepository.findByCoursIdAndImageStockageIsNotNullOrderByNumeroAsc(coursId);
+        pageRepository.supprimerPagesPdf(coursId);
         List<PageDocument> documents = new ArrayList<>();
         for (int i = 0; i < pages.size(); i++) {
             documents.add(new PageDocument(coursId, i + 1, pages.get(i)));
         }
         pageRepository.saveAll(documents);
+        for (int i = 0; i < images.size(); i++) {
+            images.get(i).setNumero(pages.size() + 1 + i);
+        }
         return coursService.reponse(cours);
     }
 
@@ -114,7 +119,7 @@ public class FichierService {
 
     // ------------------------------------------------------------------ vérifications
 
-    private static byte[] lire(MultipartFile envoi, long max, String messageTropGros) {
+    static byte[] lire(MultipartFile envoi, long max, String messageTropGros) {
         if (envoi == null || envoi.isEmpty()) {
             throw new BadRequestException("Aucun fichier reçu (champ « fichier »).");
         }
@@ -129,7 +134,7 @@ public class FichierService {
     }
 
     /** JPEG (FF D8 FF) ou PNG (signature de 8 octets), puis décodage réel de l'image. */
-    private static String extensionImage(byte[] o) {
+    static String extensionImage(byte[] o) {
         String extension;
         if (o.length > 3 && (o[0] & 0xFF) == 0xFF && (o[1] & 0xFF) == 0xD8 && (o[2] & 0xFF) == 0xFF) {
             extension = "jpg";

@@ -208,6 +208,33 @@ class IaClientTest {
         assertThat(ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.DEBUTANT)).resume()).isEqualTo("R");
     }
 
+    @Test
+    void imageDe3MoEnvoyeeEtTexteLuDecode() {
+        byte[] image = new byte[3 * 1024 * 1024];
+        java.util.Arrays.fill(image, (byte) 5);
+        REPONSES.put("/api/ai/cours/vision", new Object[] {200, "application/json",
+                "{\"success\":true,\"data\":{\"texte\":\"Limites et dérivées\",\"vide\":false,\"modele\":\"gemini-x\",\"fournisseur\":\"gemini\",\"versionPrompt\":\"vision_v1\",\"inconnu\":1}}"});
+
+        var lu = ia.vision("Bearer jeton-xyz", new tn.esprit.bawsla.cours.client.VisionIaRequestDto(
+                7L, 2, java.util.Base64.getEncoder().encodeToString(image), "image/png"));
+
+        assertThat(lu.texte()).isEqualTo("Limites et dérivées");
+        assertThat(lu.vide()).isFalse();
+        assertThat(lu.fournisseur()).isEqualTo("gemini");
+        assertThat(CORPS_RECUS.get(0).length()).isGreaterThan(4_000_000); // ~4 Mo de base64 passent sans limite de taille
+        assertThat(CORPS_RECUS.get(0)).contains("\"coursId\":7").contains("\"numero\":2").contains("\"mime\":\"image/png\"");
+        assertThat(AUTORISATIONS).containsExactly("Bearer jeton-xyz");
+    }
+
+    @Test
+    void visionEnQuotaDonneLeMessageClairDeLIA() {
+        REPONSES.put("/api/ai/cours/vision", new Object[] {503, "application/json",
+                "{\"success\":false,\"status\":503,\"error\":\"VISION_INDISPONIBLE\",\"message\":\"Lecture des images indisponible pour le moment, réessaie plus tard\"}"});
+        assertThatThrownBy(() -> ia.vision("Bearer t", new tn.esprit.bawsla.cours.client.VisionIaRequestDto(1L, 1, "AAAA", "image/png")))
+                .isInstanceOf(ServiceUnavailableException.class)
+                .hasMessage("Lecture des images indisponible pour le moment, réessaie plus tard");
+    }
+
     private static String enveloppeAudio(byte[] audio) {
         return "{\"success\":true,\"data\":{\"fournisseur\":\"gemini\",\"mime\":\"audio/mpeg\",\"audioBase64\":\""
                 + java.util.Base64.getEncoder().encodeToString(audio)

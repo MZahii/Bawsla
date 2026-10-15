@@ -20,7 +20,8 @@ import tn.esprit.bawsla.cours.common.ApiResponse;
 public interface IaClient {
 
     @PostMapping("/api/ai/cours/fiche")
-    ApiResponse<FicheIaDto> fiche(@RequestHeader("Authorization") String authorization, @RequestBody FicheIaRequestDto corps);
+    ApiResponse<FicheIaDto> fiche(@RequestHeader("Authorization") String authorization, @RequestBody FicheIaRequestDto corps,
+                                  Request.Options delais);
 
     @PostMapping("/api/ai/cours/fidelite")
     ApiResponse<FideliteIaDto> fidelite(@RequestHeader("Authorization") String authorization, @RequestBody FideliteIaRequestDto corps);
@@ -48,6 +49,11 @@ public interface IaClient {
     @PostMapping("/api/ai/cours/resume-local")
     ApiResponse<ResumeLocalIaDto> resumeLocal(@RequestHeader("Authorization") String authorization,
                                               @RequestBody ResumeLocalIaRequestDto corps, Request.Options delais);
+
+    /** Lecture d'une page (image) par Gemini multimodal : un délai de lecture propre à chaque appel. */
+    @PostMapping("/api/ai/cours/vision")
+    ApiResponse<VisionIaDto> vision(@RequestHeader("Authorization") String authorization,
+                                    @RequestBody VisionIaRequestDto corps, Request.Options delais);
 
     /**
      * Audio du texte, produit par le premier fournisseur vocal disponible de la chaîne (ElevenLabs, Gemini, gTTS, edge-tts).

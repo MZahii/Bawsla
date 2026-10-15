@@ -35,6 +35,14 @@ cours:
     delai-script-secondes: 330
     delai-audio-secondes: 420
     delai-controle-secondes: 30
+    # Fiche de révision : l'ai-service limite la fiche à 300 s au total (120 s par appel) ; on lit 30 s de plus.
+    delai-fiche-secondes: 330
+    # Résumé automatique local (le premier appel charge le modèle) et lecture d'une page par vision.
+    delai-resume-secondes: 300
+    # Une page peut passer par Gemini (90 s) puis par le modèle local (120 s) : 240 s au total par page.
+    delai-vision-secondes: 240
+    # Lecture locale lente : au plus ce nombre de pages lues en local par lancement (VISION_LOCALE_PAGES_MAX), le formateur relance ensuite.
+    vision-locale-pages-max: ${VISION_LOCALE_PAGES_MAX:10}
   explication:
     # En dessous de ce nombre de caractères, le cours est jugé vide (PDF scanné…) : erreur claire, aucun appel à l'IA.
     texte-min-caracteres: 200

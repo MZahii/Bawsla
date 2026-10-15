@@ -158,6 +158,7 @@
             @if (pdfEnvoi()) { <p class="muted small" role="status">Envoi et lecture du PDF…</p> }
             @if (erreurPdf()) { <p class="champ-erreur" role="alert">{{ erreurPdf() }}</p> }
             @if (existant()!.aPdf) { <p class="muted small">Envoyer un nouveau PDF remplace l’actuel.</p> }
+            <app-pages-lues-studio [coursId]="existant()!.id" [cle]="(existant()!.fichierPdf ?? '') + '|' + (existant()!.pdfTaille ?? 0)" />
           }
         </div>
         <div class="studio-bloc">

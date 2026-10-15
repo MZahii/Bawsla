@@ -59,6 +59,9 @@ def environnement(monkeypatch):
     # Chaîne vocale des tests de route : edge-tts seul (simulé). Aucune vraie clé, aucun appel réseau.
     monkeypatch.setenv("TTS_FOURNISSEURS", "edge")
     monkeypatch.setenv("ELEVENLABS_API_KEY", "")
+    # Les réglages optionnels du .env du développeur (résumé local activé…) ne doivent pas changer le résultat des tests.
+    monkeypatch.setenv("RESUME_LOCAL_ACTIF", "false")
+    monkeypatch.setenv("LLM_SECOURS", "")
     for fabrique in (get_settings, get_cours_ai_settings):
         fabrique.cache_clear()
     yield

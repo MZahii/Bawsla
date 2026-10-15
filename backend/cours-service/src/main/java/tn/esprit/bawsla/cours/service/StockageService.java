@@ -29,7 +29,9 @@ public class StockageService {
     public enum Type {
         IMAGES("images"),
         PDF("pdf"),
-        AUDIO("audio");
+        AUDIO("audio"),
+        /** Images de pages déposées par le formateur (lues par vision). */
+        PAGES("pages");
 
         private final String sousDossier;
 
