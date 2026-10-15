@@ -7,6 +7,62 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 02 — 2026-10-15 — Lot 2 : forum-service, cœur web
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : services, contrôleurs et règles du forum : discussions, réponses, commentaires, votes, réactions,
+  étiquettes, meilleure réponse, approbation, anonymat, édition et versions, pièces jointes, droits, anti-flood,
+  clients Feign avec cache, outils de modération d'un fil, tests Java.
+- **Contexte fourni** : modèle validé au lot 1, plan §3.1 à §3.3, §3.7, §4.8, §5.4, §6.1, `quiz-service` comme
+  référence (client Feign, tests H2 avec services simulés).
+- **Prompt** :
+  > OK, modèle validé. Enchaîne sur le lot 2, puis continue les lots suivants sans attendre ma validation, sauf si
+  > une décision est irréversible ou touche un autre module. À la fin de chaque lot, fais-moi un résumé court.
+- **Résultat** :
+  - Clients Feign `CoursClient` (contrat 1, 2 et chapitres), `UserClient` (contrat 4), `QuizClient` (contrat 3),
+    propagation des en-têtes `X-User-*`. `AnnuaireService` : cache mémoire de 5 min, et dégradation propre
+    (« Cours n° X », « Membre n° X », modération réservée à l'admin si cours-service ne répond pas).
+  - `AccesService` : rôle connu exigé, formateur DU cours (enseignantId) ou admin pour modérer, sanctions
+    LECTURE_SEULE / SUSPENSION (« Ton accès en écriture au forum est suspendu jusqu'au … »), forum fermé,
+    anti-flood 5 questions et 30 messages par heure (429), anonymat réservé aux apprenants et réglable par cours.
+  - Services : discussions (liste filtrée et paginée, fil complet, vues uniques par jour, lu / non lu, versions),
+    réponses, commentaires, votes (+1 / −1, annulables, pas sur son message, −1 à partir de 50 points),
+    réactions, étiquettes normalisées avec autocomplétion, meilleure réponse, approbation, modération d'un fil
+    (épingler, verrouiller, masquer / rétablir discussion, réponse ou commentaire, déplacer, fusionner, étiquettes),
+    tracée dans le journal non modifiable ; pièces jointes vérifiées sur leurs octets magiques.
+  - `PresentationService` : anonymat (auteurId jamais renvoyé aux autres apprenants), contenu masqué caché,
+    droits d'affichage, chargement par lots (votes, réactions, lectures, approbations) pour éviter le N+1.
+  - Événements Spring (`DiscussionCreee`, `ReponseCreee`, `VoteModifie`, `ReponseAcceptee`, `ReponseApprouvee`,
+    `MessageMasque`…) publiés dès maintenant : les lots 3 à 6 s'y abonnent (points, notifications, IA).
+  - `MigrationFulltext` : index FULLTEXT créés au démarrage sur MySQL s'ils manquent.
+- **Vérification** : `mvnw test`, 44 tests verts (35 tests d'API MockMvc sur H2 avec cours-service, user-service et
+  quiz-service simulés). Contrôle de mutation : en désactivant la règle « pas de vote sur son propre message »,
+  le test correspondant échoue bien. `mvnw package` sur tout le backend : vert.
+- **Gardé / modifié / rejeté** :
+  - Une première version de la vérification des octets magiques contenait une expression inutile (flux sans effet) :
+    réécrite en boucle simple.
+  - La requête JPQL comparant un enum à un littéral (`d.type = 'QUESTION'`) a été retirée : fragile selon le
+    dialecte, et inutile à ce lot.
+  - La vérification de l'anonymat, d'abord dupliquée dans `DiscussionService`, a été déplacée dans `AccesService`
+    pour servir aussi aux réponses.
+- **Décisions non couvertes par le plan** :
+  - 429 anti-flood : `TropDeRequetesException` dans le module (elle étend l'exception du socle sans la modifier).
+  - Étiquettes facultatives (0 à 5) plutôt que « 1 à 5 » : moins de friction pour une première question ;
+    normalisées en minuscules, lettres arabes acceptées.
+  - Épingler / verrouiller : `POST` pour activer, `DELETE` pour désactiver (au lieu d'une bascule ambiguë).
+    Ajout de `PUT /discussions/{id}/etiquettes` et du masquage des réponses et commentaires.
+  - Une discussion masquée renvoie 404 aux autres apprenants (comme si elle n'existait pas) ; la liste exclut
+    les fils masqués et supprimés pour tous (les modérateurs les verront dans la file de modération, lot 6).
+  - Recherche `q` en `LIKE` en attendant la recherche hybride (lot 4) ; tri « pertinence » = activité d'ici là.
+  - Pièces jointes stockées sur disque (`FORUM_PIECES_JOINTES_DOSSIER`, `data/` ignoré par git). En Docker,
+    il faudra un volume (PR socle sur `docker-compose.yml`, à proposer au lot 10). Une balise `<img>` n'envoie pas
+    le JWT : le front chargera les images via HttpClient (lot 8).
+  - Docker n'étant pas démarré sur le poste, le démarrage réel sur MySQL (index FULLTEXT) sera vérifié au lot 10.
+- **Captures** : `captures/2026-10-15_03_lot2-tests-api.png` (les 44 tests)
+- **Leçon** : un test qui passe du premier coup se vérifie en cassant la règle qu'il protège.
+
+---
+
 ### 01 — 2026-10-15 — Lot 1 : préparation, structure, modèle de données et DTO
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
