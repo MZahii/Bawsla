@@ -82,3 +82,51 @@ export interface MetriquesIa {
   risque: MetriquesRisque;
   recommandation: MetriquesRecommandation;
 }
+
+// ---------- Un apprenant (user-service : GET /api/users/me/ia et /api/users/{id}/ia) ----------
+
+export type StatutSource = 'DISPONIBLE' | 'STUB' | 'PAS_ENCORE_DISPONIBLE' | 'INDISPONIBLE';
+
+/** Miroir de IndicateursResponse.Source. */
+export interface SourceDonnees {
+  fournisseur: string;
+  contrat: string;
+  statut: StatutSource;
+  detail?: string;
+}
+
+/** Miroir de IndicateursResponse.Indicateurs : un champ absent = source pas encore disponible. */
+export interface IndicateursApprenant {
+  noteMoyenne?: number;
+  tauxReussite?: number;
+  nbQuiz?: number;
+  nbNotionsRatees?: number;
+  nbErreurs?: number;
+  progressionMoyenne?: number;
+  tempsPasseMinutes?: number;
+  nbCoursSuivis?: number;
+  nbCoursTermines?: number;
+  joursActifs30j?: number;
+  joursDepuisDerniereConnexion?: number;
+}
+
+export interface CoursRecommande {
+  coursId: number;
+  titre: string;
+  score: number;
+  raison: string;
+}
+
+/** Miroir de IaApprenantResponse : chaque partie peut manquer, son champ « …Indisponible » dit pourquoi. */
+export interface IaApprenant {
+  profil?: { id: number; nom: string; description: string };
+  profilIndisponible?: string;
+  risque?: { probabilite: number; niveau: 'faible' | 'moyen' | 'eleve'; facteurs: string[] };
+  risqueIndisponible?: string;
+  recommandations?: CoursRecommande[];
+  recommandationsIndisponibles?: string;
+  donneesSimulees?: boolean;
+  sources: Record<string, SourceDonnees>;
+  complet: boolean;
+  indicateurs?: IndicateursApprenant;
+}

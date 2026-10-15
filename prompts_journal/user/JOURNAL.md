@@ -7,6 +7,24 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 15 — 2026-10-15 — Page Progrès de l'apprenant branchée sur le ML (étape E2)
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : montrer à l'apprenant ses cours recommandés et son profil d'apprentissage, avec de vraies données
+- **Contexte fourni** : `GET /api/users/me/ia` (entrée 14), page `progres` existante (données de démo), composants `bw-ai-box`, `bw-kpi`
+- **Prompt** :
+  > yes start E2
+- **Résultat** :
+  - user-service : `IaApprenantResponse` renvoie aussi les indicateurs (un seul appel pour la page).
+  - Front : modèles `IaApprenant`, `IndicateursApprenant`, `SourceDonnees` ; `IaUserService.monIa()` et `iaDUnApprenant()`.
+  - Page `progres` refaite : 4 KPI réels (« — » quand la source manque), « Cours recommandés pour toi » dans `bw-ai-box` (raison et lien vers le cours, mention « données simulées »), « Ton profil d'apprentissage » (groupe ou « Pas encore assez de données »), « Ce que ta boussole prend en compte » (chaque source en mots simples : pris en compte ou bientôt disponible ; rappel que l'IA ne reçoit que des chiffres).
+- **Vérification** : `mvnw test` (79/79), build Docker du front ; navigateur headless avec 3 vrais cours et un apprenant intéressé par « Données » : recommandations « SQL pour débutants », « Optimiser ses requêtes » (domaine), « Introduction à React » (nouveau) ; profil non calculé faute de données ; aucune mention du risque ; le lien ouvre `/app/explorer/{id}` ; aucune erreur dans la console ; capture.
+- **Gardé / modifié / rejeté** :
+  - Retiré : les sections de démo (rose des notions, cap de la semaine, objectif, temps d'étude, comparaison aux autres, carte d'activité, badges, certificats) : aucune source réelle aujourd'hui. Les certificats restent dans leur page (module Quiz).
+  - Gardé : le risque d'échec n'est jamais affiché à l'apprenant (DESIGN.md) ; `/me/ia` ne le calcule même pas.
+- **Captures** : `captures/2026-10-15_15_progres.png`
+- **Leçon** : une page honnête sur ce qui manque (« bientôt disponible ») inspire plus confiance qu'une page pleine de chiffres inventés.
+
 ### 14 — 2026-10-15 — user-service appelle l'IA, recommandations sur le vrai catalogue (étape F2b)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

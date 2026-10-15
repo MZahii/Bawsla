@@ -85,7 +85,7 @@ public class IaApprenantService {
         }
 
         return new IaApprenantResponse(profil, profilIndisponible, null, null, recos, recosIndisponibles, simulees,
-                ind.sources(), ind.complet());
+                ind.sources(), ind.complet(), ind.indicateurs());
     }
 
     /** Page Apprenants du formateur (ou admin) : risque d'échec d'un apprenant et son profil. */
@@ -94,17 +94,18 @@ public class IaApprenantService {
         IndicateursResponse ind = indicateursService.dUnApprenant(current, etudiantId);
         if (!ind.complet()) {
             return new IaApprenantResponse(null, DONNEES_INCOMPLETES, null, DONNEES_INCOMPLETES, null, null, null,
-                    ind.sources(), false);
+                    ind.sources(), false, ind.indicateurs());
         }
         LotIndicateursIaDto lot = lot(ind.indicateurs());
         try {
             RisqueIaDto risque = aiClient.risque(authorization, lot).data();
             ProfilIaDto profil = aiClient.profil(authorization, lot).data();
             return new IaApprenantResponse(profil.groupes().get(0), null, risque.resultats().get(0), null, null, null,
-                    risque.donneesSimulees(), ind.sources(), true);
+                    risque.donneesSimulees(), ind.sources(), true, ind.indicateurs());
         } catch (RuntimeException e) {
             String raison = iaIndisponible(e);
-            return new IaApprenantResponse(null, raison, null, raison, null, null, null, ind.sources(), true);
+            return new IaApprenantResponse(null, raison, null, raison, null, null, null, ind.sources(), true,
+                    ind.indicateurs());
         }
     }
 

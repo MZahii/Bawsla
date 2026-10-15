@@ -24,5 +24,6 @@ public record IaApprenantResponse(
         String recommandationsIndisponibles,
         Boolean donneesSimulees,
         Map<String, IndicateursResponse.Source> sources,
-        boolean complet) {
+        boolean complet,
+        IndicateursResponse.Indicateurs indicateurs) {
 }

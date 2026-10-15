@@ -76,6 +76,7 @@ class IaApprenantServiceTest {
         assertThat(r.recommandations()).hasSize(1);
         assertThat(r.risque()).isNull();
         assertThat(r.donneesSimulees()).isTrue();
+        assertThat(r.indicateurs().noteMoyenne()).isEqualTo(0.75);
         verify(aiClient, never()).risque(anyString(), any());
         // Seuls les cours publiés partent vers l'IA, avec les indicateurs de l'apprenant (sans son identifiant).
         verify(aiClient).recommandations(eq(JETON), argThat(c ->

@@ -32,7 +32,7 @@ Suivi du travail restant. On coche au fur et à mesure (`[x]`).
 - [ ] 3.1b Pousser `docs/contrat-user-ia`, ouvrir la PR et prévenir les membres Quiz et Cours
 - [x] 3.2a user-service rassemble les indicateurs (Feign : contrats 3, 6, 7 ; activité) avec l'état de chaque source
 - [x] 3.2b user-service appelle ai-service : `/me/ia` (profil + recommandations sur le vrai catalogue), `/{id}/ia` (risque) ; aucune prédiction sur données incomplètes
-- [ ] 3.3 Page `progres` (apprenant) branchée
+- [x] 3.3 Page `progres` (apprenant) : recommandations réelles, profil, sources des données ; jamais le risque
 - [ ] 3.4 Page `apprenants` (formateur) branchée, risque jamais montré à l'apprenant
 
 ## 4. Qualité et rendu
