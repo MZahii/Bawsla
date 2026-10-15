@@ -15,6 +15,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -44,7 +48,17 @@ import tn.esprit.bawsla.forum.service.AnnuaireService;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(BaseApiTest.HorlogeConfigTest.class)
 abstract class BaseApiTest {
+
+    @TestConfiguration
+    static class HorlogeConfigTest {
+        @Bean
+        @Primary
+        HorlogeDeTest horlogeDeTest() {
+            return new HorlogeDeTest();
+        }
+    }
 
     static final long ADMIN = 1L;
     static final long FORMATRICE = 10L;
@@ -71,6 +85,9 @@ abstract class BaseApiTest {
     @Autowired
     AnnuaireService annuaire;
 
+    @Autowired
+    HorlogeDeTest horloge;
+
     @MockitoBean
     CoursClient coursClient;
 
@@ -84,6 +101,7 @@ abstract class BaseApiTest {
     void preparer() {
         viderBase();
         annuaire.oublierCaches();
+        horloge.remettre();
         when(coursClient.getCours(COURS)).thenReturn(
                 ApiResponse.ok(new CoursDto(COURS, "Bases de données", "Informatique", "DEBUTANT", FORMATRICE)));
         Request requete = Request.create(Request.HttpMethod.GET, "/api/cours/404", Map.of(), null,

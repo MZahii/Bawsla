@@ -7,6 +7,49 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 03 — 2026-10-15 — Lot 3 : forum-service, engagement
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : suivis, favoris, lu / non lu, vues, notifications, réputation, niveaux, badges, classement,
+  profil, statistiques, avec leurs tests.
+- **Contexte fourni** : plan §3.4, §3.6, §3.8, §4.7 (indicateurs) ; événements publiés au lot 2.
+- **Prompt** : suite du prompt de l'entrée 02 (« continue les lots suivants sans attendre ma validation »).
+- **Résultat** :
+  - Tout passe par des écouteurs des événements du lot 2, dans la transaction de l'action : points, badges,
+    abonnements et notifications sont validés ou annulés avec elle.
+  - `ReputationService` : barème du plan ; annuler un vote, une acceptation, une approbation ou un masquage rejoue
+    exactement l'inverse de ce qui avait été donné, d'après l'historique (`solde`), sans dérive possible.
+  - `BadgeService` : les 10 badges (Gardien prêt pour la modération du lot 6), série de jours actifs pour Assidu,
+    progression vers chaque badge.
+  - `NotificationService` : réponse dans un fil suivi, commentaire, mention `@Prénom Nom` parmi les participants
+    (remplace la notification de réponse pour la personne mentionnée), acceptation, approbation, masquage, badge.
+  - `SuiviService` : suivi automatique de l'auteur et des répondants, favoris, « Tout marquer comme lu »,
+    « Ça répond à ma question » (`POST /discussions/{id}/reponse-trouvee`, badge Éclaireur).
+  - `ProfilService` (carte de survol, Mon activité, réputation détaillée, classement par cours sur 7 ou 30 jours) et
+    `StatistiquesService` (questions, sans réponse, délai de première réponse, résolution, couverture et utilité de
+    La Vigie, par chapitre et par semaine ; formateur du cours ou admin).
+- **Vérification** : `mvnw test`, 65 tests verts dont 21 nouveaux (`EngagementApiTest`). Une horloge de test réglable
+  simule le passage des jours (Secouriste après 24 h, Assidu après 7 jours, classement qui expire).
+- **Gardé / modifié / rejeté** :
+  - Deux tests échouaient au premier passage : ils oubliaient que les badges produisent aussi des notifications.
+    Le code avait raison ; j'ai corrigé les attentes et rendu explicite le cas « marquer la notification d'un autre
+    membre n'a aucun effet ».
+  - Le profil public comptait d'abord les réponses anonymes : corrigé, un autre membre ne voit que les messages
+    non anonymes (sinon l'anonymat fuirait par les compteurs).
+  - Un heredoc Python imbriqué a été mal interprété par Git Bash : les modifications de dépôts ont été refaites
+    avec l'outil d'édition.
+- **Décisions non couvertes par le plan** :
+  - On ne gagne ni points ni badge en acceptant sa propre réponse ; le +2 « pour celui qui accepte » ne va qu'à
+    l'auteur de la question, une seule fois par fil.
+  - Les badges obtenus restent acquis même si la cause disparaît (vote retiré).
+  - Statistiques par chapitre libellées « Chapitre n° X » : les titres de chapitres ne sont pas lisibles sans la
+    route `/chapitres` du module Cours. Sans `coursId`, les statistiques sont réservées à l'admin.
+  - « Pour toi » (notions ratées) est reporté au lot 4 : il s'appuie sur la recherche sémantique.
+- **Captures** : `captures/2026-10-15_04_lot3-tests-engagement.png`
+- **Leçon** : quand un test échoue, vérifier d'abord laquelle des deux attentes est fausse, le code ou le test.
+
+---
+
 ### 02 — 2026-10-15 — Lot 2 : forum-service, cœur web
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto

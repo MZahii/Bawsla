@@ -24,4 +24,24 @@ public interface ReponseRepository extends JpaRepository<Reponse, Long> {
     @Query("select count(r) from Reponse r where r.discussionId = :discussionId and r.supprimeeLe is null "
             + "and r.masquee = false")
     int compterVisibles(@Param("discussionId") Long discussionId);
+
+    long countByAuteurIdAndSupprimeeLeIsNull(Long auteurId);
+
+    long countByAuteurIdAndAccepteeTrueAndSupprimeeLeIsNull(Long auteurId);
+
+    long countByAuteurIdAndApprouveeParIdIsNotNullAndSupprimeeLeIsNull(Long auteurId);
+
+    long countByAuteurIdAndAnonymeFalseAndSupprimeeLeIsNull(Long auteurId);
+
+    long countByAuteurIdAndAccepteeTrueAndAnonymeFalseAndSupprimeeLeIsNull(Long auteurId);
+
+    /** Discussions où le membre a répondu, la plus récente d'abord (page « Mon activité »). */
+    @Query("select r.discussionId from Reponse r where r.auteurId = :auteurId and r.supprimeeLe is null "
+            + "group by r.discussionId order by max(r.creeLe) desc")
+    List<Long> discussionsRepondues(@Param("auteurId") Long auteurId);
+
+    /** Date de la première réponse de chaque discussion : [discussionId, date]. */
+    @Query("select r.discussionId, min(r.creeLe) from Reponse r where r.discussionId in :ids "
+            + "and r.supprimeeLe is null group by r.discussionId")
+    List<Object[]> premieresReponses(@Param("ids") Collection<Long> ids);
 }
