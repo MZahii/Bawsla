@@ -28,6 +28,8 @@ import tn.esprit.bawsla.cours.entity.PageDocument;
 import tn.esprit.bawsla.cours.entity.StatutCours;
 import tn.esprit.bawsla.cours.repository.AudioRevisionRepository;
 import tn.esprit.bawsla.cours.repository.ChapitreRepository;
+import tn.esprit.bawsla.cours.repository.ChapitreTermineRepository;
+import tn.esprit.bawsla.cours.repository.InscriptionRepository;
 import tn.esprit.bawsla.cours.repository.CoursRepository;
 import tn.esprit.bawsla.cours.repository.ExplicationAudioRepository;
 import tn.esprit.bawsla.cours.repository.ResumeLocalRepository;
@@ -52,12 +54,17 @@ public class CoursService {
     private final TraitementIARepository traitementRepository;
     private final ExplicationAudioRepository explicationRepository;
     private final ResumeLocalRepository resumeLocalRepository;
+    private final InscriptionRepository inscriptionRepository;
+    private final ChapitreTermineRepository chapitreTermineRepository;
 
     public CoursService(CoursRepository coursRepository, ChapitreRepository chapitreRepository,
                         PageDocumentRepository pageRepository, StockageService stockage,
                         FicheRevisionRepository ficheRepository, AudioRevisionRepository audioRepository,
                         TraitementIARepository traitementRepository, ExplicationAudioRepository explicationRepository,
-                        ResumeLocalRepository resumeLocalRepository) {
+                        ResumeLocalRepository resumeLocalRepository, InscriptionRepository inscriptionRepository,
+                        ChapitreTermineRepository chapitreTermineRepository) {
+        this.inscriptionRepository = inscriptionRepository;
+        this.chapitreTermineRepository = chapitreTermineRepository;
         this.coursRepository = coursRepository;
         this.chapitreRepository = chapitreRepository;
         this.pageRepository = pageRepository;
@@ -120,6 +127,8 @@ public class CoursService {
         }
         resumeLocalRepository.deleteAll(resumes);
         traitementRepository.deleteAll(traitementRepository.findByCoursId(id));
+        chapitreTermineRepository.supprimerDuCours(id);
+        inscriptionRepository.supprimerDuCours(id);
         coursRepository.delete(cours);
         stockage.supprimerApresValidation(StockageService.Type.IMAGES, cours.getImageFichier());
         stockage.supprimerApresValidation(StockageService.Type.PDF, cours.getPdfStockage());
@@ -193,18 +202,21 @@ public class CoursService {
     }
 
     private CoursResponse reponse(Cours cours, Map<Long, int[]> stats) {
-        int[] s = stats.getOrDefault(cours.getId(), new int[] {0, 0});
-        return CoursResponse.from(cours, s[0], s[1]);
+        int[] s = stats.getOrDefault(cours.getId(), new int[] {0, 0, 0});
+        return CoursResponse.from(cours, s[0], s[1], s[2]);
     }
 
-    /** coursId -> [nombre de chapitres, durée totale en minutes]. */
+    /** coursId -> [nombre de chapitres, durée totale en minutes, nombre d'inscrits] (deux requêtes groupées, jamais une par cours). */
     private Map<Long, int[]> statistiques(Collection<Long> ids) {
         Map<Long, int[]> stats = new HashMap<>();
         if (ids.isEmpty()) {
             return stats;
         }
         for (Object[] ligne : chapitreRepository.statistiques(ids)) {
-            stats.put((Long) ligne[0], new int[] {((Number) ligne[1]).intValue(), ((Number) ligne[2]).intValue()});
+            stats.put((Long) ligne[0], new int[] {((Number) ligne[1]).intValue(), ((Number) ligne[2]).intValue(), 0});
+        }
+        for (Object[] ligne : inscriptionRepository.compterParCours(ids)) {
+            stats.computeIfAbsent((Long) ligne[0], k -> new int[3])[2] = ((Number) ligne[1]).intValue();
         }
         return stats;
     }

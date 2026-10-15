@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, LangueExplication, LongueurResume, ModeExplication, ModeResume, Niveau, PageLue, PagesLues, ResumeLocal, StatutCours, Traitement } from '../models/cours.model';
+import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, Inscription, LangueExplication,LongueurResume, ModeExplication, ModeResume, Niveau, PageLue, PagesLues, Progression, ResumeLocal, StatutCours, Traitement } from '../models/cours.model';
 
 /** Appels vers cours-service (via la gateway) : cours, chapitres, statut, fichiers et texte du PDF. */
 @Injectable({ providedIn: 'root' })
@@ -40,6 +40,40 @@ export class CoursService {
   /** Publier (au moins un chapitre requis), dépublier (BROUILLON) ou archiver. */
   changerStatut(id: number, statut: StatutCours): Observable<Cours> {
     return this.http.patch<ApiResponse<Cours>>(`${this.url}/${id}/statut`, { statut }).pipe(map((r) => r.data));
+  }
+
+  // ------------------------------------------------------------------ inscriptions (apprenant)
+
+  /** S'inscrire (apprenant, cours publié). Sans doublon : une seconde demande renvoie l'inscription existante. */
+  sInscrire(coursId: number): Observable<Inscription> {
+    return this.http.post<ApiResponse<Inscription>>(`${this.url}/${coursId}/inscriptions`, {}).pipe(map((r) => r.data));
+  }
+
+  /** Supprime l'inscription ET la progression (définitif). */
+  seDesinscrire(coursId: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.url}/${coursId}/inscriptions`).pipe(map(() => undefined));
+  }
+
+  mesInscriptions(): Observable<Inscription[]> {
+    return this.http.get<ApiResponse<Inscription[]>>(`${this.url}/mes-inscriptions`).pipe(map((r) => r.data));
+  }
+
+  /** Ma progression dans ce cours, avec les chapitres terminés ; `null` si je n'y suis pas inscrit. */
+  maProgression(coursId: number): Observable<Progression | null> {
+    return this.http.get<ApiResponse<Progression | null>>(`${this.url}/${coursId}/progression`).pipe(map((r) => r.data ?? null));
+  }
+
+  terminerChapitre(coursId: number, chapitreId: number): Observable<Progression> {
+    return this.http.post<ApiResponse<Progression>>(`${this.url}/${coursId}/chapitres/${chapitreId}/terminer`, {}).pipe(map((r) => r.data));
+  }
+
+  annulerChapitre(coursId: number, chapitreId: number): Observable<Progression> {
+    return this.http.delete<ApiResponse<Progression>>(`${this.url}/${coursId}/chapitres/${chapitreId}/terminer`).pipe(map((r) => r.data));
+  }
+
+  /** Formateur propriétaire ou ADMIN : les inscriptions d'un cours (contrat 7). */
+  inscriptionsDuCours(coursId: number): Observable<Inscription[]> {
+    return this.http.get<ApiResponse<Inscription[]>>(`${this.url}/${coursId}/inscriptions`).pipe(map((r) => r.data));
   }
 
   // ------------------------------------------------------------------ chapitres

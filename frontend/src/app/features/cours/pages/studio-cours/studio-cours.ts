@@ -10,12 +10,13 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
-import { LIBELLE_NIVEAU, LIBELLE_STATUT, VIDE, formatDate, libelleMatiere, libellePrix } from '../../models/cours.constantes';
+import { LIBELLE_NIVEAU, LIBELLE_STATUT, VIDE, formatDate, libelleMatiere, libellePrix, pourcent } from '../../models/cours.constantes';
 import { Cours, StatutCours } from '../../models/cours.model';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
@@ -28,7 +29,7 @@ interface Ligne {
   niveau: string;
   statut: StatutCours;
   prix: string;
-  /** Pas encore fournis par cours-service : 0 ou « — » en attendant les lots suivants. */
+  /** Nombre d'inscrits (nbInscrits de cours-service) et achèvement moyen (moyenne des progressions des inscrits), « — » sans inscrit. */
   inscrits: number;
   completion: string;
   maj: string;
@@ -40,7 +41,8 @@ type Filtre = 'tous' | StatutCours;
 /**
  * Studio : les cours du formateur (tous les cours pour un ADMIN), lus depuis cours-service.
  * Statut et prix sont réels ; publier, dépublier, archiver et supprimer (avec confirmation) passent par le backend.
- * Inscrits, note et achèvement valent 0 ou « — » tant que le backend ne les fournit pas.
+ * Inscrits : nbInscrits de chaque cours. Achèvement : moyenne des progressions des inscrits (une requête par cours qui a des inscrits).
+ * La note n'est pas encore fournie.
  */
 @Component({
   selector: 'app-studio-cours',
@@ -97,6 +99,7 @@ export class StudioCours {
         const miens = this.auth.role() === 'ENSEIGNANT' ? cours.filter((c) => c.enseignantId === moi?.id) : cours;
         this.lignes.set(miens.map(versLigne));
         this.etat.set('ok');
+        this.chargerAchevement(miens);
       },
       error: (err) => {
         this.snack.open(errorMessage(err, 'Impossible de charger les cours'), 'OK', { duration: 5000 });
@@ -105,12 +108,27 @@ export class StudioCours {
     });
   }
 
+  /** Achèvement moyen des cours qui ont des inscrits (les autres gardent « — »). Un échec laisse « — » : ce n'est pas bloquant. */
+  private chargerAchevement(cours: Cours[]): void {
+    const avecInscrits = cours.filter((c) => (c.nbInscrits ?? 0) > 0);
+    if (avecInscrits.length === 0) return;
+    forkJoin(avecInscrits.map((c) => this.service.inscriptionsDuCours(c.id).pipe(catchError(() => of(null))))).subscribe((resultats) => {
+      const moyennes = new Map<number, string>();
+      resultats.forEach((liste, i) => {
+        if (liste && liste.length > 0) {
+          moyennes.set(avecInscrits[i].id, pourcent(liste.reduce((t, x) => t + x.progression, 0) / liste.length));
+        }
+      });
+      this.lignes.update((l) => l.map((x) => (moyennes.has(x.id) ? { ...x, completion: moyennes.get(x.id) ?? VIDE } : x)));
+    });
+  }
+
   /** Publier, dépublier ou archiver. Publier est refusé par le backend s'il n'y a aucun chapitre. */
   protected changerStatut(ligne: Ligne, statut: StatutCours): void {
     this.enCours.set(ligne.id);
     this.service.changerStatut(ligne.id, statut).subscribe({
       next: (cours) => {
-        this.lignes.update((l) => l.map((x) => (x.id === cours.id ? versLigne(cours) : x)));
+        this.lignes.update((l) => l.map((x) => (x.id === cours.id ? { ...versLigne(cours), completion: x.completion } : x)));
         this.enCours.set(null);
         this.snack.open(
           statut === 'PUBLIE' ? 'Cours publié' : statut === 'ARCHIVE' ? 'Cours archivé' : 'Cours repassé en brouillon',
@@ -158,7 +176,7 @@ function versLigne(c: Cours): Ligne {
     niveau: c.niveau ? LIBELLE_NIVEAU[c.niveau] : VIDE,
     statut: c.statut,
     prix: libellePrix(c.prix),
-    inscrits: 0,
+    inscrits: c.nbInscrits ?? 0,
     completion: VIDE,
     maj: formatDate(c.dateModification ?? c.dateCreation),
   };

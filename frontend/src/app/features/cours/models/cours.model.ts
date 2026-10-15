@@ -28,6 +28,26 @@ export interface Cours {
   dureeTotaleMinutes: number;
   aPdf: boolean;
   pdfTaille: number | null;
+  /** Nombre d'apprenants inscrits (un nombre, aucune donnée personnelle). */
+  nbInscrits?: number;
+}
+
+/** Miroir de InscriptionResponse (contrat 7). `tempsPasseMinutes` et `dateDerniereActivite` sont omis tant qu'ils n'existent pas. */
+export interface Inscription {
+  etudiantId: number;
+  coursId: number;
+  dateInscription: string;
+  /** De 0 à 1 : chapitres terminés ÷ chapitres du cours. */
+  progression: number;
+  tempsPasseMinutes?: number;
+  /** Tous les chapitres du cours sont terminés. */
+  termine: boolean;
+  dateDerniereActivite?: string;
+}
+
+/** Miroir de ProgressionResponse : l'inscription de l'apprenant connecté, avec les chapitres qu'il a terminés. */
+export interface Progression extends Inscription {
+  chapitresTermines: number[];
 }
 
 /** Corps de POST et PUT /api/cours. `prix` absent : inchangé en modification, gratuit à la création. */

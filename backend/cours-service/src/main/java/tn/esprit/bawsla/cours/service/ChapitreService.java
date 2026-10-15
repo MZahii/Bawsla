@@ -20,6 +20,7 @@ import tn.esprit.bawsla.cours.entity.Chapitre;
 import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.StatutCours;
 import tn.esprit.bawsla.cours.repository.ChapitreRepository;
+import tn.esprit.bawsla.cours.repository.ChapitreTermineRepository;
 
 /** Chapitres d'un cours : lecture selon la visibilité du cours, écriture par le propriétaire ou l'ADMIN. */
 @Service
@@ -28,10 +29,13 @@ public class ChapitreService {
 
     private final CoursService coursService;
     private final ChapitreRepository chapitreRepository;
+    private final ChapitreTermineRepository termineRepository;
 
-    public ChapitreService(CoursService coursService, ChapitreRepository chapitreRepository) {
+    public ChapitreService(CoursService coursService, ChapitreRepository chapitreRepository,
+                           ChapitreTermineRepository termineRepository) {
         this.coursService = coursService;
         this.chapitreRepository = chapitreRepository;
+        this.termineRepository = termineRepository;
     }
 
     public List<ChapitreResponse> lister(Long coursId, CurrentUser user) {
@@ -65,6 +69,7 @@ public class ChapitreService {
             throw new BadRequestException("Un cours publié doit garder au moins un chapitre : dépublie-le d'abord.");
         }
         cours.getChapitres().remove(chapitre);
+        termineRepository.supprimerDuChapitre(chapitreId); // les apprenants qui l'avaient terminé ne le comptent plus
         int ordre = 1;
         for (Chapitre restant : cours.getChapitres()) {
             restant.setOrdre(ordre++);

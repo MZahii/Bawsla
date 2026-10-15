@@ -11,6 +11,9 @@ import tn.esprit.bawsla.cours.entity.Chapitre;
 
 public interface ChapitreRepository extends JpaRepository<Chapitre, Long> {
 
+    /** Le chapitre appartient-il à ce cours ? */
+    boolean existsByIdAndCoursId(Long id, Long coursId);
+
     /** Une ligne par cours : [coursId, nombre de chapitres, durée totale en minutes]. */
     @Query("""
             select ch.cours.id, count(ch), coalesce(sum(ch.dureeMinutes), 0)

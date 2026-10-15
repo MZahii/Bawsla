@@ -20,7 +20,7 @@
           [crumbs]="[{ label: espace === 'etudiant' ? 'Explorer' : 'Catalogue', link: base }, { label: matiere(), link: base }, { label: c.titre }]"
         />
         <div class="facts">
-          <span><mat-icon>group</mat-icon>0 inscrit</span>
+          <span><mat-icon>group</mat-icon>{{ c.nbInscrits ?? 0 }} inscrit{{ (c.nbInscrits ?? 0) > 1 ? 's' : '' }}</span>
           <span><mat-icon>menu_book</mat-icon>{{ c.nbChapitres }} chapitre{{ c.nbChapitres > 1 ? 's' : '' }}</span>
           @if (duree()) {
             <span><mat-icon>schedule</mat-icon>{{ duree() }}</span>
@@ -38,7 +38,22 @@
         <div class="buy-body">
           <p class="price" [class.free]="!payant()">{{ prix() }}</p>
           <p class="muted small price-sub">{{ payant() ? 'Paiement unique, accès sans limite de durée' : 'Examen final et certificat inclus' }}</p>
-          <a bwButton="principal" bwBlock [routerLink]="cta().link" [queryParams]="cta().params">{{ cta().label }}</a>
+          @if (peutSInscrire() && !inscription()) {
+            <button type="button" bwButton="principal" bwBlock [disabled]="action()" (click)="sInscrire()">
+              {{ action() ? 'Inscription…' : 'S’inscrire' }}
+            </button>
+          } @else {
+            @if (inscription(); as i) {
+              <p class="inscrit" role="status">
+                <mat-icon aria-hidden="true">check_circle</mat-icon> Inscrit ✓
+                <span class="muted small">Progression {{ pourcent(i.progression) }}</span>
+              </p>
+            }
+            <a bwButton="principal" bwBlock [routerLink]="cta().link" [queryParams]="cta().params">{{ cta().label }}</a>
+            @if (inscription()) {
+              <button type="button" bwButton="fantome" bwBlock [disabled]="action()" (click)="seDesinscrire()">Me désinscrire</button>
+            }
+          }
           <h3>Ce cours comprend</h3>
           <ul class="incl">
             <li><mat-icon>menu_book</mat-icon>{{ c.nbChapitres }} chapitre{{ c.nbChapitres > 1 ? 's' : '' }}@if (duree()) {, {{ duree() }}}</li>

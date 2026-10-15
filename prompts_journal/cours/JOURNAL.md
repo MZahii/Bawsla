@@ -7,6 +7,28 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 12 — 2026-10-15 — Inscriptions des apprenants et progression (lot 1) : contrat 7 pour le module User
+
+- **Outil / modèle** : Claude Code (Claude Sonnet 5.5).
+- **Objectif** : le module User a besoin des inscriptions et de la progression des apprenants pour son Machine Learning (risque d'abandon). Lot 1 : inscription, progression par chapitre, contrat 7 (deux routes), `nbInscrits`, écrans apprenant et formateur. Les lots 2 (temps passé, contrat 8) et 3 (contrôle `formateurValide` à la publication) attendent un autre « go ».
+- **Prompt (à Claude Code)** :
+  > « Nouvelle fonctionnalité du module Cours : les INSCRIPTIONS des apprenants (demande du module User pour son Machine Learning). Montre-moi d'abord ton PLAN COMPLET (les 3 lots), sans coder. » Puis, après le plan : « go pour le LOT 1 SEULEMENT » avec le contrat 7 recopié à la lettre (`GET /api/cours/inscriptions?etudiantId=` et `GET /api/cours/{id}/inscriptions`), `tempsPasseMinutes` à `null` et OMIS du JSON tant que le suivi du temps n'existe pas, `nbInscrits` ajouté à la réponse d'un cours, désinscription définitive, mêmes règles strictes que d'habitude.
+- **Résultat** :
+  - cours-service : entités `Inscription` (unique sur étudiant + cours) et `ChapitreTermine` (unique sur inscription + chapitre) ; progression recalculée à chaque lecture (chapitres terminés ÷ chapitres existants, cours sans chapitre = 0 et non terminé) ; chapitre supprimé, cours supprimé ou désinscription : les lignes liées partent avec ; chapitre ajouté : la progression baisse et `termine` repasse à `false`.
+  - Routes : `POST` et `DELETE /api/cours/{id}/inscriptions` (201 puis 200 idempotent, double clic simultané sans doublon grâce à la contrainte d'unicité), `POST` et `DELETE /api/cours/{id}/chapitres/{chapitreId}/terminer`, `GET /api/cours/mes-inscriptions`, contrat 7 (les deux routes), `nbInscrits` par requête groupée.
+  - Front : `S'inscrire` puis `Inscrit ✓` sur la page du cours, bouton `Marquer ce chapitre comme terminé` / `Annuler` et barre de progression dans le lecteur, `Mes cours` branché sur les vraies inscriptions (données de démonstration retirées), studio du formateur avec les vrais inscrits et l'achèvement moyen.
+- **Vérification** : 20 tests JUnit d'API (201 et idempotence, 6 clics simultanés, rôle non apprenant, cours inexistant, brouillon, archivé, chapitre étranger, pas inscrit, progression à 0, partielle, complète, sans chapitre, chapitre ajouté, chapitre supprimé, désinscription avec ses chapitres, suppression du cours, `dateDerniereActivite`, `tempsPasseMinutes` absent du JSON, `nbInscrits`, 400 sans `etudiantId`, 403 pour un autre apprenant ou un autre formateur, 404 sur un cours inexistant) ; 164 tests au total dans le module, aucun échec ; `ng build` sans erreur.
+- **Remarque de vie privée (contrat 7, à la lettre)** : par `etudiantId`, TOUT enseignant peut lire les inscriptions d'un apprenant, y compris à des cours qui ne sont pas les siens (progression, temps passé, dernière activité). C'est ce que le contrat demande ; un formateur ne devrait voir que ses propres cours. À rediscuter avec le module User avant la mise en production.
+- **Corrigé / refusé / ajouté** :
+  - Ajouté, hors liste : `GET /api/cours/{id}/progression` (apprenant connecté seulement). Le contrat 7 ne donne que la proportion ; le lecteur a besoin de savoir QUELS chapitres sont terminés pour proposer « Marquer » ou « Annuler ». Le contrat 7 reste inchangé. Les routes `terminer` renvoient la même progression avec la liste des chapitres terminés.
+  - Choisi : se désinscrire sans être inscrit n'est pas une erreur (200) ; un apprenant désinscrit repart de zéro.
+  - Refusé : verrouiller le contenu d'un cours payant (le paiement n'existe pas dans le projet) ; stocker le nom ou l'e-mail de l'apprenant (seul l'`etudiantId` est conservé) ; un `tempsPasseMinutes` à 0 avant le lot 2 (le modèle du module User en déduirait que l'apprenant ne travaille pas).
+  - Choisi : seuls les chapitres qui existent encore dans le cours comptent dans la progression, même si la ligne d'un chapitre supprimé n'a pas encore été nettoyée.
+- **Captures** : prompts_journal/cours/captures/inscription-bouton-cours.png, prompts_journal/cours/captures/lecteur-progression.png, prompts_journal/cours/captures/mes-cours-inscriptions.png
+- **Leçon** : lire d'abord ce que l'écran doit afficher, pas seulement le contrat : « 65 % » ne dit pas quels chapitres cocher, d'où la route de progression de l'apprenant.
+
+---
+
 ### 11 — 2026-10-15 — Vision : modèle LOCAL de secours (Florence-2) quand Gemini est indisponible
 
 - **Outil / modèle** : Claude Code (Claude Sonnet 5.5) pour le code ; Florence-2-base (Microsoft, licence MIT, 463 Mo) en local sur CPU pour la lecture de secours.
