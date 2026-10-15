@@ -4,19 +4,26 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Discussion, DiscussionRequest } from '../models/discussion.model';
+import { DiscussionDetail, DiscussionRequest, DiscussionResume, DiscussionsFiltres, PageResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ForumService {
   private readonly http = inject(HttpClient);
   private readonly url = `${API_BASE_URL}/forum/discussions`;
 
-  findAll(coursId?: number): Observable<Discussion[]> {
-    const params = coursId ? new HttpParams().set('coursId', coursId) : undefined;
-    return this.http.get<ApiResponse<Discussion[]>>(this.url, { params }).pipe(map((r) => r.data));
+  findAll(filtres: DiscussionsFiltres = {}): Observable<PageResponse<DiscussionResume>> {
+    let params = new HttpParams();
+    for (const [cle, valeur] of Object.entries(filtres)) {
+      if (valeur !== undefined && valeur !== null && valeur !== '') {
+        params = params.set(cle, valeur);
+      }
+    }
+    return this.http
+      .get<ApiResponse<PageResponse<DiscussionResume>>>(this.url, { params })
+      .pipe(map((r) => r.data));
   }
 
-  create(body: DiscussionRequest): Observable<Discussion> {
-    return this.http.post<ApiResponse<Discussion>>(this.url, body).pipe(map((r) => r.data));
+  create(body: DiscussionRequest): Observable<DiscussionDetail> {
+    return this.http.post<ApiResponse<DiscussionDetail>>(this.url, body).pipe(map((r) => r.data));
   }
 }
