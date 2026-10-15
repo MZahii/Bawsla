@@ -7,6 +7,30 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 17 — 2026-10-15 — Intégration des modules Quiz et Cours : l'IA du module User sur de vraies données
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : intégrer la branche `integration/quiz-cours` dans `feature/user-ia` et remplacer les données manquantes par les vraies données des modules Quiz et Cours
+- **Contexte fourni** : branche `integration/quiz-cours` (inscriptions, progression par chapitre, contrat 7, `GET /api/quiz/tentatives/mes`), `IndicateursService` (entrée 13)
+- **Prompt** :
+  > yes start
+  (réponse au plan en 5 étapes : fusion, ajustements de user-service, tests, essai réel de bout en bout, journal et push)
+- **Résultat** :
+  - Fusion sans conflit (`a7a9000`).
+  - `InscriptionDto.tempsPasseMinutes` devient `Integer` : tant que cours-service ne mesure pas le temps passé, il reste inconnu (null) et n'est jamais remplacé par un faux 0 ; nouvelle source `tempsPasse` (« Bientôt disponible » sur la page Progrès).
+  - Repli sur `GET /api/quiz/tentatives/mes` pour l'apprenant lui-même tant que le contrat 6 manque ; jamais pour un formateur qui consulte un apprenant.
+  - Message précis quand les données sont incomplètes : il nomme seulement ce qui manque ; message quand aucune recommandation n'est possible.
+  - 4 nouveaux tests ; 89 dans user-service.
+- **Vérification** : tests user-service 89/89, cours-service 164/164, quiz-service 15/15, ai-service 535 réussis ; images reconstruites ; essai réel par la gateway : un formateur crée un cours avec 2 chapitres et un quiz de 4 questions ; un apprenant s'inscrit, termine les chapitres et rate le quiz (25 %). Résultat : moyenne 25 %, 3 notions ratées, progression 100 %, 1 cours suivi ; le formateur le voit dans Apprenants ; navigateur headless : pages Progrès et Apprenants, 0 erreur console, le risque n'apparaît jamais côté apprenant. Données de test supprimées ensuite.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : compter le temps passé à 0 quand il manque : le modèle de risque croirait que l'apprenant ne travaille pas.
+  - Rejeté : prédire le profil ou le risque sur des données incomplètes (option A).
+  - Modifié : le premier message « les résultats aux quiz et les inscriptions ne sont pas disponibles » était faux une fois Cours et Quiz branchés : il est maintenant calculé à partir des sources.
+  - Approximation : `/tentatives/mes` ne donne pas le nombre de bonnes réponses ; le taux de réussite y est la moyenne des pourcentages.
+- **Reste à faire (autres modules)** : Cours, lot 2 (temps passé) ; Quiz, contrat 6 (`GET /api/quiz/tentatives?etudiantId=`) pour que le formateur voie le risque.
+- **Captures** : `captures/2026-10-15_17_progres_donnees_reelles.png`, `captures/2026-10-15_17_apprenants_donnees_reelles.png`
+- **Leçon** : un vrai essai de bout en bout montre des messages devenus faux que les tests unitaires ne voyaient pas.
+
 ### 16 — 2026-10-15 — Page Apprenants du formateur : risque d'échec et raisons (étape E3)
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import feign.FeignException;
 import tn.esprit.bawsla.user.client.CoursClient;
+import tn.esprit.bawsla.user.client.HistoriqueTentativeDto;
 import tn.esprit.bawsla.user.client.InscriptionDto;
 import tn.esprit.bawsla.user.client.NotionRateeDto;
 import tn.esprit.bawsla.user.client.QuizClient;
@@ -61,7 +62,7 @@ public class IndicateursService {
     /** Ses propres indicateurs (l'apprenant compte comme actif aujourd'hui). */
     public IndicateursResponse lesMiens(CurrentUser current) {
         activiteService.enregistrer(current.id());
-        return calculer(current.id());
+        return calculer(current.id(), true);
     }
 
     /** Indicateurs d'un apprenant, pour un formateur ou un admin. */
@@ -71,15 +72,34 @@ public class IndicateursService {
         if (u.getRole() != Role.ETUDIANT) {
             throw new ResourceNotFoundException("Apprenant", etudiantId);
         }
-        return calculer(etudiantId);
+        return calculer(etudiantId, false);
     }
 
-    IndicateursResponse calculer(Long etudiantId) {
+    /**
+     * @param soiMeme true si l'apprenant consulte ses propres indicateurs : on peut alors se replier sur
+     *                {@code /api/quiz/tentatives/mes} tant que le contrat 6 n'existe pas.
+     */
+    IndicateursResponse calculer(Long etudiantId, boolean soiMeme) {
         User user = getUser(etudiantId);
         Map<String, Source> sources = new LinkedHashMap<>();
 
         Resultat<List<TentativeDto>> tentatives = appeler(sources, "tentatives", "quiz-service", "contrat 6",
                 () -> quizClient.tentatives(etudiantId));
+        if (!tentatives.ok() && soiMeme) {
+            // Repli : ses propres tentatives. Sans nbCorrectes ni nbQuestions, chaque tentative compte pour son
+            // pourcentage sur 100 questions : le taux de bonnes réponses devient la moyenne des pourcentages.
+            // Statut du repli noté à part : s'il échoue, on garde celui du contrat 6 (plus parlant).
+            Map<String, Source> repli = new LinkedHashMap<>();
+            Resultat<List<HistoriqueTentativeDto>> mes = appeler(repli, "tentatives", "quiz-service",
+                    "GET /api/quiz/tentatives/mes", quizClient::mesTentatives);
+            if (mes.ok()) {
+                sources.putAll(repli);
+                tentatives = new Resultat<>(mes.donnees().stream()
+                        .map(h -> new TentativeDto(h.quizId(), h.coursId(), h.pourcentage(), 100, h.pourcentage(),
+                                h.reussie(), h.dateTentative()))
+                        .toList(), true);
+            }
+        }
         Resultat<List<NotionRateeDto>> notions = appeler(sources, "notionsRatees", "quiz-service", "contrat 3",
                 () -> quizClient.notionsRatees(etudiantId));
         Resultat<List<InscriptionDto>> inscriptions = appeler(sources, "inscriptions", "cours-service", "contrat 7",
@@ -116,7 +136,14 @@ public class IndicateursService {
             List<InscriptionDto> i = inscriptions.donnees();
             nbCours = i.size();
             progression = i.isEmpty() ? 0.0 : arrondi(i.stream().mapToDouble(InscriptionDto::progression).average().orElse(0));
-            temps = i.stream().mapToInt(InscriptionDto::tempsPasseMinutes).sum();
+            // Temps passé : connu seulement si cours-service le mesure pour TOUTES les inscriptions (lot 2) ;
+            // sinon il reste inconnu (null), jamais remplacé par un faux 0.
+            boolean mesure = i.stream().allMatch(x -> x.tempsPasseMinutes() != null);
+            temps = mesure ? i.stream().mapToInt(InscriptionDto::tempsPasseMinutes).sum() : null;
+            sources.put("tempsPasse", mesure
+                    ? new Source("cours-service", "contrat 7", Statut.DISPONIBLE, null)
+                    : new Source("cours-service", "contrat 7", Statut.PAS_ENCORE_DISPONIBLE,
+                    "Le temps passé n'est pas encore mesuré par cours-service"));
             nbTermines = (int) i.stream().filter(InscriptionDto::termine).count();
             coursSuivis = i.stream().map(InscriptionDto::coursId).distinct().toList();
         }
@@ -130,7 +157,7 @@ public class IndicateursService {
 
         Indicateurs indicateurs = new Indicateurs(noteMoyenne, tauxReussite, nbQuiz, nbNotions, nbErreurs, progression,
                 temps, nbCours, nbTermines, activiteService.joursActifs(etudiantId), joursSansConnexion);
-        boolean complet = tentatives.ok() && notions.ok() && inscriptions.ok();
+        boolean complet = tentatives.ok() && notions.ok() && inscriptions.ok() && temps != null;
         return new IndicateursResponse(indicateurs, coursSuivis, coursEnDifficulte, domaines, sources, complet);
     }
 

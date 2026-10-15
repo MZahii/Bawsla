@@ -109,12 +109,15 @@ public class ApprenantsService {
         apprenants.values().removeIf(u -> u == null);
 
         List<Long> complets = new ArrayList<>();
+        Map<Long, String> incomplets = new LinkedHashMap<>();
         List<IndicateursResponse.Indicateurs> vecteurs = new ArrayList<>();
         for (Long id : apprenants.keySet()) {
-            IndicateursResponse ind = indicateursService.calculer(id);
+            IndicateursResponse ind = indicateursService.calculer(id, false);
             if (ind.complet()) {
                 complets.add(id);
                 vecteurs.add(ind.indicateurs());
+            } else {
+                incomplets.put(id, IaApprenantService.donneesIncompletes(ind.sources()));
             }
         }
         Map<Long, RisqueIaDto.Resultat> risques = new LinkedHashMap<>();
@@ -147,7 +150,7 @@ public class ApprenantsService {
             RisqueIaDto.Resultat risque = risques.get(u.getId());
             String raison = risque != null ? null
                     : iaIndisponible != null && complets.contains(u.getId()) ? iaIndisponible
-                    : IaApprenantService.DONNEES_INCOMPLETES;
+                    : incomplets.getOrDefault(u.getId(), IaApprenantService.DONNEES_INCOMPLETES);
             lignes.add(new Ligne(u.getId(), u.getNom(), u.getPrenom(), u.getAvatarVersion(), i.coursId(),
                     titres.get(i.coursId()), i.dateInscription(), i.progression(), i.tempsPasseMinutes(),
                     i.dateDerniereActivite(), risque, raison, profils.get(u.getId())));

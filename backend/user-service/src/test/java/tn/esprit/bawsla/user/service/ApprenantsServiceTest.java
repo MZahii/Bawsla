@@ -92,8 +92,8 @@ class ApprenantsServiceTest {
         when(coursClient.inscriptionsDuCours(11L)).thenReturn(ApiResponse.ok(List.of(inscription(5, 11, 0.1))));
         when(userRepository.findById(5L)).thenReturn(Optional.of(apprenant(5, "Lina")));
         when(userRepository.findById(6L)).thenReturn(Optional.of(apprenant(6, "Sami")));
-        when(indicateursService.calculer(5L)).thenReturn(indicateurs(true));
-        when(indicateursService.calculer(6L)).thenReturn(indicateurs(false));
+        when(indicateursService.calculer(5L, false)).thenReturn(indicateurs(true));
+        when(indicateursService.calculer(6L, false)).thenReturn(indicateurs(false));
         when(aiClient.risque(eq(JETON), any())).thenReturn(ApiResponse.ok(new RisqueIaDto(
                 List.of(new RisqueIaDto.Resultat(0.9, "eleve", List.of("Note moyenne basse aux quiz (40%)"))), 0.4, true)));
         when(aiClient.profil(eq(JETON), any())).thenReturn(ApiResponse.ok(
@@ -148,7 +148,7 @@ class ApprenantsServiceTest {
         when(coursClient.catalogue()).thenReturn(ApiResponse.ok(List.of(CATALOGUE.get(0))));
         when(coursClient.inscriptionsDuCours(10L)).thenReturn(ApiResponse.ok(List.of(inscription(5, 10, 0.3))));
         when(userRepository.findById(5L)).thenReturn(Optional.of(apprenant(5, "Lina")));
-        when(indicateursService.calculer(5L)).thenReturn(indicateurs(true));
+        when(indicateursService.calculer(5L, false)).thenReturn(indicateurs(true));
         when(aiClient.risque(anyString(), any())).thenThrow(new RuntimeException("Connection refused"));
 
         ApprenantsResponse r = service.pourFormateur(FORMATEUR, JETON);

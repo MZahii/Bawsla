@@ -16,6 +16,13 @@ public interface QuizClient {
     @GetMapping("/api/quiz/notions-ratees")
     ApiResponse<List<NotionRateeDto>> notionsRatees(@RequestParam("etudiantId") Long etudiantId);
 
+    /**
+     * Ses propres tentatives (route existante de quiz-service, utilisateur courant). Sert de repli pour l'apprenant
+     * lui-même tant que le contrat 6 n'existe pas ; ne donne ni nbCorrectes ni nbQuestions.
+     */
+    @GetMapping("/api/quiz/tentatives/mes")
+    ApiResponse<List<HistoriqueTentativeDto>> mesTentatives();
+
     /** Contrat 6 (proposé) : tentatives corrigées d'un apprenant. 404 tant que la route n'existe pas. */
     @GetMapping("/api/quiz/tentatives")
     ApiResponse<List<TentativeDto>> tentatives(@RequestParam("etudiantId") Long etudiantId);

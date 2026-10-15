@@ -9,10 +9,12 @@ import { IaApprenant, StatutSource } from '../../models/ia.model';
 import { IaUserService } from '../../services/ia-user.service';
 
 /** Sources de données présentées à l'apprenant, en mots simples (clés de IndicateursResponse.sources). */
-const SOURCES: { cle: string; titre: string; icone: string }[] = [
+/** `sinon` : clé dont reprendre le statut quand la source est absente (temps passé, lu avec les inscriptions). */
+const SOURCES: { cle: string; titre: string; icone: string; sinon?: string }[] = [
   { cle: 'tentatives', titre: 'Tes résultats aux quiz', icone: 'quiz' },
   { cle: 'notionsRatees', titre: 'Les notions à revoir', icone: 'psychology' },
   { cle: 'inscriptions', titre: 'Ta progression dans les cours', icone: 'menu_book' },
+  { cle: 'tempsPasse', titre: 'Ton temps passé dans les cours', icone: 'schedule', sinon: 'inscriptions' },
   { cle: 'activite', titre: 'Ton activité sur Bawsla', icone: 'calendar_month' },
 ];
 
@@ -35,7 +37,7 @@ export class Progres implements OnInit {
 
   protected readonly sources = computed(() => {
     const s = this.ia()?.sources ?? {};
-    return SOURCES.map((x) => ({ ...x, statut: s[x.cle]?.statut ?? ('INDISPONIBLE' as StatutSource) }));
+    return SOURCES.map((x) => ({ ...x, statut: s[x.cle]?.statut ?? (x.sinon ? s[x.sinon]?.statut : undefined) ?? ('INDISPONIBLE' as StatutSource) }));
   });
 
   ngOnInit(): void {

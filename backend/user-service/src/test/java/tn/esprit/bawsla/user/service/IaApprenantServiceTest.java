@@ -32,6 +32,8 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.IaApprenantResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse.Indicateurs;
+import tn.esprit.bawsla.user.dto.IndicateursResponse.Source;
+import tn.esprit.bawsla.user.dto.IndicateursResponse.Statut;
 
 @ExtendWith(MockitoExtension.class)
 class IaApprenantServiceTest {
@@ -150,5 +152,17 @@ class IaApprenantServiceTest {
         assertThat(r.risque()).isNull();
         assertThat(r.risqueIndisponible()).isEqualTo(IaApprenantService.DONNEES_INCOMPLETES);
         verify(aiClient, never()).risque(anyString(), any());
+    }
+
+    @Test
+    void donneesIncompletes_nommeSeulementCeQuiManque() {
+        Source ok = new Source("x", "c", Statut.DISPONIBLE, null);
+        Source absente = new Source("x", "c", Statut.PAS_ENCORE_DISPONIBLE, null);
+
+        assertThat(IaApprenantService.donneesIncompletes(Map.of("tentatives", ok, "inscriptions", ok, "tempsPasse", absente)))
+                .isEqualTo("Pas encore assez de données : le temps passé dans les cours n'est pas encore disponible.");
+        assertThat(IaApprenantService.donneesIncompletes(Map.of("tentatives", absente, "inscriptions", absente)))
+                .isEqualTo("Pas encore assez de données : les résultats aux quiz et les inscriptions aux cours ne sont pas encore disponibles.");
+        assertThat(IaApprenantService.donneesIncompletes(Map.of())).isEqualTo(IaApprenantService.DONNEES_INCOMPLETES);
     }
 }

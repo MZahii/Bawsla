@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import feign.FeignException;
 import tn.esprit.bawsla.user.client.CoursClient;
+import tn.esprit.bawsla.user.client.HistoriqueTentativeDto;
 import tn.esprit.bawsla.user.client.InscriptionDto;
 import tn.esprit.bawsla.user.client.NotionRateeDto;
 import tn.esprit.bawsla.user.client.QuizClient;
@@ -198,5 +199,49 @@ class IndicateursServiceTest {
         autreFormateur.setRole(Role.ENSEIGNANT);
         when(userRepository.findById(8L)).thenReturn(Optional.of(autreFormateur));
         assertThatThrownBy(() -> service.dUnApprenant(FORMATEUR, 8L)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void contrat6Absent_lApprenantSeReplieSurSesPropresTentatives() {
+        toutesLesSources();
+        when(quizClient.tentatives(5L)).thenThrow(notFound());
+        when(quizClient.mesTentatives()).thenReturn(ApiResponse.ok(List.of(
+                new HistoriqueTentativeDto(1L, 10L, "CHAPITRE", 40, false, null),
+                new HistoriqueTentativeDto(2L, 10L, "FINAL", 80, true, null))));
+
+        IndicateursResponse r = service.lesMiens(APPRENANT);
+
+        assertThat(r.complet()).isTrue();
+        assertThat(r.indicateurs().nbQuiz()).isEqualTo(2);
+        assertThat(r.indicateurs().noteMoyenne()).isEqualTo(0.6);
+        assertThat(r.indicateurs().tauxReussite()).isEqualTo(0.6);
+        assertThat(r.sources().get("tentatives").statut()).isEqualTo(Statut.DISPONIBLE);
+        assertThat(r.sources().get("tentatives").contrat()).isEqualTo("GET /api/quiz/tentatives/mes");
+    }
+
+    @Test
+    void contrat6Absent_pasDeReplieQuandLeFormateurConsulteUnApprenant() {
+        when(quizClient.tentatives(5L)).thenThrow(notFound());
+
+        IndicateursResponse r = service.dUnApprenant(FORMATEUR, 5L);
+
+        assertThat(r.indicateurs().noteMoyenne()).isNull();
+        assertThat(r.sources().get("tentatives").statut()).isEqualTo(Statut.PAS_ENCORE_DISPONIBLE);
+        verify(quizClient, never()).mesTentatives();
+    }
+
+    @Test
+    void tempsPasseNonMesure_resteInconnu_pasZero() {
+        toutesLesSources();
+        when(coursClient.inscriptions(5L)).thenReturn(ApiResponse.ok(List.of(
+                new InscriptionDto(5L, 10L, null, 0.5, null, false, null),
+                new InscriptionDto(5L, 11L, null, 1.0, 300, true, null))));
+
+        IndicateursResponse r = service.lesMiens(APPRENANT);
+
+        assertThat(r.complet()).isFalse();
+        assertThat(r.indicateurs().tempsPasseMinutes()).isNull();
+        assertThat(r.indicateurs().progressionMoyenne()).isEqualTo(0.75);
+        assertThat(r.sources().get("tempsPasse").statut()).isEqualTo(Statut.PAS_ENCORE_DISPONIBLE);
     }
 }

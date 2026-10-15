@@ -1,6 +1,8 @@
 package tn.esprit.bawsla.user.service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +24,8 @@ import tn.esprit.bawsla.user.common.security.CurrentUser;
 import tn.esprit.bawsla.user.dto.IaApprenantResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse;
 import tn.esprit.bawsla.user.dto.IndicateursResponse.Indicateurs;
+import tn.esprit.bawsla.user.dto.IndicateursResponse.Source;
+import tn.esprit.bawsla.user.dto.IndicateursResponse.Statut;
 
 /**
  * Relie user-service au Machine Learning d'ai-service (contrat 5) : indicateurs de l'apprenant (IndicateursService),
@@ -35,6 +39,16 @@ public class IaApprenantService {
     static final int NB_RECOMMANDATIONS = 3;
     static final String DONNEES_INCOMPLETES =
             "Pas encore assez de données : les résultats aux quiz et les inscriptions aux cours ne sont pas encore disponibles.";
+    static final String AUCUNE_RECOMMANDATION = "Pas d'autre cours à te proposer pour l'instant.";
+    /** Données qui peuvent manquer, en mots simples (clés de IndicateursResponse.sources). */
+    private static final Map<String, String> LIBELLES = new LinkedHashMap<>();
+
+    static {
+        LIBELLES.put("tentatives", "les résultats aux quiz");
+        LIBELLES.put("notionsRatees", "les notions ratées");
+        LIBELLES.put("inscriptions", "les inscriptions aux cours");
+        LIBELLES.put("tempsPasse", "le temps passé dans les cours");
+    }
 
     private final IndicateursService indicateursService;
     private final CoursClient coursClient;
@@ -55,7 +69,7 @@ public class IaApprenantService {
         ProfilIaDto.Groupe profil = null;
         String profilIndisponible = null;
         if (!ind.complet()) {
-            profilIndisponible = DONNEES_INCOMPLETES;
+            profilIndisponible = donneesIncompletes(ind.sources());
         } else {
             try {
                 ProfilIaDto p = aiClient.profil(authorization, lot(ind.indicateurs())).data();
@@ -76,6 +90,9 @@ public class IaApprenantService {
                 RecommandationsIaDto r = aiClient.recommandations(authorization, new RecommandationsIaRequestDto(
                         ind.coursSuivis(), ind.domaines(), ind.coursEnDifficulte(), catalogue, NB_RECOMMANDATIONS)).data();
                 recos = r.recommandations();
+                if (recos == null || recos.isEmpty()) {
+                    recosIndisponibles = AUCUNE_RECOMMANDATION;
+                }
                 simulees = simulees == null ? r.donneesSimulees() : simulees;
             }
         } catch (CatalogueIndisponible e) {
@@ -93,7 +110,8 @@ public class IaApprenantService {
         exigerJeton(authorization);
         IndicateursResponse ind = indicateursService.dUnApprenant(current, etudiantId);
         if (!ind.complet()) {
-            return new IaApprenantResponse(null, DONNEES_INCOMPLETES, null, DONNEES_INCOMPLETES, null, null, null,
+            String raison = donneesIncompletes(ind.sources());
+            return new IaApprenantResponse(null, raison, null, raison, null, null, null,
                     ind.sources(), false, ind.indicateurs());
         }
         LotIndicateursIaDto lot = lot(ind.indicateurs());
@@ -107,6 +125,25 @@ public class IaApprenantService {
             return new IaApprenantResponse(null, raison, null, raison, null, null, null, ind.sources(), true,
                     ind.indicateurs());
         }
+    }
+
+    /**
+     * Raison précise des données incomplètes : les sources pas encore disponibles, en mots simples
+     * (« … : le temps passé dans les cours n'est pas encore disponible. »).
+     */
+    static String donneesIncompletes(Map<String, Source> sources) {
+        List<String> manquants = LIBELLES.entrySet().stream()
+                .filter(e -> sources != null && sources.get(e.getKey()) != null
+                        && sources.get(e.getKey()).statut() != Statut.DISPONIBLE)
+                .map(Map.Entry::getValue)
+                .toList();
+        if (manquants.isEmpty()) {
+            return DONNEES_INCOMPLETES;
+        }
+        String liste = manquants.size() == 1 ? manquants.get(0)
+                : String.join(", ", manquants.subList(0, manquants.size() - 1)) + " et " + manquants.get(manquants.size() - 1);
+        return "Pas encore assez de données : " + liste + (manquants.size() == 1 ? " n'est" : " ne sont")
+                + " pas encore disponible" + (manquants.size() == 1 ? "." : "s.");
     }
 
     /** Indicateurs complets → vecteur pour l'IA (les 11 nombres, sans aucun identifiant). */
