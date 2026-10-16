@@ -33,7 +33,8 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
   - Gardé : le ML reste la source de vérité ; le LLM ne recalcule rien.
   - Rejeté : générer à chaque ouverture de page (quota gratuit vite épuisé) → génération au clic et texte gardé.
   - Rejeté : faire juger les demandes « devenir formateur » par le LLM (elles contiennent des données personnelles).
-  - Limite : sans `LLM_API_KEY` dans `.env`, le LLM est en mode stub ; le test avec de vrais textes Gemini reste à faire avec la clé.
+  - Test avec une vraie clé Gemini (`.env`, jamais commité) : 40/40 de bout en bout, textes pertinents (chiffres, notions et cours réels), texte gardé au 2e clic. `gemini-3.8-flash` répondait « 503 high demand » pendant plusieurs minutes : `LLM_MODEL=gemini-flash-lite-latest`, qui répondait.
+  - Corrigé grâce à ce test : la colonne du texte gardé était créée en `tinytext` (255 caractères) par Hibernate, et l'erreur était journalisée en debug seulement, donc invisible : colonne `mediumtext`, avertissement dans les logs ; nom du fournisseur affiché aussi sans secours configuré.
   - À signaler en PR : la page d'accueil du questionnaire (`pages/onboarding`, socle) propose encore les anciennes catégories.
 - **Captures** : `captures/2026-10-16_19_progres_conseil_plan.png`, `captures/2026-10-16_19_apprenants_rapport_explication.png`, `captures/2026-10-16_19_parcours_suggestion.png`
 - **Leçon** : faire expliquer un modèle par un LLM demande des garde-fous APRÈS la réponse (mots interdits, valeurs autorisées, bornes) : le prompt seul ne suffit pas.
