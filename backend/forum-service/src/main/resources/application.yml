@@ -37,6 +37,9 @@ spring:
 forum:
   pieces-jointes:
     dossier: ${FORUM_PIECES_JOINTES_DOSSIER:./data/pieces-jointes}
+  rag:
+    # Texte de cours de démonstration indexé tant que le texte réel des cours n'est pas disponible (plan §13).
+    texte-demo: ${FORUM_RAG_TEXTE_DEMO:false}
 
 eureka:
   client:
