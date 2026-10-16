@@ -1,0 +1,29 @@
+.sel { width: 220px; max-width: 100%; height: 40px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; box-sizing: border-box; background: var(--color-surface); }
+.onglet { display: grid; gap: var(--space-4); padding: var(--space-5); align-content: start; }
+.h { margin: 0 0 var(--space-2); font: 600 17px/24px var(--font-heading); }
+.bandeau { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-4); color: var(--color-error); }
+.simple { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { padding: var(--space-2) var(--space-3); text-align: left; font: 600 13px var(--font-body); color: var(--color-text-muted); background: var(--color-bg); }
+td { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--color-border); }
+.signalement { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.signalement p { margin: 0; }
+.signalement a, .lien { color: var(--color-bordeaux-600); }
+.lien { padding: 0; border: 0; background: none; font: inherit; text-decoration: underline; cursor: pointer; }
+.s-haut { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.extrait { font-style: italic; }
+.decision, .sanction-form { display: grid; gap: var(--space-3); }
+.boutons, .ligne { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.recherche-membre { display: grid; gap: var(--space-2); max-width: 560px; }
+.option-membre { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.valeur { display: grid; gap: 4px; }
+.date { white-space: nowrap; }
+.input { flex: 1; min-width: 180px; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-sizing: border-box; background: var(--color-surface); color: var(--color-text); font: 400 15px var(--font-body); }
+.input.court { flex: none; width: 160px; min-width: 0; }
+.membre { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.membre ul { margin: var(--space-3) 0 0; padding-left: var(--space-5); }
+.reglages { max-width: 760px; }
+.reglage { display: grid; gap: var(--space-2); align-items: center; padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+@media (min-width: 720px) { .reglage { grid-template-columns: 1fr 260px; } }
+.block { display: block; }
+.grow { flex: 1; }
+.pages { display: flex; align-items: center; justify-content: center; gap: var(--space-3); }

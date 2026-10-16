@@ -1,0 +1,224 @@
+<bw-page-header title="Forum" subtitle="Santé du forum sur toute la plateforme, cas graves, sanctions, supervision de La Vigie." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Forum' }]">
+  <mat-select class="sel" [value]="periode()" (valueChange)="periode.set($event); chargerVue()" aria-label="Période">
+    <mat-option [value]="7">7 derniers jours</mat-option>
+    <mat-option [value]="30">30 derniers jours</mat-option>
+    <mat-option [value]="90">90 derniers jours</mat-option>
+  </mat-select>
+</bw-page-header>
+
+@if (erreur(); as msg) { <p class="bandeau" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p> }
+
+<section class="card">
+  <mat-tab-group animationDuration="0ms" mat-stretch-tabs="false">
+    <!-- 1. Vue d'ensemble -->
+    <mat-tab label="Vue d’ensemble">
+      <div class="onglet">
+        @if (stats(); as s) {
+          <div class="grid-4">
+            <bw-kpi label="Questions" [value]="s.global.questions" icon="help" />
+            <bw-kpi label="Taux de résolution" [value]="pourcent(s.global.tauxResolution)" icon="task_alt" />
+            <bw-kpi label="1re réponse (moyenne)" [value]="s.global.delaiPremiereReponseHeures !== undefined && s.global.delaiPremiereReponseHeures !== null ? s.global.delaiPremiereReponseHeures + ' h' : '–'" icon="schedule" />
+            <bw-kpi label="Signalements ouverts" [value]="s.signalementsOuverts" icon="flag" />
+          </div>
+          @if (s.global.parSemaine.length) {
+            <bw-chart type="bar" [labels]="semaines(s)" [series]="serieSemaines(s)" [height]="220" ariaLabel="Questions par semaine" />
+          }
+          <div class="grid-2">
+            <section>
+              <h2 class="h">Cours les plus actifs</h2>
+              <table class="simple"><thead><tr><th>Cours</th><th>Questions</th><th>Résolution</th></tr></thead>
+                <tbody>@for (c of s.coursActifs; track c.coursId) { <tr><td>{{ c.coursTitre }}</td><td class="num">{{ c.questions }}</td><td class="num">{{ pourcent(c.tauxResolution) }}</td></tr> } @empty { <tr><td colspan="3" class="muted">Aucune question sur la période.</td></tr> }</tbody>
+              </table>
+            </section>
+            <section>
+              <h2 class="h">Où personne ne répond</h2>
+              <table class="simple"><thead><tr><th>Cours</th><th>Sans réponse</th><th>Formateur</th></tr></thead>
+                <tbody>@for (c of s.coursSansReponse; track c.coursId) { <tr><td>{{ c.coursTitre }}</td><td class="num">{{ c.sansReponse }}</td><td class="small">n° {{ c.enseignantId ?? '–' }} (à relancer)</td></tr> } @empty { <tr><td colspan="3" class="muted">Toutes les questions ont une réponse.</td></tr> }</tbody>
+              </table>
+            </section>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- 2. Modération -->
+    <mat-tab label="Modération">
+      <div class="onglet">
+        <div class="toolbar">
+          <mat-button-toggle-group [value]="statutFile()" (change)="statutFile.set($event.value); chargerFile()" aria-label="Statut">
+            <mat-button-toggle value="OUVERT">Ouverts</mat-button-toggle>
+            <mat-button-toggle value="CONFIRME">Confirmés</mat-button-toggle>
+            <mat-button-toggle value="REJETE">Rejetés</mat-button-toggle>
+            <mat-button-toggle value="TOUS">Tous</mat-button-toggle>
+          </mat-button-toggle-group>
+          <mat-select class="sel" [value]="categorie()" (valueChange)="categorie.set($event); chargerFile()" placeholder="Toutes les catégories" aria-label="Catégorie de l’IA">
+            <mat-option [value]="null">Toutes les catégories</mat-option>
+            @for (c of listeCategories; track c) { <mat-option [value]="c">{{ categories[c] }}</mat-option> }
+          </mat-select>
+          <mat-slide-toggle [checked]="escalades()" (change)="escalades.set($event.checked); chargerFile()">Escalades et IA seulement</mat-slide-toggle>
+        </div>
+        @for (s of file(); track s.id) {
+          <article class="signalement">
+            <div class="s-haut">
+              @if (s.categorieIa) { <span class="pill ia">IA : {{ categories[s.categorieIa] }} ({{ s.scoreIa }})</span> } @else { <span class="pill plain">{{ motifs[s.motif] }}</span> }
+              @if (s.escalade) { <span class="pill accent">Escaladé par le formateur</span> }
+              @if (s.cibleMasquee) { <span class="pill ko">Masqué</span> }
+              <span class="small muted">{{ s.coursTitre }} · {{ s.creeLe | tempsRelatif }}</span>
+            </div>
+            <p class="extrait" dir="auto">« {{ s.extrait }} »</p>
+            <p class="small muted">Auteur : <button type="button" class="lien" (click)="voirMembre(s.auteurCible?.id)">{{ s.auteurCible?.nom ?? '–' }}</button>
+              · Signalé par {{ s.signalePar?.nom ?? 'la modération automatique' }} @if (s.raisonIa) { · {{ s.raisonIa }} }
+              @if (s.discussionId) { · <a [routerLink]="['/admin/forum', s.discussionId]">voir le fil</a> }</p>
+            @if (s.statut === 'OUVERT') {
+              <div class="decision">
+                <app-motif-champ [valeur]="motifDecision()[s.id] ?? ''" (valeurChange)="motif(s.id, $event)" contexte="decision" libelle="Motif de la décision" />
+                <div class="boutons">
+                  <button type="button" bwButton="fantome" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'REJETE', false)">Rejeter le signalement</button>
+                  <button type="button" bwButton="danger" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                </div>
+              </div>
+            } @else { <p class="small">{{ libellesStatut[s.statut] }} : {{ s.decision }}</p> }
+          </article>
+        } @empty { <bw-empty-state icon="verified_user" title="File vide" message="Aucun signalement ne correspond à ces filtres." /> }
+      </div>
+    </mat-tab>
+
+    <!-- 3. Membres et sanctions -->
+    <mat-tab label="Membres et sanctions">
+      <div class="onglet">
+        <div class="recherche-membre">
+          <label class="small" for="membre"><strong>Rechercher un membre</strong></label>
+          <span class="field-search">
+            <mat-icon aria-hidden="true">person_search</mat-icon>
+            <input id="membre" type="search" autocomplete="off" [value]="recherche()" (input)="chercherMembre($any($event.target).value)"
+                   [matAutocomplete]="choixMembre" placeholder="Nom, prénom ou email" aria-describedby="membre-aide" />
+          </span>
+          <mat-autocomplete #choixMembre="matAutocomplete" [displayWith]="afficherMembre" (optionSelected)="choisirMembre($event.option.value)">
+            @for (u of suggestions(); track u.id) {
+              <mat-option [value]="u"><span class="option-membre"><strong>{{ u.prenom }} {{ u.nom }}</strong> <span class="small muted">{{ u.email }} · {{ libellesRole[u.role] ?? u.role }}</span></span></mat-option>
+            }
+          </mat-autocomplete>
+          <app-champ-aide id="membre-aide" [erreur]="erreurRecherche()" aide="Tape au moins 2 caractères, puis choisis le membre dans la liste." />
+        </div>
+        @if (historique(); as h) {
+          <section class="membre">
+            <h2 class="h">{{ h.membre.nom }} <span class="muted small">· {{ h.reputation.niveauLibelle }}, {{ h.reputation.points }} points</span></h2>
+            <p class="small">{{ h.messagesMasques }} message(s) masqué(s) · {{ h.signalementsRecus.length }} signalement(s) reçu(s) · {{ h.sanctions.length }} sanction(s)</p>
+            <div class="sanction-form">
+              <div class="ligne">
+                <mat-select class="sel" [value]="typeSanction()" (valueChange)="typeSanction.set($event)" aria-label="Type de sanction">
+                  @for (t of typesSanction; track t) { <mat-option [value]="t">{{ libellesSanction[t] }}</mat-option> }
+                </mat-select>
+                @if (typeSanction() !== 'AVERTISSEMENT') {
+                  <mat-select class="sel" [value]="duree()" (valueChange)="duree.set($event)" aria-label="Durée">
+                    <mat-option [value]="24">24 heures</mat-option>
+                    <mat-option [value]="168">7 jours</mat-option>
+                    <mat-option [value]="720">30 jours</mat-option>
+                    <mat-option [value]="null">Jusqu’à levée</mat-option>
+                  </mat-select>
+                }
+              </div>
+              <app-motif-champ [(valeur)]="motifSanction" contexte="sanction" libelle="Motif de la sanction (visible du membre)" />
+              <div><button type="button" bwButton="danger" [disabled]="!!erreurMotif(motifSanction())" (click)="sanctionner()">Appliquer la sanction</button></div>
+            </div>
+            <ul class="small">@for (s of h.sanctions; track s.id) { <li>{{ libellesSanction[s.type] }} – {{ s.motif }} ({{ s.active ? 'active' : 'terminée' }}, depuis le {{ s.dateDebut | dateHeure }})</li> }</ul>
+          </section>
+        }
+        <h2 class="h mt">Sanctions actives</h2>
+        <table class="simple">
+          <thead><tr><th>Membre</th><th>Type</th><th>Motif</th><th>Fin</th><th><span class="bw-visually-hidden">Actions</span></th></tr></thead>
+          <tbody>
+            @for (s of sanctions(); track s.id) {
+              <tr><td>{{ s.membre.nom }}</td><td>{{ libellesSanction[s.type] }}</td><td dir="auto">{{ s.motif }}</td><td class="small">{{ s.dateFin ? (s.dateFin | dateHeure) : 'Jusqu’à levée' }}</td>
+                <td><button type="button" bwButton="fantome" (click)="lever(s)">Lever</button></td></tr>
+            } @empty { <tr><td colspan="5" class="muted">Aucune sanction active.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </mat-tab>
+
+    <!-- 4. Supervision de La Vigie -->
+    <mat-tab label="Supervision de La Vigie">
+      <div class="onglet">
+        @if (supervision(); as s) {
+          <div class="grid-4">
+            <bw-kpi label="Appels" [value]="s.appels" icon="explore" />
+            <bw-kpi label="Jetons estimés" [value]="s.jetonsEstimes" icon="token" />
+            <bw-kpi label="Taux d’abstention" [value]="pourcent(s.tauxAbstention)" icon="travel_explore" />
+            <bw-kpi label="Jugée utile" [value]="pourcent(s.tauxUtile)" icon="thumb_up" />
+            <bw-kpi label="Injections bloquées" [value]="s.injectionsBloquees" icon="shield" />
+            <bw-kpi label="Données personnelles" [value]="s.donneesPersonnellesMasquees" icon="privacy_tip" />
+            <bw-kpi label="Version de prompt" [value]="s.versionPromptActive ?? '–'" icon="description" />
+          </div>
+          <div class="grid-2">
+            <section>
+              <h2 class="h">Réponses par niveau</h2>
+              <bw-chart type="doughnut" [labels]="['Cours', 'Forum', 'Générale (hors cours)']" [series]="serieNiveaux(s)" [height]="220" ariaLabel="Réponses par niveau" />
+              <p class="small">Fournisseurs : @for (f of fournisseurs(s); track f.nom) { <span class="pill plain">{{ f.nom }} : {{ f.n }}</span> } @empty { <span class="muted">aucun appel</span> }</p>
+            </section>
+            <section>
+              <h2 class="h">Appels par jour</h2>
+              @if (s.appelsParJour.length) { <bw-chart type="bar" [labels]="jours(s)" [series]="serieJours(s)" [height]="220" ariaLabel="Appels par jour" /> }
+              <h2 class="h mt">Sujets demandés en réponse générale</h2>
+              <ul class="small">@for (x of s.sujetsGeneraux; track x.libelle) { <li dir="auto">{{ x.libelle }}</li> } @empty { <li class="muted">Aucun : le contenu des cours suffit.</li> }</ul>
+            </section>
+          </div>
+          <div><button type="button" bwButton="secondaire" (click)="reindexerTout()"><mat-icon aria-hidden="true">refresh</mat-icon> Réindexer tous les cours</button></div>
+        }
+      </div>
+    </mat-tab>
+
+    <!-- 5. Réglages -->
+    <mat-tab label="Réglages">
+      <div class="onglet reglages">
+        @for (r of reglagesConnus; track r.cle) {
+          @let erreurR = erreurReglage(r.cle, valeurs()[r.cle]);
+          <label class="reglage"><span><strong>{{ r.libelle }}</strong><span class="small muted block">{{ r.aide }}</span></span>
+            <span class="valeur">
+              <input class="input" [ngModel]="valeurs()[r.cle] ?? ''" (ngModelChange)="modifierValeur(r.cle, $event)" [attr.aria-label]="r.libelle"
+                     [attr.aria-invalid]="!!erreurR" [attr.aria-describedby]="'reglage-' + $index" />
+              <app-champ-aide [id]="'reglage-' + $index" [erreur]="erreurR" />
+            </span>
+          </label>
+        }
+        <div><button type="button" bwButton="secondaire" [disabled]="!reglagesValides()" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
+      </div>
+    </mat-tab>
+
+    <!-- 6. Journal -->
+    <mat-tab label="Journal">
+      <div class="onglet">
+        <div class="toolbar">
+          <mat-select class="sel" [value]="filtresJournal().action ?? null" (valueChange)="filtrerJournal({ action: $event ?? undefined })" placeholder="Toutes les actions" aria-label="Action">
+            <mat-option [value]="null">Toutes les actions</mat-option>
+            @for (a of actions; track a) { <mat-option [value]="a">{{ libellesAction[a] }}</mat-option> }
+          </mat-select>
+          <label class="small">Du <input class="input court" type="date" (change)="filtrerJournal({ du: $any($event.target).value || undefined })" /></label>
+          <label class="small">Au <input class="input court" type="date" (change)="filtrerJournal({ au: $any($event.target).value || undefined })" /></label>
+          <span class="grow"></span>
+          <button type="button" bwButton="secondaire" (click)="exporter()"><mat-icon aria-hidden="true">download</mat-icon> Exporter en CSV</button>
+        </div>
+        @if (journal(); as j) {
+          <div class="table-wrap">
+            <table class="simple">
+              <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Cible</th><th>Motif</th></tr></thead>
+              <tbody>
+                @for (l of j.contenu; track l.id) {
+                  <tr><td class="small num date">{{ l.creeLe | dateHeure }}</td>
+                    <td class="small">@if (l.role === 'IA') { {{ libellesRole['IA'] }} } @else { <strong>{{ l.acteurNom ?? 'Membre n° ' + l.acteurId }}</strong><span class="muted block">{{ libellesRole[l.role] ?? l.role }}</span> }</td>
+                    <td><span class="pill plain">{{ libellesAction[l.action] }}</span></td>
+                    <td class="small">{{ libellesCible[l.cibleType] ?? l.cibleType }}@if (l.cibleId) { n° {{ l.cibleId }} }</td><td class="small" dir="auto">{{ motifLisible(l.motif) }}</td></tr>
+                } @empty { <tr><td colspan="5" class="muted">Aucune décision enregistrée.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+          <div class="pages">
+            <button type="button" bwButton="fantome" [disabled]="j.page === 0" (click)="chargerJournal(j.page - 1)">Précédent</button>
+            <span class="small muted">Page {{ j.page + 1 }} · {{ j.total }} décisions</span>
+            <button type="button" bwButton="fantome" [disabled]="!j.suivante" (click)="chargerJournal(j.page + 1)">Suivant</button>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>

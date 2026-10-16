@@ -1,0 +1,246 @@
+"""Lot 9 : script d'évaluation du forum (métriques, jeux de données, exécution complète en --dry-run)."""
+
+import json
+
+import pytest
+
+from app.modules.forum.evaluation import evaluer_forum as ev
+
+DOSSIER = ev.DOSSIER
+
+
+# ---------------------------------------------------------------- jeux de données
+
+
+def test_les_jeux_de_donnees_ont_la_taille_prevue_par_le_plan():
+    paires = ev.lire_jsonl(DOSSIER / "paires_questions.jsonl")
+    assert sum(p["meme"] for p in paires) == 60 and sum(not p["meme"] for p in paires) == 60
+    memes = [p for p in paires if p["meme"]]
+    assert sum(p["langue"] == "en" for p in memes) == 20 and sum(p["langue"] == "ar" for p in memes) == 15
+    questions = ev.lire_jsonl(DOSSIER / "rag_questions.jsonl")
+    assert sum(not q["hors_cours"] for q in questions) == 40 and sum(q["hors_cours"] for q in questions) == 15
+    injections = ev.lire_jsonl(DOSSIER / "injections.jsonl")
+    assert sum(x["type"] == "injection" for x in injections) == 20 and sum(x["type"] == "pii" for x in injections) == 10
+    moderation = ev.lire_jsonl(DOSSIER / "moderation.jsonl")
+    assert len(moderation) == 60 and {m["categorie"] for m in moderation} == set(ev.CATEGORIES)
+    assert len({x["id"] for x in paires + questions + injections + moderation}) == 120 + 55 + 30 + 60
+
+
+def test_chaque_passage_attendu_figure_mot_pour_mot_dans_son_cours():
+    cours = ev.lire_cours(DOSSIER / "cours")
+    assert set(cours) == {"bases_de_donnees", "python_bases", "reseaux_http"}
+    assert ev.valider_donnees(cours, ev.lire_jsonl(DOSSIER / "rag_questions.jsonl")) == []
+    assert ev.valider_donnees(cours, [{"id": "x", "cours": "inconnu", "hors_cours": False, "attendu": "a"}])
+    assert ev.valider_donnees(cours, [{"id": "y", "cours": "python_bases", "hors_cours": False, "attendu": "zzz"}])
+
+
+# ---------------------------------------------------------------- calculs repris de forum-service
+
+
+def test_les_mots_et_le_score_lexical_suivent_forum_service():
+    assert ev.mots("Pourquoi mon LEFT JOIN échoue-t-il ?") == {"left", "join", "echoue"}
+    q = ev.mots("jointure gauche table")
+    assert ev.lexical(q, "Jointure à gauche", "une table") == pytest.approx((2 + 2 + 1) / 6)
+    assert ev.lexical(set(), "a", "b") == 0.0
+
+
+def test_le_cosinus_et_la_rrf():
+    assert ev.cosinus([1.0, 0.0], [1.0, 0.0]) == 1.0
+    assert ev.cosinus([1.0], [1.0, 0.0]) == -1.0
+    fusion = ev.rrf([["a", "b"], ["b", "c"]])
+    assert [c for c, _ in fusion] == ["b", "a", "c"]
+    assert fusion[0][1] == pytest.approx(1 / 62 + 1 / 61)
+    assert [c for c, _ in ev.rrf([["a", "b"]], bonus={"b": 2.0})] == ["b", "a"]
+    assert ev.classement({"a": 0.2, "b": 0.0, "c": 0.5}) == ["c", "a"]
+
+
+# ---------------------------------------------------------------- métriques
+
+
+def test_precision_rappel_f1_et_courbe():
+    assert ev.prf(8, 2, 2) == (0.8, 0.8, 0.8)
+    assert ev.prf(0, 0, 0) == (0.0, 0.0, 0.0)
+    c = ev.courbe([(0.9, True), (0.8, True), (0.7, False), (0.4, True)], [0.5, 0.85])
+    assert c[0] == {"seuil": 0.5, "precision": 0.667, "rappel": 0.667, "f1": 0.667}
+    assert c[1] == {"seuil": 0.85, "precision": 1.0, "rappel": 0.333, "f1": 0.5}
+
+
+def test_le_choix_des_seuils():
+    c = [{"seuil": 0.5, "precision": 0.7, "rappel": 0.9, "f1": 0.79},
+         {"seuil": 0.7, "precision": 0.96, "rappel": 0.6, "f1": 0.74},
+         {"seuil": 0.9, "precision": 1.0, "rappel": 0.0, "f1": 0.0}]
+    assert ev.choisir_seuils(c) == (0.5, 0.7)
+    assert ev.choisir_seuils([]) == (None, None)
+    assert ev.choisir_seuils([{"seuil": 0.5, "precision": 0.0, "rappel": 0.0, "f1": 0.0}]) == (None, None)
+
+
+def test_rang_recall_et_mrr():
+    assert ev.rang(["a", "b", "c"], {"c"}) == 3 and ev.rang(["a"], {"z"}) is None
+    rangs = [1, 2, None, 4]
+    assert ev.recall_at(rangs, 1) == 0.25 and ev.recall_at(rangs, 4) == 0.75 and ev.recall_at([], 1) == 0.0
+    assert ev.mrr(rangs) == round((1 + 0.5 + 0.25) / 4, 3) and ev.mrr([]) == 0.0
+
+
+def test_la_matrice_de_confusion_et_les_scores_par_classe():
+    m = ev.matrice(["OK", "SPAM", "SPAM"], ["OK", "SPAM", "OK"])
+    assert m["SPAM"]["OK"] == 1 and m["OK"]["OK"] == 1
+    scores = ev.scores_classes(m)
+    assert scores["SPAM"] == (1.0, 0.5, 0.667) and scores["OK"] == (0.5, 1.0, 0.667)
+
+
+# ---------------------------------------------------------------- exécution complète
+
+
+def test_le_dry_run_complet_ecrit_les_resultats(tmp_path, capsys):
+    assert ev.main(["--dry-run", "--sortie", str(tmp_path), "--versions", "v1,v3"]) == 0
+    noms = {f.name for f in tmp_path.iterdir()}
+    assert {"RESULTATS.md", "recherche.csv", "rag_versions.csv", "securite.csv", "moderation.csv"} <= noms
+    md = (tmp_path / "RESULTATS.md").read_text(encoding="utf-8")
+    assert "dry-run" in md and "## 2. RAG" in md and "Matrice de confusion" in md
+    # Les mesures sans LLM sont réelles : toutes les injections et toutes les données personnelles du jeu.
+    assert "Injections neutralisées (règles ou Sanitizer) : **20 / 20**" in md
+    assert "Données personnelles masquées avant le LLM : **12 / 12**" in md
+    rag = (tmp_path / "rag_versions.csv").read_text(encoding="utf-8")
+    assert rag.startswith("version,questions,erreurs") and "v1" in rag and "v3" in rag
+
+
+def test_une_partie_seule_et_une_limite(tmp_path):
+    assert ev.main(["--dry-run", "--sortie", str(tmp_path), "--parties", "rag", "--sans-generation", "--limite", "5"]) == 0
+    assert not (tmp_path / "rag_versions.csv").exists() and (tmp_path / "rag_recuperation.csv").exists()
+
+
+def test_une_version_inconnue_est_refusee(tmp_path):
+    with pytest.raises(SystemExit):
+        ev.main(["--dry-run", "--sortie", str(tmp_path), "--versions", "v9"])
+
+
+def test_le_mode_reel_demande_confirmation(tmp_path, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    with pytest.raises(SystemExit, match="Annulé"):
+        ev.main(["--sortie", str(tmp_path), "--parties", "securite"])
+
+
+def test_le_nombre_d_appels_annonce():
+    assert ev.appels_prevus(["rag"], ["v1", "v2"], 120, 55, 60, False, True) == 4 + 110
+    assert ev.appels_prevus(["similarite", "moderation"], ["v3"], 120, 55, 60, True, False) == 122 + 60
+    assert ev.appels_prevus(["securite"], ["v3"], 120, 55, 60, False, True) == 0
+
+
+async def test_le_faux_llm_refuse_un_schema_non_simule():
+    from app.core.errors import LLMError
+    from app.core.llm_client import LLMMessage
+    from app.modules.forum.schemas import PucesLLM
+
+    with pytest.raises(LLMError):
+        await ev.LLMFactice().complete_json([LLMMessage(role="system", content="x"), LLMMessage(role="user", content="y")],
+                                            PucesLLM, module="forum")
+
+
+async def test_une_erreur_du_llm_en_moderation_est_comptee_et_ecartee_des_mesures():
+    from app.core.errors import LLMQuotaError
+
+    class Quota(ev.LLMFactice):
+        async def complete_json(self, *args, **kwargs):
+            raise LLMQuotaError("quota")
+
+    messages = ev.lire_jsonl(DOSSIER / "moderation.jsonl")[:4]
+    rapport = ev.Rapport(mode="test")
+    await ev.evaluer_moderation(Quota(), messages, ["v3"], rapport, ev.BasicSanitizer(20_000),
+                                ev.get_forum_ai_settings(), True)
+    regles, v3 = rapport.resume["moderation"]
+    assert regles["erreurs"] == 0 and regles["messages"] == 4
+    # Avant : chaque erreur comptait comme une prédiction « OK » et faussait l'exactitude.
+    assert v3["erreurs"] == 4 and v3["messages"] == 0 and v3["exactitude"] == 0.0
+    assert all(l["erreur"] == "LLM indisponible" for l in rapport.lignes["moderation"] if l["version"] == "v3")
+    assert "| v3 | 0 | 4 |" in ev.markdown(rapport)
+
+
+class _Quota:
+    """Faux client : échoue sur un 429 les `echecs` premières fois, puis répond."""
+
+    nom = "faux"
+
+    def __init__(self, echecs):
+        self.echecs, self.appels = echecs, 0
+
+    async def _repondre(self):
+        from app.core.errors import LLMQuotaError
+
+        self.appels += 1
+        if self.appels <= self.echecs:
+            raise LLMQuotaError("quota")
+        return "ok"
+
+    async def complete_json(self, *args, **kwargs):
+        return await self._repondre()
+
+    async def embed(self, *args, **kwargs):
+        return await self._repondre()
+
+
+async def test_un_429_est_relance_apres_une_attente():
+    attentes = []
+
+    async def dormir(s):
+        attentes.append(s)
+
+    llm = ev.AvecPatience(_Quota(2), pause=1, dormir=dormir)
+    assert await llm.complete_json() == "ok" and await llm.embed(["x"]) == "ok"
+    assert llm.relances == 2 and attentes == [1, 65, 1, 65, 1, 1] and llm.nom == "faux"
+
+
+async def test_la_vectorisation_passe_par_petits_lots_dans_l_ordre():
+    from app.core.llm_client import EmbeddingResult
+
+    lots, attentes = [], []
+
+    class Vecteurs:
+        nom = "faux"
+
+        async def embed(self, textes, **kwargs):
+            lots.append(len(textes))
+            return EmbeddingResult(vecteurs=[[float(t)] for t in textes], modele="m", dimension=1)
+
+    async def dormir(s):
+        attentes.append(s)
+
+    llm = ev.AvecPatience(Vecteurs(), pause=0, dormir=dormir)
+    r = await llm.embed([str(i) for i in range(45)], module="forum")
+    assert lots == [20, 20, 5] and [v[0] for v in r.vecteurs] == list(range(45)) and r.modele == "m"
+    assert attentes.count(ev.AvecPatience.PAUSE_LOT_EMBEDDING) == 2
+    assert len((await llm.embed(["1"], module="forum")).vecteurs) == 1
+
+
+async def test_un_quota_epuise_bloque_la_suite_sans_attendre():
+    from app.core.errors import LLMQuotaError
+
+    async def dormir(_):
+        return None
+
+    faux = _Quota(99)
+    llm = ev.AvecPatience(faux, dormir=dormir)
+    with pytest.raises(LLMQuotaError):
+        await llm.complete_json()
+    assert faux.appels == 6 and llm.bloque and llm.relances == 5
+    with pytest.raises(LLMQuotaError):
+        await llm.embed(["x"])
+    assert faux.appels == 6  # aucun nouvel appel au fournisseur
+
+
+def test_une_partie_bloquee_n_arrete_pas_l_evaluation(tmp_path, monkeypatch):
+    async def dormir(_):
+        return None
+
+    monkeypatch.setattr(ev, "get_llm_client", lambda: _Quota(99))
+    monkeypatch.setattr(ev.asyncio, "sleep", dormir)
+    assert ev.main(["--oui", "--sortie", str(tmp_path), "--parties", "similarite,securite", "--pause", "0"]) == 0
+    md = (tmp_path / "RESULTATS.md").read_text(encoding="utf-8")
+    assert "Parties interrompues** (quota ou fournisseur indisponible) : similarite (LLMQuotaError)" in md
+    assert "Relances après un quota atteint (429)** : 5" in md and "**20 / 20**" in md
+
+
+def test_ecrire_csv_ignore_une_liste_vide(tmp_path):
+    ev.ecrire_csv(tmp_path / "vide.csv", [])
+    assert not (tmp_path / "vide.csv").exists()
+    assert ev._fmt(None) == "–" and ev._fmt(0.5) == "0.5" and ev._fmt(1.0) == "1" and ev._fmt("x") == "x"
+    assert json.dumps(ev.SEUILS[:2]) == "[0.3, 0.325]"

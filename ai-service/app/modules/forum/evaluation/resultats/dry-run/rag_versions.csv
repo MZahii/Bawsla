@@ -1,0 +1,4 @@
+version,questions,erreurs,reponses_justes,bonnes_abstentions,inventees_hors_cours,fidelite_citations,confiance_justes,confiance_fausses
+v1,55,0,0.625,0.333,0.667,0.673,69.2,65.3
+v2,55,0,0.9,0.667,0.333,1.0,58.7,54.6
+v3,55,0,0.9,0.667,0.333,1.0,69.3,64.6

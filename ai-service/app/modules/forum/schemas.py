@@ -1,6 +1,33 @@
-from pydantic import Field
+"""Schémas du module Forum (La Vigie). JSON en camelCase, Python en snake_case.
+
+Toutes les entrées héritent de `ForumModel` (extra="forbid") : un champ inattendu, par exemple un identifiant
+d'utilisateur, est refusé avec une 400. Aucune route du forum ne reçoit de nom, d'email ni d'id d'utilisateur ;
+les seuls identifiants admis sont ceux des cours, chapitres, discussions et passages.
+"""
+
+from typing import Literal
+
+from pydantic import ConfigDict, Field
 
 from app.core.schemas import CamelModel
+
+# Bornes communes (le Sanitizer tronque de toute façon avant l'envoi au LLM).
+MAX_QUESTION = 2000
+MAX_TEXTE = 20000
+MAX_PASSAGE = 4000
+
+Tache = Literal["DOCUMENT", "REQUETE"]
+Origine = Literal["COURS", "FORUM"]
+Categorie = Literal["OK", "HORS_SUJET", "IRRESPECTUEUX", "SPAM", "FUITE_EXAMEN", "INJECTION", "DONNEES_PERSONNELLES"]
+
+
+class ForumModel(CamelModel):
+    """Base des schémas d'entrée du forum : refuse tout champ non déclaré."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+# ---------------------------------------------------------------- Contrat 5 (stub d'origine, conservé)
 
 
 class QuestionsSimilairesRequest(CamelModel):
@@ -19,3 +46,277 @@ class QuestionsSimilairesResponse(CamelModel):
     question: str
     similaires: list[DiscussionSimilaire]
     stub: bool = True
+
+
+# ---------------------------------------------------------------- POST /vectoriser
+
+
+class VectoriserRequest(ForumModel):
+    textes: list[str] = Field(min_length=1, max_length=100)
+    tache: Tache
+
+
+class VectoriserResponse(CamelModel):
+    vecteurs: list[list[float]]
+    modele: str
+    dimension: int
+    fournisseur: str | None = None
+
+
+# ---------------------------------------------------------------- POST /indexer
+
+
+class PageCours(ForumModel):
+    numero: int = Field(ge=1)
+    texte: str
+
+
+class ChapitreCours(ForumModel):
+    id: int
+    titre: str = Field(max_length=300)
+    contenu: str
+
+
+class IndexerRequest(ForumModel):
+    """Texte du cours : pages du PDF, chapitres, ou texte libre sans pagination (contrat 2 tel qu'il existe)."""
+
+    cours_id: int
+    texte: str | None = None
+    pages: list[PageCours] = Field(default_factory=list)
+    chapitres: list[ChapitreCours] = Field(default_factory=list)
+
+
+class PassageIndexe(CamelModel):
+    chapitre_id: int | None = None
+    page: int | None = None
+    ordre: int
+    titre_section: str | None = None
+    texte: str
+    vecteur: list[float]
+
+
+class IndexerResponse(CamelModel):
+    passages: list[PassageIndexe]
+    modele: str
+    dimension: int
+    fournisseur: str | None = None
+    donnees_masquees: int = 0
+
+
+# ---------------------------------------------------------------- POST /reformuler
+
+
+class MessageHistorique(ForumModel):
+    role: Literal["APPRENANT", "VIGIE"]
+    texte: str = Field(max_length=MAX_TEXTE)
+
+
+class ReformulerRequest(ForumModel):
+    question: str = Field(min_length=1, max_length=MAX_QUESTION)
+    historique: list[MessageHistorique] = Field(default_factory=list, max_length=12)
+
+
+class ReformulerResponse(CamelModel):
+    """repli = true : le LLM n'a pas répondu, la question (nettoyée) est renvoyée telle quelle."""
+
+    requete: str
+    langue_detectee: str
+    version_prompt: str | None = None
+    fournisseur: str | None = None
+    repli: bool = False
+
+
+class ReformulationLLM(CamelModel):
+    """Sortie attendue du LLM pour la reformulation."""
+
+    requete: str = Field(min_length=1, max_length=MAX_QUESTION)
+    langue_detectee: str = Field(default="autre", max_length=20)
+
+
+# ---------------------------------------------------------------- POST /repondre (format du cahier des charges)
+
+
+class PassageContexte(ForumModel):
+    id: int
+    origine: Origine = "COURS"
+    cours: str = Field(max_length=300)
+    chapitre: str | None = Field(default=None, max_length=300)
+    page: int | None = None
+    texte: str = Field(max_length=MAX_PASSAGE)
+    score: float = Field(ge=0)
+
+
+class RepondreRequest(ForumModel):
+    question: str = Field(min_length=1, max_length=MAX_QUESTION)
+    mode: Literal["DIRECTE", "GUIDEE"] = "DIRECTE"
+    passages: list[PassageContexte] = Field(default_factory=list, max_length=8)
+
+
+class SourceReponse(CamelModel):
+    """Source citée ; numero = le [n] utilisé dans le texte de la réponse."""
+
+    numero: int
+    id: int | None = None
+    origine: Origine = "COURS"
+    cours: str
+    passage: str
+    chapitre: str | None = None
+    page: int | None = None
+    citation: str
+
+
+class RepondreResponse(CamelModel):
+    """`{ reponse, sources: [{ cours, passage }], confiance, questions_similaires }` du cahier, en camelCase.
+
+    confiance (0 à 100) est CALCULÉE après génération, jamais recopiée du modèle.
+    questionsSimilaires est rempli par forum-service (il possède les discussions).
+    """
+
+    reponse: str
+    sources: list[SourceReponse] = Field(default_factory=list)
+    confiance: int = Field(ge=0, le=100)
+    hors_cours: bool = False
+    indices: list[str] = Field(default_factory=list)
+    questions_similaires: list[DiscussionSimilaire] = Field(default_factory=list)
+    version_prompt: str
+    fournisseur: str | None = None
+    alertes: list[str] = Field(default_factory=list)
+
+
+class CitationLLM(CamelModel):
+    passage: int
+    citation: str = Field(max_length=600)
+
+
+class ReponseLLM(CamelModel):
+    """Sortie attendue du LLM pour /repondre (modes DIRECTE et GUIDEE) ; tout est revérifié ensuite."""
+
+    reponse: str = Field(default="", max_length=6000)
+    hors_cours: bool = False
+    citations: list[CitationLLM] = Field(default_factory=list, max_length=20)
+    indices: list[str] = Field(default_factory=list, max_length=5)
+
+
+# ---------------------------------------------------------------- POST /repondre-general (niveau 3, sur demande)
+
+
+class RepondreGeneralRequest(ForumModel):
+    question: str = Field(min_length=1, max_length=MAX_QUESTION)
+
+
+class ReponseGeneraleLLM(CamelModel):
+    """Sortie attendue du LLM pour /repondre-general."""
+
+    reponse: str = Field(min_length=1, max_length=4000)
+    incertitudes: list[str] = Field(default_factory=list, max_length=6)
+    a_verifier: list[str] = Field(default_factory=list, max_length=6)
+
+
+class RepondreGeneralResponse(CamelModel):
+    """Réponse hors cours : ni source ni confiance (une confiance auto-déclarée n'est jamais affichée)."""
+
+    reponse: str
+    incertitudes: list[str] = Field(default_factory=list)
+    a_verifier: list[str] = Field(default_factory=list)
+    version_prompt: str
+    fournisseur: str | None = None
+
+
+# ---------------------------------------------------------------- POST /moderer
+
+
+class ModererRequest(ForumModel):
+    titre: str | None = Field(default=None, max_length=300)
+    contenu: str = Field(min_length=1, max_length=MAX_TEXTE)
+
+
+class ModererResponse(CamelModel):
+    categorie: Categorie
+    score: float = Field(ge=0, le=1)
+    raison: str
+    regle: str | None = None  # règle sans LLM qui a tranché, le cas échéant
+    version_prompt: str | None = None
+    fournisseur: str | None = None
+
+
+class ModerationLLM(CamelModel):
+    """Sortie attendue du LLM pour /moderer (v1 ne renvoie que la catégorie)."""
+
+    categorie: Categorie
+    score: float = Field(default=0.5, ge=0, le=1)
+    raison: str = Field(default="", max_length=600)
+
+
+# ---------------------------------------------------------------- POST /resumer
+
+
+class MessageFil(ForumModel):
+    role: Literal["QUESTION", "REPONSE", "VIGIE", "COMMENTAIRE"]
+    texte: str = Field(max_length=MAX_TEXTE)
+
+
+class ResumerRequest(ForumModel):
+    titre: str = Field(min_length=1, max_length=300)
+    messages: list[MessageFil] = Field(min_length=1, max_length=200)
+
+
+class PucesLLM(CamelModel):
+    puces: list[str] = Field(default_factory=list, max_length=8)
+
+
+class ResumerResponse(CamelModel):
+    puces: list[str] = Field(min_length=1, max_length=5)
+    version_prompt: str
+    fournisseur: str | None = None
+
+
+# ---------------------------------------------------------------- POST /nommer-groupes
+# Le regroupement (K-Means, k choisi par silhouette) est calculé par forum-service, qui possède les vecteurs ;
+# l'ai-service ne fait que nommer chaque groupe à partir de ses titres (sans donnée personnelle).
+
+
+class GroupeTitres(ForumModel):
+    titres: list[str] = Field(min_length=1, max_length=20)
+
+
+class NommerGroupesRequest(ForumModel):
+    groupes: list[GroupeTitres] = Field(min_length=1, max_length=8)
+
+
+class NommerGroupesResponse(CamelModel):
+    """noms[i] = nom du groupe i ; repli = noms tirés des mots fréquents (LLM indisponible ou réponse invalide)."""
+
+    noms: list[str]
+    repli: bool = False
+    version_prompt: str
+    fournisseur: str | None = None
+
+
+class NomsLLM(CamelModel):
+    noms: list[str] = Field(default_factory=list, max_length=8)
+
+
+# ---------------------------------------------------------------- POST /ameliorer
+
+
+class AmeliorerRequest(ForumModel):
+    titre: str = Field(min_length=1, max_length=300)
+    contenu: str = Field(default="", max_length=MAX_TEXTE)
+    etiquettes_existantes: list[str] = Field(default_factory=list, max_length=200)
+
+
+class AmeliorerResponse(CamelModel):
+    """repli = suggestions des seules règles (LLM indisponible) : titre inchangé, pas d'étiquette."""
+
+    titre: str
+    manques: list[str] = Field(default_factory=list)
+    etiquettes: list[str] = Field(default_factory=list, max_length=3)
+    repli: bool = False
+    version_prompt: str
+    fournisseur: str | None = None
+
+
+class AmeliorationLLM(CamelModel):
+    titre: str = Field(default="", max_length=300)
+    manques: list[str] = Field(default_factory=list, max_length=5)
+    etiquettes: list[str] = Field(default_factory=list, max_length=10)

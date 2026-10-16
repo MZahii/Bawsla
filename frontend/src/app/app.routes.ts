@@ -86,6 +86,7 @@ export const routes: Routes = [
       { path: 'certificats', loadComponent: () => import('./features/quiz/pages/admin-certificats/admin-certificats').then((m) => m.AdminCertificats) },
       { path: 'ventes', loadComponent: () => import('./features/cours/pages/admin-ventes/admin-ventes').then((m) => m.AdminVentes) },
       { path: 'ia', loadComponent: () => import('./features/user/pages/admin-ia/admin-ia').then((m) => m.AdminIa) },
+      { path: 'forum', loadChildren: () => import('./features/forum/forum.routes').then((m) => m.FORUM_ADMIN_ROUTES) },
       { path: 'audit', loadComponent: () => import('./pages/admin/audit').then((m) => m.Audit) },
       { path: 'parametres', loadComponent: () => import('./pages/admin/parametres').then((m) => m.Parametres) },
       { path: 'composants', loadComponent: () => import('./pages/styleguide/styleguide').then((m) => m.Styleguide) },

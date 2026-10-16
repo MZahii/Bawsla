@@ -14,8 +14,10 @@ Implémentations : `StubLLMClient` (aucun appel réseau), `GeminiLLMClient` (LLM
 
 import asyncio
 import base64
+import hashlib
 import io
 import logging
+import math
 import re
 import time
 import wave
@@ -74,6 +76,22 @@ class AudioResult(BaseModel):
     data: bytes
     mime_type: str
     model: str
+    stub: bool = False
+
+
+TacheEmbedding = Literal["DOCUMENT", "REQUETE"]
+
+
+class EmbeddingResult(BaseModel):
+    """Vecteurs (un par texte, dans l'ordre, normalisés : norme 1) et le modèle qui les a produits.
+
+    On ne compare jamais deux vecteurs de modèles différents : l'appelant garde `modele` avec chaque vecteur.
+    """
+
+    vecteurs: list[list[float]]
+    modele: str
+    dimension: int
+    fournisseur: str | None = None
     stub: bool = False
 
 
@@ -137,6 +155,13 @@ class LLMClient(ABC):
         except ValidationError as exc:
             raise LLMInvalidResponseError("Réponse du LLM non conforme au schéma attendu") from exc
 
+    async def embed(self, textes: list[str], *, module: str, tache: TacheEmbedding = "DOCUMENT") -> EmbeddingResult:
+        """Vectorise des textes (DOCUMENT pour ce qu'on indexe, REQUETE pour ce qu'on cherche).
+
+        Par défaut indisponible : seuls les fournisseurs qui ont un modèle d'embeddings le redéfinissent.
+        """
+        raise LLMMissingKeyError("Vectorisation indisponible pour ce fournisseur")
+
 
 class StubLLMClient(LLMClient):
     nom = "stub"
@@ -177,6 +202,23 @@ class StubLLMClient(LLMClient):
     async def synthetiser_dialogue(self, repliques, voix_par_locuteur, langue) -> AudioResult:
         raise LLMMissingKeyError("Aucun fournisseur LLM configuré (LLM_PROVIDER=stub) : synthèse vocale indisponible")
 
+    async def embed(self, textes: list[str], *, module: str, tache: TacheEmbedding = "DOCUMENT") -> EmbeddingResult:
+        """Vecteurs DÉTERMINISTES sans réseau (hachage des mots et des trigrammes) : utiles aux tests et au dev.
+
+        Deux textes qui partagent des mots ont des vecteurs proches ; ce n'est pas une vraie similarité de sens.
+        """
+        return EmbeddingResult(
+            vecteurs=[_vecteur_hache(t, DIMENSION_STUB) for t in textes],
+            modele=MODELE_STUB,
+            dimension=DIMENSION_STUB,
+            fournisseur="stub",
+            stub=True,
+        )
+
+
+MODELE_STUB = "stub-hachage-768"
+DIMENSION_STUB = 768
+
 
 class GeminiLLMClient(LLMClient):
     """Google Gemini via le SDK `google-genai` (appels asynchrones : `client.aio.models.generate_content`).
@@ -201,8 +243,12 @@ class GeminiLLMClient(LLMClient):
         tts_model: str | None = None,
         client: Any | None = None,
         attente_entre_tentatives: float = 1.0,
+        embedding_model: str | None = "gemini-embedding-001",
+        embedding_dimension: int = 768,
     ) -> None:
         self._model = model
+        self._embedding_model = embedding_model
+        self._embedding_dimension = embedding_dimension
         self._tts_model = tts_model
         self._langue_acceptee = True  # passe à False si le modèle de synthèse refuse language_code
         self._timeout = timeout_seconds
@@ -301,7 +347,56 @@ class GeminiLLMClient(LLMClient):
         multi = types.MultiSpeakerVoiceConfig(speaker_voice_configs=voix)
         return await self._synthese(texte, lambda code: types.SpeechConfig(multi_speaker_voice_config=multi, language_code=code), langue)
 
+    async def embed(self, textes: list[str], *, module: str, tache: TacheEmbedding = "DOCUMENT") -> EmbeddingResult:
+        """`embed_content` par lots de 100. Chaque texte est un `Content` séparé (sinon gemini-embedding-2 les
+        fusionnerait en un seul vecteur) ; task_type RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY ; vecteurs normalisés
+        (gemini-embedding-001 ne l'est pas sous 3072 dimensions)."""
+        from google.genai import types
+
+        if not self._embedding_model:
+            raise LLMMissingKeyError("LLM_EMBEDDING_MODEL absent : aucun modèle de vectorisation configuré")
+        if not textes:
+            return EmbeddingResult(vecteurs=[], modele=self._embedding_model, dimension=self._embedding_dimension,
+                                   fournisseur=self.nom)
+        config = types.EmbedContentConfig(
+            task_type="RETRIEVAL_QUERY" if tache == "REQUETE" else "RETRIEVAL_DOCUMENT",
+            output_dimensionality=self._embedding_dimension,
+        )
+        debut = time.monotonic()
+        vecteurs: list[list[float]] = []
+        for lot in _lots(textes, TAILLE_LOT_EMBEDDING):
+            contenus = [types.Content(parts=[types.Part(text=t)]) for t in lot]
+            reponse = await self._appeler_embed(contenus, config, module)
+            valeurs = [list(e.values or []) for e in (getattr(reponse, "embeddings", None) or [])]
+            if len(valeurs) != len(lot) or any(not v for v in valeurs):
+                raise LLMInvalidResponseError("Le fournisseur n'a pas renvoyé un vecteur par texte")
+            vecteurs.extend(_normaliser(v) for v in valeurs)
+        log.info("Gemini embed: module=%s modele=%s textes=%d duree=%.1fs", module, self._embedding_model,
+                 len(textes), time.monotonic() - debut)
+        return EmbeddingResult(vecteurs=vecteurs, modele=self._embedding_model, dimension=len(vecteurs[0]),
+                               fournisseur=self.nom)
+
     # ------------------------------------------------------------------ interne
+
+    async def _appeler_embed(self, contenus: list, config: Any, module: str) -> Any:
+        """Un appel de vectorisation, avec les mêmes délais, relances et conversions d'erreurs que la génération."""
+        for tentative in range(1, self.MAX_TENTATIVES + 1):
+            try:
+                return await asyncio.wait_for(
+                    self._client.aio.models.embed_content(model=self._embedding_model, contents=contenus,
+                                                          config=config),
+                    timeout=self._timeout,
+                )
+            except LLMError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - tout est converti en LLMError ci-dessous
+                erreur = self._convertir(exc, module)
+                passagere = getattr(exc, "code", None) in (500, 502, 503, 504)
+                if passagere and tentative < self.MAX_TENTATIVES:
+                    await asyncio.sleep(self._attente * tentative)
+                    continue
+                raise erreur from None
+        raise LLMError("Fournisseur LLM indisponible")  # pragma: no cover
 
     async def _synthese(self, texte: str, speech, langue: str) -> AudioResult:
         """Un appel au modèle de synthèse. `speech(code)` construit la configuration de voix pour un code de langue."""
@@ -437,8 +532,12 @@ class OpenAILLMClient(LLMClient):
         max_retries: int = 1,
         limite_tokens_minute: int | None = None,
         marge_reflexion: int | None = None,
+        embedding_model: str | None = None,
+        embedding_dimension: int = 768,
     ) -> None:
         self.nom = nom
+        self._embedding_model = embedding_model
+        self._embedding_dimension = embedding_dimension
         self._marge = self.MARGE_REFLEXION if marge_reflexion is None else marge_reflexion
         self._limite_tpm = limite_tokens_minute
         self._model = model
@@ -523,6 +622,32 @@ class OpenAILLMClient(LLMClient):
             (await self.synthetiser(r.texte, voix_par_locuteur[r.locuteur], langue, format_audio="wav")).data for r in repliques
         ]
         return AudioResult(data=_assembler_wav(morceaux), mime_type="audio/wav", model=self._tts_model)
+
+    async def embed(self, textes: list[str], *, module: str, tache: TacheEmbedding = "DOCUMENT") -> EmbeddingResult:
+        """`embeddings.create` (text-embedding-3-small, `dimensions`), par lots. Indisponible pour Groq."""
+        if not self._embedding_model:
+            raise LLMMissingKeyError(f"Vectorisation indisponible chez {self.nom}")
+        if not textes:
+            return EmbeddingResult(vecteurs=[], modele=self._embedding_model, dimension=self._embedding_dimension,
+                                   fournisseur=self.nom)
+        vecteurs: list[list[float]] = []
+        for lot in _lots(textes, TAILLE_LOT_EMBEDDING):
+            try:
+                reponse = await asyncio.wait_for(
+                    self._client.embeddings.create(model=self._embedding_model, input=lot,
+                                                   dimensions=self._embedding_dimension),
+                    timeout=self._timeout,
+                )
+            except LLMError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                raise _convertir_openai(exc, module, self.nom) from None
+            donnees = sorted(getattr(reponse, "data", None) or [], key=lambda d: getattr(d, "index", 0))
+            if len(donnees) != len(lot):
+                raise LLMInvalidResponseError("Le fournisseur n'a pas renvoyé un vecteur par texte")
+            vecteurs.extend(_normaliser(list(d.embedding)) for d in donnees)
+        return EmbeddingResult(vecteurs=vecteurs, modele=self._embedding_model, dimension=len(vecteurs[0]),
+                               fournisseur=self.nom)
 
     # ------------------------------------------------------------------ interne
 
@@ -765,6 +890,13 @@ class LLMRoutage(LLMClient):
     async def complete_json(self, messages, schema, *, module, temperature=0.0, max_tokens=2048):
         return await self._router("complete_json", messages, schema, module=module, temperature=temperature, max_tokens=max_tokens)
 
+    async def embed(self, textes, *, module, tache="DOCUMENT") -> EmbeddingResult:
+        """Routée comme le reste ; le modèle du secours diffère : `EmbeddingResult.modele` le dit à l'appelant."""
+        resultat = await self._router("embed", textes, module=module, tache=tache)
+        if resultat.fournisseur is None:
+            resultat.fournisseur = fournisseur_courant()
+        return resultat
+
     async def synthetiser(self, texte: str, voix: str, langue: str) -> AudioResult:
         return await self.principal.synthetiser(texte, voix, langue)
 
@@ -842,6 +974,32 @@ def _verifier_image(image: bytes, mime_type: str) -> None:
         raise LLMInvalidResponseError("Image vide")
 
 
+TAILLE_LOT_EMBEDDING = 100
+_MOTS = re.compile(r"\w+", re.UNICODE)
+
+
+def _lots(elements: list[str], taille: int) -> list[list[str]]:
+    return [elements[i:i + taille] for i in range(0, len(elements), taille)]
+
+
+def _normaliser(vecteur: list[float]) -> list[float]:
+    """Ramène un vecteur à la norme 1 : le cosinus devient un simple produit scalaire."""
+    norme = math.sqrt(sum(x * x for x in vecteur))
+    return [x / norme for x in vecteur] if norme > 0 else list(vecteur)
+
+
+def _vecteur_hache(texte: str, dimension: int) -> list[float]:
+    """Vecteur déterministe d'un texte : mots et trigrammes de caractères hachés (blake2b) dans `dimension` cases."""
+    vecteur = [0.0] * dimension
+    mots = [m for m in _MOTS.findall((texte or "").lower()) if len(m) > 1]
+    elements = mots + [m[i:i + 3] for m in mots for i in range(max(1, len(m) - 2))]
+    for element in elements:
+        empreinte = hashlib.blake2b(element.encode("utf-8"), digest_size=8).digest()
+        case = int.from_bytes(empreinte[:4], "little") % dimension
+        vecteur[case] += 1.0 if empreinte[4] % 2 == 0 else -1.0
+    return _normaliser(vecteur)
+
+
 def _strip_code_fence(text: str) -> str:
     """Retire un éventuel bloc ```json ... ``` autour de la réponse."""
     t = text.strip()
@@ -861,6 +1019,8 @@ def build_openai_client(settings: Settings) -> OpenAILLMClient | None:
         timeout_seconds=settings.llm_timeout_seconds,
         reasoning_effort=settings.openai_reasoning_effort,
         tts_model=settings.openai_tts_model,
+        embedding_model=settings.openai_embedding_model,
+        embedding_dimension=settings.llm_embedding_dimension,
     )
 
 
@@ -900,6 +1060,8 @@ def build_llm_client(settings: Settings) -> LLMClient:
             timeout_seconds=settings.llm_timeout_seconds,
             thinking_budget=settings.llm_thinking_budget,
             tts_model=settings.llm_tts_model,
+            embedding_model=settings.llm_embedding_model,
+            embedding_dimension=settings.llm_embedding_dimension,
         )
         return _avec_secours(gemini, settings)
     raise LLMMissingKeyError(f"Fournisseur LLM '{settings.llm_provider}' non implémenté")

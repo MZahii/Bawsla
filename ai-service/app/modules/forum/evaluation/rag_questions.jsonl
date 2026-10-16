@@ -1,0 +1,55 @@
+{"id": "bd-01", "cours": "bases_de_donnees", "question": "Pourquoi mon LEFT JOIN se comporte comme un INNER JOIN quand j'ajoute un WHERE ?", "attendu": "Le LEFT JOIN se comporte alors comme un INNER JOIN", "hors_cours": false}
+{"id": "bd-02", "cours": "bases_de_donnees", "question": "Où mettre la condition sur la table de droite pour garder toutes les lignes de gauche ?", "attendu": "il faut placer la condition dans la clause ON", "hors_cours": false}
+{"id": "bd-03", "cours": "bases_de_donnees", "question": "Que valent les colonnes de la table de droite quand il n'y a pas de correspondance dans un LEFT JOIN ?", "attendu": "les colonnes de la table de droite valent NULL", "hors_cours": false}
+{"id": "bd-04", "cours": "bases_de_donnees", "question": "Comment faire un FULL OUTER JOIN avec MySQL ?", "attendu": "MySQL ne la propose pas directement", "hors_cours": false}
+{"id": "bd-05", "cours": "bases_de_donnees", "question": "Mon COUNT(*) compte trop de clients après une jointure avec les commandes, pourquoi ?", "attendu": "COUNT(DISTINCT c.id) plutôt que COUNT(*)", "hors_cours": false}
+{"id": "bd-06", "cours": "bases_de_donnees", "question": "Quelle est la différence entre WHERE et HAVING ?", "attendu": "HAVING filtre les groupes après l'agrégation", "hors_cours": false}
+{"id": "bd-07", "cours": "bases_de_donnees", "question": "C'est quoi une clé étrangère ?", "attendu": "Une clé étrangère est une colonne qui contient la clé primaire d'une autre table", "hors_cours": false}
+{"id": "bd-08", "cours": "bases_de_donnees", "question": "Deux lignes peuvent-elles avoir la même clé primaire ?", "attendu": "ne peuvent pas avoir la même valeur de clé primaire", "hors_cours": false}
+{"id": "bd-09", "cours": "bases_de_donnees", "question": "Mon index composite n'est pas utilisé quand je filtre sur la deuxième colonne, est-ce normal ?", "attendu": "mais pas sur la deuxième seule", "hors_cours": false}
+{"id": "bd-10", "cours": "bases_de_donnees", "question": "Comment savoir si ma requête utilise un index ?", "attendu": "La commande EXPLAIN montre si une requête utilise un index", "hors_cours": false}
+{"id": "bd-11", "cours": "bases_de_donnees", "question": "Pourquoi les insertions deviennent plus lentes quand j'ajoute des index ?", "attendu": "Il ralentit en contrepartie les insertions et les mises à jour", "hors_cours": false}
+{"id": "bd-12", "cours": "bases_de_donnees", "question": "Comment annuler toutes les modifications d'une transaction ?", "attendu": "ROLLBACK annule toutes ses modifications", "hors_cours": false}
+{"id": "bd-13", "cours": "bases_de_donnees", "question": "Que signifie ACID ?", "attendu": "atomicité, cohérence, isolation et durabilité", "hors_cours": false}
+{"id": "bd-14", "cours": "bases_de_donnees", "question": "Peut-on réécrire un RIGHT JOIN en LEFT JOIN ?", "attendu": "On peut toujours la réécrire en LEFT JOIN en inversant l'ordre des tables", "hors_cours": false}
+{"id": "py-01", "cours": "python_bases", "question": "Pourquoi quand je modifie b, la liste a change aussi ?", "attendu": "Copier une liste avec b = a ne crée pas de copie", "hors_cours": false}
+{"id": "py-02", "cours": "python_bases", "question": "Comment faire une vraie copie d'une liste ?", "attendu": "b = a.copy() ou b = list(a)", "hors_cours": false}
+{"id": "py-03", "cours": "python_bases", "question": "Ma fonction avec une liste vide par défaut garde les valeurs des appels précédents, pourquoi ?", "attendu": "une valeur par défaut mutable, comme une liste vide, est créée une seule fois", "hors_cours": false}
+{"id": "py-04", "cours": "python_bases", "question": "notes[1:3] ne contient pas l'élément d'indice 3, c'est un bug ?", "attendu": "la borne de fin est exclue", "hors_cours": false}
+{"id": "py-05", "cours": "python_bases", "question": "J'ai une KeyError quand je lis un dictionnaire, comment l'éviter ?", "attendu": "ages.get(\"Ali\", 0) renvoie la valeur par défaut 0", "hors_cours": false}
+{"id": "py-06", "cours": "python_bases", "question": "Que renvoie une fonction qui n'a pas de return ?", "attendu": "sans return, elle renvoie None", "hors_cours": false}
+{"id": "py-07", "cours": "python_bases", "question": "Pourquoi éviter un except sans préciser l'exception ?", "attendu": "masquerait aussi les erreurs de programmation", "hors_cours": false}
+{"id": "py-08", "cours": "python_bases", "question": "À quoi sert le bloc finally ?", "attendu": "finally s'exécute dans tous les cas", "hors_cours": false}
+{"id": "py-09", "cours": "python_bases", "question": "Quelle est la différence entre break et continue ?", "attendu": "continue passe directement à l'itération suivante", "hors_cours": false}
+{"id": "py-10", "cours": "python_bases", "question": "Quels nombres produit range(2, 10, 2) ?", "attendu": "range(2, 10, 2) produit 2, 4, 6 et 8", "hors_cours": false}
+{"id": "py-11", "cours": "python_bases", "question": "J'ai une UnicodeDecodeError en lisant un fichier avec des accents", "attendu": "Lire un fichier sans préciser l'encodage peut provoquer une UnicodeDecodeError", "hors_cours": false}
+{"id": "py-12", "cours": "python_bases", "question": "Pourquoi utiliser with pour ouvrir un fichier ?", "attendu": "le bloc with ferme le fichier automatiquement", "hors_cours": false}
+{"id": "py-13", "cours": "python_bases", "question": "Peut-on modifier un caractère d'une chaîne directement ?", "attendu": "Les chaînes sont immuables", "hors_cours": false}
+{"id": "http-01", "cours": "reseaux_http", "question": "Quelle est la différence entre une erreur 401 et une erreur 403 ?", "attendu": "401 Unauthorized signifie que le client n'est pas authentifié", "hors_cours": false}
+{"id": "http-02", "cours": "reseaux_http", "question": "Pourquoi le navigateur demande une confirmation quand j'actualise après un formulaire ?", "attendu": "un navigateur demande une confirmation avant de renvoyer un formulaire POST", "hors_cours": false}
+{"id": "http-03", "cours": "reseaux_http", "question": "Quelles méthodes HTTP sont idempotentes ?", "attendu": "GET, PUT et DELETE sont idempotentes, POST ne l'est pas", "hors_cours": false}
+{"id": "http-04", "cours": "reseaux_http", "question": "Différence entre PUT et PATCH ?", "attendu": "PUT remplace une ressource entière, PATCH la modifie partiellement", "hors_cours": false}
+{"id": "http-05", "cours": "reseaux_http", "question": "Comment le serveur reconnaît un client si HTTP est sans état ?", "attendu": "le serveur utilise des cookies pour reconnaître un client", "hors_cours": false}
+{"id": "http-06", "cours": "reseaux_http", "question": "À quoi sert l'attribut HttpOnly d'un cookie ?", "attendu": "L'attribut HttpOnly empêche le JavaScript de lire le cookie", "hors_cours": false}
+{"id": "http-07", "cours": "reseaux_http", "question": "Le cadenas HTTPS garantit-il que le site est fiable ?", "attendu": "pas que le site est honnête", "hors_cours": false}
+{"id": "http-08", "cours": "reseaux_http", "question": "Mon appel fetch vers une autre API est bloqué par le navigateur, pourquoi ?", "attendu": "c'est la politique de même origine", "hors_cours": false}
+{"id": "http-09", "cours": "reseaux_http", "question": "Faut-il mettre un verbe dans l'URL d'une API REST ?", "attendu": "ne met pas de verbe dans l'URL", "hors_cours": false}
+{"id": "http-10", "cours": "reseaux_http", "question": "Que signifie le code 503 ?", "attendu": "503 Service Unavailable quand le serveur est surchargé", "hors_cours": false}
+{"id": "http-11", "cours": "reseaux_http", "question": "Comment le navigateur trouve l'adresse IP d'un site ?", "attendu": "le client traduit le nom de domaine en adresse IP grâce au DNS", "hors_cours": false}
+{"id": "http-12", "cours": "reseaux_http", "question": "Quel code renvoyer après la création d'une ressource ?", "attendu": "201 Created après une création", "hors_cours": false}
+{"id": "http-13", "cours": "reseaux_http", "question": "Comment le serveur prouve son identité en HTTPS ?", "attendu": "le serveur présente un certificat signé par une autorité de certification", "hors_cours": false}
+{"id": "hc-01", "cours": "bases_de_donnees", "question": "Comment déployer ma base de données sur Kubernetes avec Helm ?", "attendu": null, "hors_cours": true}
+{"id": "hc-02", "cours": "bases_de_donnees", "question": "Comment configurer la réplication maître-esclave de PostgreSQL ?", "attendu": null, "hors_cours": true}
+{"id": "hc-03", "cours": "bases_de_donnees", "question": "Quelle est la meilleure base NoSQL pour un réseau social ?", "attendu": null, "hors_cours": true}
+{"id": "hc-04", "cours": "bases_de_donnees", "question": "Comment écrire une procédure stockée avec un curseur ?", "attendu": null, "hors_cours": true}
+{"id": "hc-05", "cours": "bases_de_donnees", "question": "Quelle est la recette du couscous au poisson ?", "attendu": null, "hors_cours": true}
+{"id": "hc-06", "cours": "python_bases", "question": "Comment entraîner un réseau de neurones avec PyTorch ?", "attendu": null, "hors_cours": true}
+{"id": "hc-07", "cours": "python_bases", "question": "Comment créer une interface graphique avec Tkinter ?", "attendu": null, "hors_cours": true}
+{"id": "hc-08", "cours": "python_bases", "question": "Comment fonctionne le ramasse-miettes de la JVM ?", "attendu": null, "hors_cours": true}
+{"id": "hc-09", "cours": "python_bases", "question": "Comment utiliser asyncio et les coroutines ?", "attendu": null, "hors_cours": true}
+{"id": "hc-10", "cours": "python_bases", "question": "Qui a gagné la coupe du monde de football 2022 ?", "attendu": null, "hors_cours": true}
+{"id": "hc-11", "cours": "reseaux_http", "question": "Comment configurer un pare-feu iptables ?", "attendu": null, "hors_cours": true}
+{"id": "hc-12", "cours": "reseaux_http", "question": "Comment fonctionne le protocole WebSocket en détail ?", "attendu": null, "hors_cours": true}
+{"id": "hc-13", "cours": "reseaux_http", "question": "Comment optimiser le référencement SEO de mon site ?", "attendu": null, "hors_cours": true}
+{"id": "hc-14", "cours": "reseaux_http", "question": "Quelle est la différence entre IPv4 et IPv6 au niveau des en-têtes de paquet ?", "attendu": null, "hors_cours": true}
+{"id": "hc-15", "cours": "reseaux_http", "question": "Comment créer un composant React avec des hooks ?", "attendu": null, "hors_cours": true}

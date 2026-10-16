@@ -20,6 +20,26 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  servlet:
+    multipart:
+      # Images jointes : 2 Mo contrôlés par le service (message clair), marge pour l'enveloppe multipart.
+      max-file-size: 3MB
+      max-request-size: 3MB
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            # Le forum se dégrade proprement si un service ne répond pas : délais courts.
+            connect-timeout: 2000
+            read-timeout: 5000
+
+forum:
+  pieces-jointes:
+    dossier: ${FORUM_PIECES_JOINTES_DOSSIER:./data/pieces-jointes}
+  rag:
+    # Texte de cours de démonstration indexé tant que le texte réel des cours n'est pas disponible (plan §13).
+    texte-demo: ${FORUM_RAG_TEXTE_DEMO:false}
 
 eureka:
   client:

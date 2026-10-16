@@ -1,0 +1,13 @@
+methode,groupe,n,recall_1,recall_5,mrr
+lexical,ar,15,0.333,0.8,0.517
+lexical,en,20,0.25,0.65,0.435
+lexical,fr,25,0.24,0.68,0.4
+lexical,tous,60,0.267,0.7,0.441
+semantique,ar,15,0.2,0.467,0.362
+semantique,en,20,0.2,0.55,0.354
+semantique,fr,25,0.16,0.68,0.368
+semantique,tous,60,0.183,0.583,0.362
+hybride,ar,15,0.2,0.867,0.454
+hybride,en,20,0.25,0.7,0.443
+hybride,fr,25,0.2,0.8,0.423
+hybride,tous,60,0.217,0.783,0.438
