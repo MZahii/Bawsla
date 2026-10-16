@@ -117,7 +117,13 @@ services:
     build: { context: ./backend, args: { SERVICE: forum-service } }
     image: bawsla/forum-service
     container_name: bawsla-forum
-    environment: *docker-env
+    environment:
+      <<: *docker-env
+      FORUM_PIECES_JOINTES_DOSSIER: /home/bawsla/pieces-jointes
+    # Pièces jointes du forum : conservées quand le conteneur est recréé. Monté sur le dossier personnel de
+    # l'utilisateur bawsla (qui lui appartient dans l'image) : /app appartient à root et n'est pas inscriptible.
+    volumes:
+      - forum_pieces_jointes:/home/bawsla
     healthcheck:
       <<: *spring-healthcheck
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health | grep -q UP"]
@@ -144,3 +150,4 @@ services:
 
 volumes:
   mysql_data:
+  forum_pieces_jointes:
