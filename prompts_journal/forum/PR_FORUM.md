@@ -7,7 +7,7 @@ Le plan (§13.2) interdit à l'agent d'ouvrir une pull request sans accord : ces
 
 ## PR 1 — `chore(socle)` : modifications des fichiers communs pour le forum
 
-**Base** : `develop` · **Commits** : `9b71dad`, `3e44fbc`, `cae3971` (à extraire par `git cherry-pick` sur une
+**Base** : `develop` · **Commits** : `9b71dad`, `3e44fbc`, `cae3971`, `64de372`, `ebb057d` (à extraire par `git cherry-pick` sur une
 branche `chore/socle-forum` si l'équipe veut relire le socle à part ; sinon, ils sont inclus dans la PR 2).
 
 Ce que touche cette PR, en ajouts uniquement, sans réorganiser les fichiers :
@@ -20,6 +20,8 @@ Ce que touche cette PR, en ajouts uniquement, sans réorganiser les fichiers :
 | `core/layouts/admin/admin-shell.ts` | 1 entrée de menu « Forum » | accès à l'espace admin |
 | `core/layouts/parts/notif-menu.ts` | cloche branchée sur les notifications du forum (compteur toutes les 30 s) au lieu des données de démo | notifications visibles partout |
 | `pages/student-home`, `pages/teacher-home` | `<app-forum-apercu>` à la place du bloc forum de démo | accueils sur de vraies données |
+| `.env.example` (+ `forum-service/application.yml`) | `FORUM_RAG_TEXTE_DEMO=false` | texte de cours de démonstration pour La Vigie, désactivé par défaut |
+| `docker-compose.yml` | volume `forum_pieces_jointes` monté sur `/home/bawsla`, `FORUM_PIECES_JOINTES_DOSSIER` | pièces jointes conservées quand le conteneur est recréé ; `/app` n'est pas inscriptible par l'utilisateur `bawsla` |
 
 **Vérification** : `pytest` (suite complète) vert, `ng build` sans avertissement, `mvnw test` du forum vert.
 Aucun changement de comportement pour les autres modules, hormis la cloche (elle affichait des données de démo).
@@ -46,14 +48,17 @@ Aucun changement de comportement pour les autres modules, hormis la cloche (elle
 - **Prompts** : `repondre`, `guider`, `repondre_general`, `reformuler`, `moderer` en v1 → v3 ; `resumer`,
   `ameliorer`, `nommer_groupes` en v1 → v2.
 
-**Tests** : `mvnw test` 141 verts (forum-service) ; `pytest` forum 101 verts, couverture de branches 97 % ;
+**Tests** : `mvnw test` 142 verts (forum-service) ; `pytest` 218 verts dont 106 du forum ;
 `ng build` sans avertissement ; test boîte noire `ai-service/tests/forum/e2e_forum.py` via la gateway.
 **Évaluation** : `ai-service/app/modules/forum/evaluation/` (jeux, script, résultats, analyse des seuils).
-**Journal** : `prompts_journal/forum/JOURNAL.md` (entrées 01 à 10) et `captures/`.
+**Journal** : `prompts_journal/forum/JOURNAL.md` (entrées 01 à 11) et `captures/`.
+**Guide du module** : [`prompts_journal/forum/README.md`](README.md) (code, lancement, réglages, tests, évaluation).
 
 **Points d'attention pour la relecture**
 - Le forum lit `GET /api/cours/{id}`, `/texte`, `/chapitres`, `GET /api/users/{id}`, `GET /api/quiz/notions-ratees`
   et fonctionne si l'une ne répond pas (dégradation propre). Aucune route à implémenter chez un coéquipier.
 - En développement, `FORUM_RAG_TEXTE_DEMO=true` (dans `.env`) indexe un texte de démonstration tant que le texte
   réel des cours n'est pas disponible.
-- Seuils sémantiques provisoires (0,75 / 0,9 / 0,55) à confirmer avec la clé (voir `evaluation/resultats/ANALYSE.md`).
+- Seuils par défaut mesurés avec `gemini-embedding-001` sur 120 paires : similaire 0,725, doublon 0,75 (l'ancien
+  0,9 n'était jamais atteint). `vigie.seuil-pertinence` reste à 0,55 provisoire : la partie RAG n'a pas pu tourner
+  (quota de l'offre gratuite). Détail : `ai-service/app/modules/forum/evaluation/resultats/ANALYSE.md`.

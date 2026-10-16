@@ -7,6 +7,48 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 11 — 2026-10-16 — Évaluation réelle, seuils mesurés, finalisation
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto (deux sessions : la première a
+  été coupée par la limite d'usage, la seconde a repris depuis `git status`)
+- **Objectif** : lancer l'évaluation avec la clé Gemini du poste, fixer les seuils par défaut, corriger ce que
+  l'évaluation et l'e2e révèlent, finir le socle (variable de démo, volume Docker) et la documentation.
+- **Contexte fourni** : `evaluer_forum.py`, `ANALYSE.md` du lot 9, `ParametresService`, `RechercheService`,
+  `docker-compose.yml`, `backend/Dockerfile` (utilisateur `bawsla`, `/app` à root).
+- **Prompt** (reprise) :
+  > Une session précédente a été coupée par la limite pendant la finalisation du module Forum. […] Termine ce qui
+  > reste parmi : correction du script d'évaluation + test ; résultats de l'évaluation réelle et ANALYSE.md […] ;
+  > seuils par défaut mis à jour ; FORUM_RAG_TEXTE_DEMO […] ; volume Docker des pièces jointes […] ;
+  > README_FORUM.md déplacé vers prompts_journal/forum/README.md […] ; lien dans PR_FORUM.md ; entrée 11 du journal.
+- **Résultat** :
+  - Script : client `AvecPatience` (pause entre appels, attente de 65 s et 5 essais sur un 429, vecteurs par lots
+    de 20, arrêt net quand le quota du jour est épuisé) ; une partie interrompue n'arrête plus l'évaluation et est
+    nommée dans `RESULTATS.md`. 4 tests ajoutés.
+  - Évaluation réelle (`gemini-embedding-001`, `gemini-3.6-flash`, offre gratuite) : similarité mesurée sur
+    120 paires (sémantique Recall@5 = 1, MRR 0,654 ; lexical 0,441 ; hybride 0,574). RAG et modération v2 / v3 non
+    mesurés : quotas journaliers (1 000 vecteurs, 20 générations). Le dry-run est rangé dans `resultats/dry-run/`.
+  - Seuils par défaut : similaire 0,75 → **0,725** (meilleur F1), doublon 0,9 → **0,75** (0,9 n'était jamais
+    atteint ; 0,75 = premier seuil sans faux doublon). Pertinence de La Vigie : 0,55, toujours provisoire.
+  - Défauts corrigés : règle « texte répétitif » qui masquait une question dont le contenu reformule le titre ;
+    discussion publiée sans vecteur (quota) devenue invisible dans les similaires (repli lexical pour elle seule).
+  - Socle : `FORUM_RAG_TEXTE_DEMO` (`application.yml`, `.env.example`) ; volume `forum_pieces_jointes` monté sur
+    `/home/bawsla` (contrôle e2e ajouté : image jointe puis relue).
+  - `prompts_journal/forum/README.md` : guide du module, lié depuis `PR_FORUM.md`.
+- **Vérification** : `mvnw test` 142 verts (JDK 21 ; le Java 17 du `PATH` faisait échouer le fork de surefire) ;
+  `pytest` 218 verts dont 106 du forum ; `ng build` sans erreur.
+- **Gardé / modifié / rejeté** :
+  - Rejeté : appliquer la règle « doublon = plus petit seuil de précision ≥ 0,95 » telle quelle (0,725, égal au seuil
+    similaire : toute suggestion bloquerait la publication). Justification dans `ANALYSE.md`.
+  - Gardé : les questions similaires restent purement sémantiques, l'hybride faisant moins bien sur ce jeu.
+  - `README_FORUM.md`, annoncé par la première session, n'existait ni sur le disque ni dans l'historique git : le
+    guide a été écrit directement dans `prompts_journal/forum/README.md`.
+  - Les premiers essais par lots de 100 vecteurs ont consommé le quota du jour sans résultat : d'où les lots de 20.
+- **Captures** : aucune nouvelle ; les chiffres sont dans `evaluation/resultats/RESULTATS.md` et les CSV.
+- **Leçon** : lire les quotas de l'offre gratuite avant de lancer une évaluation réelle ; un lot refusé compte
+  quand même dans le quota.
+
+---
+
 ### 10 — 2026-10-16 — Lot 10 : boîte noire, captures d'écran, finitions
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
