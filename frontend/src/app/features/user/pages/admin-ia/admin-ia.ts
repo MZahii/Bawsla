@@ -6,6 +6,8 @@ import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { BwChart, ChartSerie, Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
 import { MetriquesIa } from '../../models/ia.model';
+import { IaGeneree } from '../../components/ia-generee/ia-generee';
+import { IaGenerativeService } from '../../services/ia-generative.service';
 import { IaUserService } from '../../services/ia-user.service';
 
 /** Libellés des variables des modèles (noms des colonnes du jeu de données). */
@@ -31,13 +33,18 @@ const VARIABLES: Record<string, string> = {
  */
 @Component({
   selector: 'app-admin-ia',
-  imports: [MatIconModule, BwButton, EmptyState, BwChart, Kpi, PageHeader, Skeleton],
+  imports: [MatIconModule, BwButton, EmptyState, BwChart, Kpi, PageHeader, Skeleton, IaGeneree],
   templateUrl: './admin-ia.html',
   styleUrl: './admin-ia.scss',
 })
 export class AdminIa implements OnInit {
   private readonly api = inject(IaUserService);
   private readonly snack = inject(MatSnackBar);
+  private readonly iaGen = inject(IaGenerativeService);
+
+  /** IA générative : rapport de la plateforme (tous les cours), généré à la demande. */
+  protected readonly lireRapport = () => this.iaGen.dernierRapport();
+  protected readonly genererRapport = () => this.iaGen.genererRapport();
 
   protected readonly m = signal<MetriquesIa | null>(null);
   protected readonly erreur = signal<string | null>(null);

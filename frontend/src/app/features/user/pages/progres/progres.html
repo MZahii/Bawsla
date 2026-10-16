@@ -53,6 +53,33 @@
     </section>
   </div>
 
+  <div class="grid-2 mt">
+    <app-ia-generee titre="Le conseil de ta boussole" libelleBouton="Obtenir mon conseil"
+      invitation="Un conseil rédigé pour toi à partir de tes résultats, des notions à revoir et des cours recommandés."
+      attente="La boussole prépare ton conseil…" [charger]="lireConseil" [generer]="genererConseil"
+      source="À partir de tes chiffres, de ton profil et de tes recommandations (Machine Learning).">
+      <ng-template let-c>
+        <p class="texte">{{ c.conseil }}</p>
+        <ul class="actions">@for (a of c.actions; track $index) { <li>{{ a }}</li> }</ul>
+      </ng-template>
+    </app-ia-generee>
+
+    <app-ia-generee titre="Ton plan de la semaine" libelleBouton="Préparer mon plan"
+      invitation="Des séances pour les 7 prochains jours, dans le temps que tu as indiqué dans ton parcours."
+      attente="La boussole organise ta semaine…" [charger]="lirePlan" [generer]="genererPlan"
+      source="À partir de tes cours en cours, des notions à revoir et de ton temps disponible.">
+      <ng-template let-p>
+        <p class="texte">{{ p.resume }}</p>
+        <ol class="seances">
+          @for (s of p.seances; track s.jour) {
+            <li><span class="jour">{{ s.jour }}</span><span class="act">{{ s.activite }}</span><span class="pill plain">{{ s.dureeMinutes }} min</span></li>
+          }
+        </ol>
+        <p class="small muted total">Total : {{ heures(p.totalMinutes) }} sur {{ heures(p.budgetMinutes) }} disponibles cette semaine.</p>
+      </ng-template>
+    </app-ia-generee>
+  </div>
+
   <section class="card mt">
     <div class="card-head"><div><h2>Ce que ta boussole prend en compte</h2><span class="sub">Tes données restent sur Bawsla : l’IA ne reçoit que des chiffres, jamais ton nom ni ton email.</span></div></div>
     <ul class="sources card-body">

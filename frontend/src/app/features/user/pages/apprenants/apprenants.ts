@@ -4,12 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { errorMessage } from '../../../../shared/models/api-response.model';
-import { AiBox, EmptyState } from '../../../../shared';
+import { AiBox, BwButton, EmptyState } from '../../../../shared';
 import { Avatar, Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
 import { ApprenantsFormateur, LigneApprenant, NiveauRisque } from '../../models/ia.model';
+import { IaGeneree } from '../../components/ia-generee/ia-generee';
 import { AvatarService } from '../../services/avatar.service';
+import { IaGenerativeService } from '../../services/ia-generative.service';
 import { IaUserService } from '../../services/ia-user.service';
 
 const LIBELLE: Record<NiveauRisque, string> = { faible: 'Suivi normal', moyen: 'À surveiller', eleve: 'Risque d’échec' };
@@ -19,16 +22,20 @@ const LIBELLE: Record<NiveauRisque, string> = { faible: 'Suivi normal', moyen: '
  * inscription (apprenant × cours), avec le risque d'échec prédit par le Random Forest et ses raisons, quand les
  * données de l'apprenant sont complètes. Le risque n'est jamais montré à l'apprenant (DESIGN.md).
  * La liste des inscrits vient de cours-service (contrat 7) : tant qu'elle n'existe pas, la page l'explique.
+ * IA générative (LLM), à la demande : rapport de la classe (statistiques agrégées) et, dans la fiche, l'explication
+ * du risque avec des actions et un message à envoyer.
  */
 @Component({
   selector: 'app-apprenants',
-  imports: [DatePipe, FormsModule, MatButtonToggleModule, MatIconModule, MatSelectModule, AiBox, EmptyState, Avatar, Kpi, PageHeader, Skeleton],
+  imports: [DatePipe, FormsModule, MatButtonToggleModule, MatIconModule, MatSelectModule, AiBox, BwButton, EmptyState, Avatar, Kpi, PageHeader, Skeleton, IaGeneree],
   templateUrl: './apprenants.html',
   styleUrl: './apprenants.scss',
 })
 export class Apprenants implements OnInit {
   private readonly api = inject(IaUserService);
   private readonly avatars = inject(AvatarService);
+  private readonly iaGen = inject(IaGenerativeService);
+  private readonly snack = inject(MatSnackBar);
   protected readonly libelle = LIBELLE;
 
   protected readonly donnees = signal<ApprenantsFormateur | null>(null);
@@ -38,6 +45,18 @@ export class Apprenants implements OnInit {
   protected readonly risque = signal<NiveauRisque | 'tous'>('tous');
   protected readonly q = signal('');
   protected readonly ouvert = signal<LigneApprenant | null>(null);
+
+  // IA générative (LLM) : rapport de la classe, explication du risque de l'apprenant ouvert.
+  protected readonly lireRapport = () => this.iaGen.dernierRapport();
+  protected readonly genererRapport = () => this.iaGen.genererRapport();
+  protected readonly lireExplication = computed(() => {
+    const id = this.ouvert()?.etudiantId ?? 0;
+    return () => this.iaGen.derniereExplication(id);
+  });
+  protected readonly genererExplication = computed(() => {
+    const id = this.ouvert()?.etudiantId ?? 0;
+    return () => this.iaGen.genererExplication(id);
+  });
 
   protected readonly lignes = computed(() => {
     const c = this.coursChoisi();
@@ -70,6 +89,13 @@ export class Apprenants implements OnInit {
       },
       error: (err) => this.erreur.set(errorMessage(err, 'La liste des apprenants est indisponible')),
     });
+  }
+
+  protected copier(texte: string): void {
+    navigator.clipboard?.writeText(texte).then(
+      () => this.snack.open('Message copié.', 'OK', { duration: 3000 }),
+      () => this.snack.open('Copie impossible : sélectionne le texte à la main.', 'OK', { duration: 4000 }),
+    );
   }
 
   protected nom(l: LigneApprenant): string {

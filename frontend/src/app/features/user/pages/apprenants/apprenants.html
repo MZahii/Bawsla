@@ -22,6 +22,19 @@
       <bw-empty-state icon="hourglass_top" [title]="d.cours.length ? 'Pas encore d’inscrits à afficher' : 'Aucun cours'" [message]="d.message" />
     </section>
   } @else {
+    <app-ia-generee class="mt rapport" titre="Rapport de la classe" libelleBouton="Générer le rapport"
+      invitation="Une synthèse de tes apprenants (risques, notions les plus ratées, cours à relancer) et des actions à mener."
+      attente="La boussole analyse ta classe…" [charger]="lireRapport" [generer]="genererRapport"
+      source="À partir de statistiques agrégées : aucun apprenant n’est nommé dans ce qui est envoyé à l’IA.">
+      <ng-template let-r>
+        <p class="texte">{{ r.synthese }}</p>
+        <div class="deux">
+          <div><h3>Constats</h3><ul>@for (x of r.pointsCles; track $index) { <li>{{ x }}</li> }</ul></div>
+          <div><h3>Actions proposées</h3><ul>@for (x of r.recommandations; track $index) { <li>{{ x }}</li> }</ul></div>
+        </div>
+      </ng-template>
+    </app-ia-generee>
+
     <section class="card mt">
       <div class="card-head">
         <div class="toolbar" style="margin: 0; flex: 1">
@@ -95,6 +108,20 @@
         } @else { <p class="muted small">Aucun signal d’alerte.</p> }
         <span bwAiSource>Random Forest du module User, à partir de ses quiz, de sa progression et de son activité. Jamais montré à l’apprenant.</span>
       </bw-ai-box>
+
+      <app-ia-generee class="explication" titre="Comprendre et agir" libelleBouton="Expliquer et proposer des actions"
+        invitation="L’IA explique ce risque en clair et propose des actions, avec un message que tu peux lui envoyer."
+        attente="La boussole prépare des pistes…" [cle]="e.etudiantId" [charger]="lireExplication()" [generer]="genererExplication()"
+        source="À partir du résultat du Random Forest et des notions ratées : ni nom ni email envoyés à l’IA.">
+        <ng-template let-x>
+          <p class="texte">{{ x.resume }}</p>
+          <h3>Actions</h3>
+          <ul>@for (a of x.actions; track $index) { <li>{{ a }}</li> }</ul>
+          <h3>Message à lui envoyer</h3>
+          <blockquote class="message">{{ x.messageSuggere }}</blockquote>
+          <button type="button" bwButton="fantome" (click)="copier(x.messageSuggere)"><mat-icon aria-hidden="true">content_copy</mat-icon> Copier le message</button>
+        </ng-template>
+      </app-ia-generee>
     } @else {
       <p class="muted small">{{ e.risqueIndisponible }}</p>
     }
