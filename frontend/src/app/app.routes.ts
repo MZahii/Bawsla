@@ -52,7 +52,7 @@ export const routes: Routes = [
       { path: 'forum', loadChildren: () => import('./features/forum/forum.routes').then((m) => m.FORUM_ETUDIANT_ROUTES) },
       { path: 'progres', loadComponent: () => import('./features/user/pages/progres/progres').then((m) => m.Progres) },
       { path: 'agenda', loadComponent: () => import('./pages/agenda/agenda').then((m) => m.Agenda) },
-      { path: 'profil', loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile) },
+      { path: 'profil', loadComponent: () => import('./features/user/pages/mon-compte/mon-compte').then((m) => m.MonCompte) },
     ],
   },
 
@@ -69,7 +69,7 @@ export const routes: Routes = [
       { path: 'avis', loadComponent: () => import('./features/cours/pages/studio-avis/studio-avis').then((m) => m.StudioAvis) },
       { path: 'forum', loadChildren: () => import('./features/forum/forum.routes').then((m) => m.FORUM_STUDIO_ROUTES) },
       { path: 'calendrier', loadComponent: () => import('./pages/agenda/agenda').then((m) => m.Agenda) },
-      { path: 'profil', loadComponent: () => import('./pages/profile/profile').then((m) => m.Profile) },
+      { path: 'profil', loadComponent: () => import('./features/user/pages/mon-compte/mon-compte').then((m) => m.MonCompte) },
     ],
   },
 

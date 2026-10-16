@@ -102,8 +102,9 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 
 `200` (informations **publiques uniquement**) :
 ```json
-{ "success": true, "data": { "id": 2, "nom": "Ben Ali", "prenom": "Sami", "role": "ENSEIGNANT" } }
+{ "success": true, "data": { "id": 2, "nom": "Ben Ali", "prenom": "Sami", "role": "ENSEIGNANT", "formateurValide": true } }
 ```
+- `formateurValide` : `true` seulement pour un `ENSEIGNANT` validé par l'admin (Admin → Demandes formateurs) ; `false` pour un formateur en attente ou refusé et pour les autres rôles. **cours-service doit refuser la publication d'un cours (`403`) si `formateurValide` est `false`.**
 - Erreur : `404` si l'utilisateur n'existe pas.
 - **Jamais** d'email, de hash, de statut `actif` ni de date dans ce contrat. Les données complètes ne sont visibles que par l'intéressé (`/api/users/me`) ou un ADMIN (`/api/users`).
 - Ces données ne doivent **jamais** être transmises au LLM.
@@ -119,7 +120,11 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 
 | Endpoint | Corps de la requête | `data` de la réponse |
 |---|---|---|
-| `POST /api/ai/user/recommandations` | `{ "etudiantId": 3 }` | `{ "etudiantId": 3, "profil": "…", "coursRecommandes": [1, 4], "stub": true }` |
+| `POST /api/ai/user/profil` | `{ "apprenants": [ <indicateurs>, … ] }` (1 à 500) : voir *Indicateurs* ci-dessous. | `{ "groupes": [{ "id": 0, "nom": "Décrocheur", "description": "…" }], "donneesSimulees": true }`, dans l'ordre des apprenants. Groupes K-Means : `Avancé`, `Régulier`, `Débutant en difficulté`, `Décrocheur`. |
+| `POST /api/ai/user/risque` | `{ "apprenants": [ <indicateurs>, … ] }` (1 à 500). **Rôles `ENSEIGNANT` et `ADMIN` uniquement** (`403` sinon) : le risque n'est jamais montré à l'apprenant. | `{ "resultats": [{ "probabilite": 0.9, "niveau": "eleve", "facteurs": ["Note moyenne basse aux quiz (42%)", "…"] }], "seuil": 0.4, "donneesSimulees": true }`. `niveau` parmi `faible`, `moyen`, `eleve` ; au plus 3 `facteurs`, aucun quand le risque est faible. |
+| `POST /api/ai/user/recommandations` | `{ "coursSuivis": [8], "domaines": ["Back-end"], "coursEnDifficulte": [8], "catalogue": [1, 2, …], "nombre": 3 }` : tout est facultatif ; `coursEnDifficulte` = `coursId` des notions ratées (contrat 3) ; `catalogue` = cours recommandables (par défaut tous ceux du modèle) ; `coursDisponibles` (facultatif) = vrai catalogue `[{ "coursId": 1, "titre": "…", "categorie": "…", "niveau": "DEBUTANT" }]` (cours publiés de cours-service) ; `nombre` de 1 à 10. | `{ "recommandations": [{ "coursId": 7, "titre": "…", "score": 0.82, "raison": "Pour revoir les bases en Back-end" }], "donneesSimulees": true }`. Jamais un cours déjà suivi. Un cours de `coursDisponibles` inconnu du modèle (pas le même identifiant et le même titre) est classé sur les domaines, le niveau et les notions ratées, sans historique (raison « Nouveau dans le catalogue »). |
+| `GET /api/ai/user/metriques` | — (**`ADMIN`**) | Contenu de `metriques.json` : scores des trois modèles, courbes coude et silhouette, matrice de confusion, importances, date, source des données, versions. |
+| `POST /api/ai/user/entrainer` | — (**`ADMIN`**) | Mêmes métriques après un nouvel entraînement (≈ 30 s). |
 | `POST /api/ai/cours/resume` | `{ "coursId": 1, "texte": "optionnel" }` | `{ "coursId": 1, "resume": "…", "stub": true }` |
 | `POST /api/ai/quiz/generer` | `{ "coursId": 1, "matiere": "Mathématiques", "theme": "…", "competences": ["…"], "niveauxBloom": ["APPLIQUER"], "difficulte": "INTERMEDIAIRE", "nbQuestions": 5 }` : `matiere` facultative (80 caractères au plus, la précision saisie pour « Autre »), `nbQuestions` entre 1 et 10, `competences` de 1 à 8, `niveauxBloom` parmi `MEMORISER`, `COMPRENDRE`, `APPLIQUER`, `ANALYSER`, `EVALUER`, `CREER`, et `difficulte` parmi `FACILE`, `INTERMEDIAIRE`, `AVANCE`, `DIFFICILE`, `MASTER` (`MOYEN` reste accepté et vaut `INTERMEDIAIRE`). **Aucun texte de cours.** | `{ "coursId": 1, "questions": [{ "enonce": "…", "niveauBloom": "APPLIQUER", "competence": "…", "choix": [{ "texte": "…", "estCorrecte": true }, { "texte": "…", "estCorrecte": false, "erreurAssociee": "…" }], "explication": "…", "statut": "VALIDEE" }], "nbValidees": 4, "nbRejetees": 1, "versionPrompt": "v2", "difficulte": "INTERMEDIAIRE", "fournisseur": "gemini", "alertes": [] }`. Chaque question a exactement 4 choix, dont 1 seul correct, et chaque mauvais choix porte une `erreurAssociee`. `statut` vaut `VALIDEE` ou `REJETEE` ; dans le second cas, `raisonRejet` est renseigné. |
 | `POST /api/ai/quiz/remedier` | `{ "notion": "…", "niveauBloom": "APPLIQUER", "enonce": "…", "choixDonne": "…", "bonneReponse": "…", "erreurAssociee": "…", "explication": "…" }`. **Aucun identifiant ni aucune donnée de l'apprenant.** | `{ "notion": "…", "raisonnement": "…", "explication": "…", "conseil": "…", "questionRattrapage": { "enonce": "…", "choix": [ … ], "explication": "…" }, "versionPrompt": "v1", "fournisseur": "gemini" }`. `questionRattrapage` est optionnelle et suit le même format qu'une question générée. `raisonnement` est réservé au formateur et à l'admin : il est omis de la réponse quand `X-User-Role` vaut `ETUDIANT`. |
@@ -133,6 +138,8 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | `POST /api/ai/forum/resumer` | `{ "titre": "…", "messages": [{ "role": "REPONSE", "texte": "…" }] }` (rôles `QUESTION`, `REPONSE`, `VIGIE`, `COMMENTAIRE`, jamais de nom) | `{ "puces": ["…"], "versionPrompt": "v2", "fournisseur": "gemini" }` (1 à 5 puces) |
 | `POST /api/ai/forum/ameliorer` | `{ "titre": "…", "contenu": "…", "etiquettesExistantes": ["sql"] }` | `{ "titre": "…", "manques": ["…"], "etiquettes": ["sql"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (étiquettes prises dans la liste fournie) |
 | `POST /api/ai/forum/nommer-groupes` | `{ "groupes": [{ "titres": ["…"] }] }` (groupes calculés par forum-service) | `{ "noms": ["…"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (un nom par groupe, dans l'ordre) |
+
+**Indicateurs d'un apprenant (module User)** : uniquement des nombres, calculés par user-service. `noteMoyenne`, `tauxReussite`, `progressionMoyenne` entre 0 et 1 ; `nbQuiz`, `nbNotionsRatees`, `nbErreurs`, `tempsPasseMinutes`, `nbCoursSuivis`, `nbCoursTermines`, `joursDepuisDerniereConnexion` entiers positifs ; `joursActifs30j` entre 0 et 30. Les 11 champs sont obligatoires. **Aucun identifiant, nom ni email : tout champ inattendu est refusé (`400`).** `donneesSimulees` vaut `true` tant que les modèles sont entraînés sur le jeu simulé (quiz-service et cours-service ne fournissent pas encore toutes les données).
 
 Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun :
 
@@ -158,7 +165,7 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 Ils peuvent évoluer librement par leur propriétaire :
 
-- **user** : `POST /api/auth/register` et `POST /api/auth/login` (publics), `GET /api/users/me`, `GET /api/users` (ADMIN).
+- **user** : `POST /api/auth/register` (avec `expertise`, `presentation`, `lien` facultatifs pour un formateur) et `POST /api/auth/login` (publics) ; `GET` et `PUT /api/users/me`, `PUT /me/mot-de-passe`, `POST /me/desactivation`, `GET` et `PUT /me/parcours`, `POST` et `DELETE /me/avatar`, `GET /{id}/avatar`, `GET` et `POST /me/demande-formateur`, `GET /me/indicateurs` et `GET /me/ia` (profil et recommandations ; jamais le risque) ; ENSEIGNANT ou ADMIN : `GET /{id}/indicateurs`, `GET /{id}/ia` (risque et profil d'un apprenant) et `GET /formateur/apprenants` (inscrits à ses cours et leur risque, via le contrat 7) ; ADMIN : `GET` et `POST /api/users`, `PUT /{id}`, `PATCH /{id}/statut`, `PUT /{id}/mot-de-passe`, `GET /demandes-formateur`, `POST /demandes-formateur/{id}/accepter` et `/refuser`.
 - **cours** : `GET /api/cours?categorie=&niveau=`, `POST`, `PUT /{id}`, `DELETE /{id}` (ENSEIGNANT propriétaire ou ADMIN pour l'écriture).
 - **quiz** : `GET /api/quiz?coursId=`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`.
 - **forum** : toutes les routes `/api/forum/**` (discussions, réponses, votes, La Vigie, assistant privé, modération, studio formateur, espace admin `/api/forum/admin/**`) sont décrites dans `prompts_journal/forum/PLAN_FORUM.md` §6.1.
@@ -171,3 +178,6 @@ Ils peuvent évoluer librement par leur propriétaire :
 | 2026-10-04 | Version initiale du socle (contrats 1 à 5) | commit initial |
 | 2026-10-13 | Contrat 5 : génération de quiz par objectifs, remédiation, erreur 413. Contrat 2 : consommateurs. Contrat 3 : statut « prévu » (forme inchangée) | docs/contrat-quiz-ia |
 | 2026-10-15 | Contrat 5 : routes IA du forum (vectoriser, indexer, reformuler, repondre, repondre-general, moderer, resumer, ameliorer, nommer-groupes). Endpoints internes du forum | feature/forum |
+| 2026-10-13 | Contrat 4 : ajout de `formateurValide` (validation des formateurs par l'admin), à utiliser par cours-service avant publication ; liste des endpoints internes du module user mise à jour | PR `feature/user` |
+| 2026-10-15 | Contrat 5 : endpoints ML du module User (`profil`, `risque`, `recommandations`, `metriques`, `entrainer`) ; l'ancien stub `recommandations { etudiantId }` est remplacé par des indicateurs chiffrés, sans identifiant | PR `feature/user` |
+| 2026-10-15 | Contrat 5 : champ facultatif `coursDisponibles` (vrai catalogue) pour `recommandations` ; endpoints internes du module user (indicateurs, ia) | PR `feature/user` |

@@ -1,0 +1,16 @@
+coursId,titre,categorie,niveau
+1,Introduction à Python,Data,DEBUTANT
+2,Pandas et visualisation,Data,INTERMEDIAIRE
+3,Machine Learning appliqué,Data,AVANCE
+4,HTML et CSS,Web,DEBUTANT
+5,Angular moderne,Web,INTERMEDIAIRE
+6,Architecture front-end,Web,AVANCE
+7,Bases de données SQL,Back-end,DEBUTANT
+8,Spring Boot,Back-end,INTERMEDIAIRE
+9,Microservices,Back-end,AVANCE
+10,Sécurité web (OWASP),Sécurité,DEBUTANT
+11,Tests d'intrusion,Sécurité,AVANCE
+12,Git et GitHub,Outils,DEBUTANT
+13,Docker,Outils,INTERMEDIAIRE
+14,Algorithmique,Fondamentaux,DEBUTANT
+15,Structures de données,Fondamentaux,INTERMEDIAIRE

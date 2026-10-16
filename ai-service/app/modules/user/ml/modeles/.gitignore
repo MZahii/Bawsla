@@ -1,0 +1,3 @@
+# Modèles entraînés : binaires régénérés par `python -m app.modules.user.ml.entrainement` (ou au premier appel).
+*
+!.gitignore

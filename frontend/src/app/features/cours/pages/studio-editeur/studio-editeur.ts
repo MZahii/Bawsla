@@ -1,8 +1,9 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
+import { AsyncPipe } from '@angular/common';
+import { Component, OnInit, TemplateRef, computed, inject, input, numberAttribute, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -11,110 +12,478 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepperModule } from '@angular/material/stepper';
-import { provideNativeDateAdapter } from '@angular/material/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
-import { EXTRAIT_CHAPITRE, coursParId } from '../../../../core/demo/demo-data';
-import { CATEGORIES, NIVEAUX, meta } from '../../../../core/demo/demo-plus';
-import { AiBox, AiLoading, BwButton } from '../../../../shared';
-import { Dropzone, PageHeader } from '../../../../shared/ui';
+import { errorMessage } from '../../../../shared/models/api-response.model';
+import { Badge, BwButton, EmptyState } from '../../../../shared';
+import { Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
+import { CATEGORIES, MATIERE_AUTRE, NIVEAUX, PRECISION_MAX, PRECISION_MIN, formatDuree, formatTaille } from '../../models/cours.constantes';
+import { Chapitre, ChapitreRequest, Cours, CoursRequest, Niveau } from '../../models/cours.model';
+import { PagesLuesStudio } from '../../components/pages-lues-studio';
+import { StudioIa } from '../../components/studio-ia/studio-ia';
+import { CoursImage } from '../../pipes/cours-image';
+import { CoursService } from '../../services/cours.service';
+
+type Details = Record<string, string>;
+
+const IMAGE_MAX = 2 * 1024 * 1024;
+const PDF_MAX = 20 * 1024 * 1024;
+
+interface FormChapitre {
+  id: number | null;
+  titre: string;
+  dureeMinutes: number;
+  contenu: string;
+  videoUrl: string;
+}
+
+const CHAPITRE_VIDE: FormChapitre = { id: null, titre: '', dureeMinutes: 20, contenu: '', videoUrl: '' };
 
 /**
- * Éditeur de cours en 5 étapes : informations, chapitres (réordonnables), contenu et résumé IA
- * (brouillon à relire), examen final (seuil, tentatives, certificat), publication et prix.
- * Sert à la création (/studio/cours/nouveau) et à la modification.
- * À brancher : CoursService.create/update, upload du PDF, /api/ai/cours/resume,
- * QuizService (réglages de l'examen final).
+ * Éditeur de cours en 5 étapes : informations (image comprise), chapitres, contenu (PDF) et résumé IA,
+ * examen final, publication et prix. Sert à la création (/studio/cours/nouveau) et à la modification
+ * (/studio/cours/:id). Branché sur cours-service : informations, image, chapitres (ajout, modification, suppression,
+ * ordre), PDF, prix et statut. « Résumé IA » et « Examen final » restent à brancher (badge « bientôt »).
+ * Les chapitres, le PDF et la publication ne sont disponibles qu'une fois le cours créé.
  */
 @Component({
   selector: 'app-studio-editeur',
   imports: [
-    RouterLink, FormsModule, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDatepickerModule, MatIconModule, MatSnackBarModule, AiBox, AiLoading, BwButton, Dropzone, PageHeader,
+    RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, Badge, BwButton, PagesLuesStudio, StudioIa,
+    Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
-  providers: [provideNativeDateAdapter()],
   templateUrl: './studio-editeur.html',
   styleUrl: './studio-editeur.scss',
 })
-export class StudioEditeur {
+export class StudioEditeur implements OnInit {
+  private readonly service = inject(CoursService);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   protected readonly snack = inject(MatSnackBar);
+  private readonly dialogChapitre = viewChild.required<TemplateRef<unknown>>('dialogChapitre');
+  private readonly dialogSuppression = viewChild.required<TemplateRef<unknown>>('dialogSuppression');
+  private ref?: MatDialogRef<unknown>;
+
   readonly id = input(0, { transform: numberAttribute });
+  /** Étape à ouvrir (0 = Informations), par exemple après la création du cours. */
+  readonly etape = input(0, { transform: numberAttribute });
 
-  protected readonly existant = computed(() => coursParId(this.id()));
-  protected readonly categories = CATEGORIES;
+  protected readonly existant = signal<Cours | null>(null);
+  protected readonly chargement = signal(false);
+  protected readonly introuvable = signal(false);
+  protected readonly envoi = signal(false);
+  /** Messages de validation du backend (details), par champ : titre, description, categorie, prix… */
+  protected readonly erreurs = signal<Details>({});
   protected readonly niveaux = NIVEAUX;
+  protected readonly formatTaille = formatTaille;
 
+  // ---- Étape Informations
   protected readonly titre = signal('');
   protected readonly description = signal('');
-  protected readonly categorie = signal('Données');
-  protected readonly niveau = signal('INTERMEDIAIRE');
-  protected readonly chapitres = signal<{ titre: string; duree: number }[]>([
-    { titre: 'Introduction', duree: 20 },
-    { titre: 'Notions de base', duree: 30 },
-  ]);
-  protected readonly nouveauChapitre = signal('');
-  protected readonly resumeEtat = signal<'vide' | 'generation' | 'brouillon' | 'valide'>('vide');
-  protected readonly resume = signal(EXTRAIT_CHAPITRE.resume);
-  protected readonly edition = signal(false);
-  protected readonly visible = signal(true);
-  protected readonly forum = signal(true);
-  protected readonly datePublication = signal<Date | null>(new Date(2026, 9, 12));
+  /** Matière du cours (Informatique par défaut) : même liste que le module Quiz. */
+  protected readonly categorie = signal<string>(CATEGORIES[0].nom);
+  /** Précision de la matière « Autre » (2 à 80 caractères). */
+  protected readonly precision = signal('');
+  protected readonly niveau = signal<Niveau>('INTERMEDIAIRE');
+  protected readonly categories = CATEGORIES;
+  protected readonly estAutre = computed(() => this.categorie() === MATIERE_AUTRE);
+  protected readonly precisionMax = PRECISION_MAX;
+
+  // ---- Image
+  protected readonly imageEnAttente = signal<File | null>(null);
+  protected readonly apercuLocal = signal<string | null>(null);
+  protected readonly imageEnvoi = signal(false);
+  protected readonly erreurImage = signal<string | null>(null);
+
+  // ---- Chapitres
+  protected readonly chapitres = signal<Chapitre[]>([]);
+  protected readonly chapitresEtat = signal<'chargement' | 'ok' | 'erreur'>('ok');
+  protected readonly formChapitre = signal<FormChapitre>({ ...CHAPITRE_VIDE });
+  protected readonly erreursChapitre = signal<Details>({});
+  protected readonly chapitreEnvoi = signal(false);
+  protected readonly chapitreASupprimer = signal<Chapitre | null>(null);
+  protected readonly dureeTotale = computed(() => this.chapitres().reduce((t, c) => t + c.dureeMinutes, 0));
+  protected readonly dureeLibelle = computed(() => formatDuree(this.dureeTotale()) || '0 min');
+
+  // ---- Contenu (PDF)
+  protected readonly pdfEnvoi = signal(false);
+  protected readonly erreurPdf = signal<string | null>(null);
+  /** Résultat de l'extraction du texte : null tant qu'on ne sait pas, true si le PDF ne contient aucun texte. */
+  protected readonly pdfScanne = signal<boolean | null>(null);
+  protected readonly pdfPages = signal(0);
+
+  protected readonly examen = signal({ questions: 20, duree: 30, seuil: 70, tentatives: 3, melange: true });
+
+  // ---- Publication
   protected readonly payant = signal(false);
   protected readonly prix = signal(49);
-  protected readonly examen = signal({ questions: 20, duree: 30, seuil: 70, tentatives: 3, melange: true });
+  protected readonly visible = signal(true);
+  protected readonly pret = computed(() => [
+    { ok: this.titre().trim().length > 5, texte: 'Un titre clair' },
+    { ok: this.description().trim().length > 20, texte: 'Une description d’au moins 20 caractères' },
+    { ok: this.chapitres().length >= 1, texte: 'Au moins un chapitre (obligatoire pour publier)' },
+    { ok: !!this.existant()?.aPdf, texte: 'Un support PDF' },
+    { ok: !!this.existant()?.imageUrl, texte: 'Une image de couverture' },
+    { ok: !this.payant() || this.prix() > 0, texte: 'Un prix si le cours est payant' },
+  ]);
+  protected readonly publicationBloquee = computed(() => this.visible() && this.chapitres().length === 0);
+
+  ngOnInit(): void {
+    if (this.id() > 0) this.charger();
+  }
+
+  private charger(): void {
+    this.chargement.set(true);
+    this.service.findById(this.id()).subscribe({
+      next: (c) => {
+        this.appliquer(c);
+        this.chargement.set(false);
+        this.chargerChapitres();
+        if (c.aPdf) this.analyserPdf();
+      },
+      error: (err) => {
+        this.chargement.set(false);
+        this.introuvable.set(true);
+        this.snack.open(errorMessage(err, 'Cours introuvable'), 'OK', { duration: 5000 });
+      },
+    });
+  }
+
+  /** Remplit les champs à partir du cours renvoyé par le backend. */
+  private appliquer(c: Cours): void {
+    this.existant.set(c);
+    this.titre.set(c.titre);
+    this.description.set(c.description ?? '');
+    // Une valeur hors liste (cours jamais migré) n'est pas proposée : le formateur doit choisir une matière.
+    this.categorie.set(CATEGORIES.some((m) => m.nom === c.categorie) ? c.categorie! : '');
+    this.precision.set(c.categoriePrecision ?? '');
+    if (c.niveau) this.niveau.set(c.niveau);
+    this.payant.set(c.prix > 0);
+    if (c.prix > 0) this.prix.set(c.prix);
+    this.visible.set(c.statut === 'PUBLIE');
+  }
+
+  private corps(): CoursRequest | null {
+    if (this.payant() && !(this.prix() > 0)) {
+      this.erreurs.set({ prix: 'Indique un prix supérieur à 0' });
+      return null;
+    }
+    const erreurs: Details = {};
+    if (!this.categorie()) erreurs['categorie'] = 'Choisis une matière';
+    const precision = this.precision().trim();
+    if (this.estAutre() && (precision.length < PRECISION_MIN || precision.length > PRECISION_MAX)) {
+      erreurs['categoriePrecision'] = `Précise la matière (${PRECISION_MIN} à ${PRECISION_MAX} caractères)`;
+    }
+    if (Object.keys(erreurs).length) {
+      this.erreurs.set(erreurs);
+      return null;
+    }
+    return {
+      titre: this.titre().trim(),
+      description: this.description().trim() || undefined,
+      categorie: this.categorie(),
+      categoriePrecision: this.estAutre() ? precision : undefined,
+      niveau: this.niveau(),
+      prix: this.payant() ? this.prix() : 0,
+    };
+  }
+
+  private erreurApi(err: unknown, fallback: string): void {
+    const details = (err as { error?: { details?: Details } })?.error?.details;
+    if (details) {
+      this.erreurs.set(details);
+      this.snack.open('Corrige les champs signalés', 'OK', { duration: 4000 });
+    } else {
+      this.snack.open(errorMessage(err, fallback), 'OK', { duration: 5000 });
+    }
+  }
+
+  // ------------------------------------------------------------------ informations
+
+  /** Étape Informations : crée le cours (puis ouvre l'étape Chapitres) ou enregistre les changements. */
+  protected enregistrer(): void {
+    if (this.envoi()) return;
+    this.erreurs.set({});
+    const body = this.corps();
+    if (!body) return;
+    this.envoi.set(true);
+    const existant = this.existant();
+    const appel = existant ? this.service.update(existant.id, body) : this.service.create(body);
+    appel.subscribe({
+      next: (c) => {
+        if (existant) {
+          this.envoi.set(false);
+          this.appliquer(c);
+          this.snack.open('Cours enregistré', 'OK', { duration: 3000 });
+          return;
+        }
+        this.envoyerImageEnAttente(c);
+      },
+      error: (err) => {
+        this.envoi.set(false);
+        this.erreurApi(err, 'Enregistrement impossible');
+      },
+    });
+  }
+
+  /** À la création : envoie l'image choisie avant que le cours existe, puis ouvre l'étape Chapitres. */
+  private envoyerImageEnAttente(cours: Cours): void {
+    const fichier = this.imageEnAttente();
+    const terminer = () => {
+      this.envoi.set(false);
+      this.snack.open('Cours créé : ajoute maintenant ses chapitres', 'OK', { duration: 4000 });
+      this.router.navigate(['/studio/cours', cours.id], { queryParams: { etape: 1 } });
+    };
+    if (!fichier) return terminer();
+    this.service.envoyerImage(cours.id, fichier).subscribe({
+      next: terminer,
+      error: (err) => {
+        this.snack.open(errorMessage(err, 'Image non enregistrée : renvoie-la depuis le cours'), 'OK', { duration: 6000 });
+        terminer();
+      },
+    });
+  }
+
+  // ------------------------------------------------------------------ image
+
+  protected choisirImage(fichiers: File[]): void {
+    const f = fichiers[0];
+    this.erreurImage.set(null);
+    if (!f) return;
+    if (f.type !== 'image/jpeg' && f.type !== 'image/png') {
+      this.erreurImage.set('Format non pris en charge : JPG ou PNG uniquement.');
+      return;
+    }
+    if (f.size > IMAGE_MAX) {
+      this.erreurImage.set('L’image dépasse 2 Mo.');
+      return;
+    }
+    const cours = this.existant();
+    if (!cours) {
+      this.imageEnAttente.set(f);
+      this.apercuLocal.set(URL.createObjectURL(f));
+      return;
+    }
+    this.imageEnvoi.set(true);
+    this.service.envoyerImage(cours.id, f).subscribe({
+      next: (c) => {
+        this.existant.set(c);
+        this.imageEnvoi.set(false);
+        this.snack.open('Image enregistrée', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.imageEnvoi.set(false);
+        this.erreurImage.set(errorMessage(err, 'Envoi de l’image impossible'));
+      },
+    });
+  }
+
+  // ------------------------------------------------------------------ chapitres
+
+  private chargerChapitres(): void {
+    const cours = this.existant();
+    if (!cours) return;
+    this.chapitresEtat.set('chargement');
+    this.service.chapitres(cours.id).subscribe({
+      next: (l) => {
+        this.chapitres.set(l);
+        this.chapitresEtat.set('ok');
+      },
+      error: (err) => {
+        this.chapitresEtat.set('erreur');
+        this.snack.open(errorMessage(err, 'Impossible de charger les chapitres'), 'OK', { duration: 5000 });
+      },
+    });
+  }
+
+  protected rechargerChapitres(): void {
+    this.chargerChapitres();
+  }
+
+  protected nouveauChapitre(): void {
+    this.formChapitre.set({ ...CHAPITRE_VIDE });
+    this.ouvrirFormulaire();
+  }
+
+  protected modifierChapitre(c: Chapitre): void {
+    this.formChapitre.set({ id: c.id, titre: c.titre, dureeMinutes: c.dureeMinutes, contenu: c.contenu ?? '', videoUrl: c.videoUrl ?? '' });
+    this.ouvrirFormulaire();
+  }
+
+  private ouvrirFormulaire(): void {
+    this.erreursChapitre.set({});
+    this.ref = this.dialog.open(this.dialogChapitre(), { width: '640px', maxWidth: 'calc(100vw - 32px)', autoFocus: 'first-tabbable' });
+  }
+
+  protected majFormChapitre<K extends keyof FormChapitre>(champ: K, valeur: FormChapitre[K]): void {
+    this.formChapitre.update((f) => ({ ...f, [champ]: valeur }));
+  }
+
+  protected enregistrerChapitre(): void {
+    const cours = this.existant();
+    if (!cours || this.chapitreEnvoi()) return;
+    const f = this.formChapitre();
+    const body: ChapitreRequest = {
+      titre: f.titre.trim(),
+      contenu: f.contenu.trim() || undefined,
+      dureeMinutes: Number(f.dureeMinutes) || 0,
+      videoUrl: f.videoUrl.trim() || undefined,
+    };
+    this.erreursChapitre.set({});
+    this.chapitreEnvoi.set(true);
+    const appel = f.id === null ? this.service.creerChapitre(cours.id, body) : this.service.modifierChapitre(cours.id, f.id, body);
+    appel.subscribe({
+      next: (c) => {
+        this.chapitres.update((l) => (f.id === null ? [...l, c] : l.map((x) => (x.id === c.id ? c : x))));
+        this.chapitreEnvoi.set(false);
+        this.ref?.close();
+        this.snack.open(f.id === null ? 'Chapitre ajouté' : 'Chapitre modifié', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.chapitreEnvoi.set(false);
+        const details = (err as { error?: { details?: Details } })?.error?.details;
+        if (details) this.erreursChapitre.set(details);
+        else this.snack.open(errorMessage(err, 'Enregistrement du chapitre impossible'), 'OK', { duration: 5000 });
+      },
+    });
+  }
+
+  protected demanderSuppressionChapitre(c: Chapitre): void {
+    this.chapitreASupprimer.set(c);
+    this.ref = this.dialog.open(this.dialogSuppression(), { width: '440px', maxWidth: 'calc(100vw - 32px)' });
+  }
+
+  protected supprimerChapitre(): void {
+    const cours = this.existant();
+    const c = this.chapitreASupprimer();
+    if (!cours || !c) return;
+    this.chapitreEnvoi.set(true);
+    this.service.supprimerChapitre(cours.id, c.id).subscribe({
+      next: () => {
+        this.chapitres.update((l) => l.filter((x) => x.id !== c.id).map((x, i) => ({ ...x, ordre: i + 1 })));
+        this.chapitreEnvoi.set(false);
+        this.ref?.close();
+        this.snack.open('Chapitre supprimé', 'OK', { duration: 3000 });
+      },
+      error: (err) => {
+        this.chapitreEnvoi.set(false);
+        this.ref?.close();
+        this.snack.open(errorMessage(err, 'Suppression impossible'), 'OK', { duration: 6000 });
+      },
+    });
+  }
+
+  /** Glisser-déposer : on affiche le nouvel ordre tout de suite, puis on l'enregistre ; en cas d'échec on revient en arrière. */
+  protected deplacer(e: CdkDragDrop<unknown>): void {
+    const cours = this.existant();
+    if (!cours || e.previousIndex === e.currentIndex) return;
+    const avant = this.chapitres();
+    const apres = [...avant];
+    moveItemInArray(apres, e.previousIndex, e.currentIndex);
+    this.chapitres.set(apres.map((c, i) => ({ ...c, ordre: i + 1 })));
+    this.service.ordonnerChapitres(cours.id, apres.map((c) => c.id)).subscribe({
+      next: (l) => this.chapitres.set(l),
+      error: (err) => {
+        this.chapitres.set(avant);
+        this.snack.open(errorMessage(err, 'Le nouvel ordre n’a pas pu être enregistré'), 'OK', { duration: 5000 });
+      },
+    });
+  }
+
+  // ------------------------------------------------------------------ PDF
+
+  protected choisirPdf(fichiers: File[]): void {
+    const f = fichiers[0];
+    const cours = this.existant();
+    this.erreurPdf.set(null);
+    if (!f || !cours) return;
+    if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+      this.erreurPdf.set('Format non pris en charge : PDF uniquement.');
+      return;
+    }
+    if (f.size > PDF_MAX) {
+      this.erreurPdf.set('Le PDF dépasse 20 Mo.');
+      return;
+    }
+    this.pdfEnvoi.set(true);
+    this.pdfScanne.set(null);
+    this.service.envoyerPdf(cours.id, f).subscribe({
+      next: (c) => {
+        this.existant.set(c);
+        this.pdfEnvoi.set(false);
+        this.snack.open('PDF enregistré', 'OK', { duration: 3000 });
+        this.analyserPdf();
+      },
+      error: (err) => {
+        this.pdfEnvoi.set(false);
+        this.erreurPdf.set(errorMessage(err, 'Envoi du PDF impossible'));
+      },
+    });
+  }
+
+  /** Demande le texte extrait pour savoir si le PDF est exploitable (un PDF scanné ne contient pas de texte). */
+  private analyserPdf(): void {
+    const cours = this.existant();
+    if (!cours) return;
+    this.service.texte(cours.id).subscribe({
+      next: (t) => {
+        this.pdfScanne.set(t.estScanne ?? null);
+        this.pdfPages.set(t.pages?.length ?? 0);
+      },
+      error: () => this.pdfScanne.set(null),
+    });
+  }
+
+  /** Le PDF exige le JWT : on le télécharge avec HttpClient, puis on l'ouvre dans un nouvel onglet. */
+  protected ouvrirPdf(): void {
+    const cours = this.existant();
+    if (!cours) return;
+    this.service.pdf(cours.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (err) => this.snack.open(errorMessage(err, 'Impossible d’ouvrir le PDF'), 'OK', { duration: 5000 }),
+    });
+  }
+
+  // ------------------------------------------------------------------ examen final (pas encore branché)
+
   protected majExamen(champ: 'questions' | 'duree' | 'seuil' | 'tentatives', v: number): void {
     this.examen.update((e) => ({ ...e, [champ]: Number(v) || 0 }));
   }
 
-  ngOnInit(): void {
-    const c = this.existant();
-    if (c) {
-      this.titre.set(c.titre);
-      this.description.set(c.description);
-      this.categorie.set(c.categorie);
-      this.niveau.set(c.niveau);
-      this.chapitres.set(c.chapitres.map((ch) => ({ titre: ch.titre, duree: ch.duree })));
-      this.resumeEtat.set('brouillon');
-      this.payant.set(c.prix > 0);
-      if (c.prix) this.prix.set(c.prix);
-      this.examen.set({ ...c.examen, melange: true });
-    }
-  }
+  // ------------------------------------------------------------------ publication
 
-  protected readonly image = computed(() => (this.existant() ? [{ name: meta(this.id()).image.split('/').pop()!, size: 48000 }] : []));
-  protected readonly dureeTotale = computed(() => this.chapitres().reduce((t, c) => t + c.duree, 0));
-  protected readonly pret = computed(() => [
-    { ok: this.titre().length > 5, texte: 'Un titre clair' },
-    { ok: this.description().length > 20, texte: 'Une description d’au moins 20 caractères' },
-    { ok: this.chapitres().length >= 2, texte: 'Au moins deux chapitres' },
-    { ok: this.resumeEtat() === 'valide', texte: 'Le résumé IA relu et validé' },
-    { ok: this.examen().questions >= 10, texte: 'Un examen final d’au moins 10 questions' },
-    { ok: !this.payant() || this.prix() > 0, texte: 'Un prix si le cours est payant' },
-  ]);
-
-  protected deplacer(e: CdkDragDrop<unknown>): void {
-    const l = [...this.chapitres()];
-    moveItemInArray(l, e.previousIndex, e.currentIndex);
-    this.chapitres.set(l);
-  }
-  protected ajouter(): void {
-    const t = this.nouveauChapitre().trim();
-    if (!t) return;
-    this.chapitres.update((l) => [...l, { titre: t, duree: 25 }]);
-    this.nouveauChapitre.set('');
-  }
-  protected retirer(i: number): void {
-    this.chapitres.update((l) => l.filter((_, k) => k !== i));
-  }
-  protected generer(): void {
-    this.resumeEtat.set('generation');
-    setTimeout(() => this.resumeEtat.set('brouillon'), 1800);
-  }
-  protected valider(): void {
-    this.resumeEtat.set('valide');
-    this.edition.set(false);
-  }
+  /** Enregistre les informations et le prix, puis passe le cours en PUBLIE ou en BROUILLON selon l'interrupteur. */
   protected publier(): void {
-    this.snack.open(this.visible() ? 'Cours publié' : 'Brouillon enregistré', 'OK', { duration: 3000 });
+    const cours = this.existant();
+    if (!cours || this.envoi()) return;
+    this.erreurs.set({});
+    const body = this.corps();
+    if (!body) return;
+    const statut = this.visible() ? 'PUBLIE' : 'BROUILLON';
+    this.envoi.set(true);
+    this.service.update(cours.id, body).subscribe({
+      next: () =>
+        this.service.changerStatut(cours.id, statut).subscribe({
+          next: (c) => {
+            this.envoi.set(false);
+            this.appliquer(c);
+            this.snack.open(statut === 'PUBLIE' ? 'Cours publié' : 'Brouillon enregistré', 'OK', { duration: 3000 });
+            this.router.navigate(['/studio/cours']);
+          },
+          error: (err) => {
+            this.envoi.set(false);
+            this.snack.open(errorMessage(err, 'Changement de statut impossible'), 'OK', { duration: 6000 });
+          },
+        }),
+      error: (err) => {
+        this.envoi.set(false);
+        this.erreurApi(err, 'Enregistrement impossible');
+      },
+    });
   }
 }

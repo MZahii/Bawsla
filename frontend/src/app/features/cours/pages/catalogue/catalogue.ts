@@ -7,99 +7,149 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute } from '@angular/router';
 
-import { COURS } from '../../../../core/demo/demo-data';
-import { CATEGORIES, NIVEAUX, dureeTotale, meta, tuile } from '../../../../core/demo/demo-plus';
+import { errorMessage } from '../../../../shared/models/api-response.model';
 import { EmptyState } from '../../../../shared';
-import { CourseTile, PageHeader } from '../../../../shared/ui';
+import { CourseTile, CourseTileData, PageHeader, Skeleton } from '../../../../shared/ui';
+import { CATEGORIES, FORMATEUR_DEFAUT, IMAGE_DEFAUT, LIBELLE_NIVEAU, NIVEAUX, formatDuree, libelleMatiere, libellePrix, matiereDepuisUrl } from '../../models/cours.constantes';
+import { Cours } from '../../models/cours.model';
+import { CoursImageService } from '../../services/cours-image.service';
+import { CoursService } from '../../services/cours.service';
+import { FormateurService } from '../../services/formateur.service';
 
-type Tri = 'pertinence' | 'populaires' | 'note' | 'recents';
+type Tri = 'recents' | 'titre';
+type FiltrePrix = '' | 'gratuit' | 'payant';
+type Etat = 'chargement' | 'ok' | 'erreur';
 
 /**
- * Catalogue des cours : filtres à gauche (domaine, niveau, prix, durée, note), tri, vue grille ou liste, pagination.
- * Sert au visiteur (/catalogue) et à l'apprenant (/app/explorer). Les filtres se lisent aussi dans l'URL
- * (?domaine=Données&niveau=DEBUTANT&q=sql), ce qui permet les liens du menu Explorer.
- * À brancher : CoursService.search(filtres) avec pagination côté serveur.
+ * Catalogue des cours : filtres à gauche (domaine, niveau, prix), recherche, tri, vue grille ou liste, pagination.
+ * Sert au visiteur (/catalogue) et à l'apprenant (/app/explorer). Les cours viennent de cours-service
+ * (findAll, seuls les cours publiés sont visibles par un apprenant) ; les filtres, le tri et la pagination se font
+ * côté client. Ils se lisent aussi dans l'URL (?domaine=Données&niveau=DEBUTANT&prix=gratuit&q=sql),
+ * ce qui permet les liens du menu Explorer. La note n'est pas encore fournie : pas d'étoiles.
  */
 @Component({
   selector: 'app-catalogue',
-  imports: [FormsModule, MatCheckboxModule, MatRadioModule, MatSelectModule, MatButtonToggleModule, MatPaginatorModule, MatIconModule, CourseTile, PageHeader, EmptyState],
+  imports: [FormsModule, MatCheckboxModule, MatSelectModule, MatButtonToggleModule, MatPaginatorModule, MatRadioModule, MatIconModule, MatSnackBarModule, CourseTile, PageHeader, EmptyState, Skeleton],
   templateUrl: './catalogue.html',
   styleUrl: './catalogue.scss',
 })
 export class Catalogue {
   private readonly route = inject(ActivatedRoute);
+  private readonly service = inject(CoursService);
+  private readonly formateurs = inject(FormateurService);
+  private readonly images = inject(CoursImageService);
+  private readonly snack = inject(MatSnackBar);
   private readonly params = toSignal(this.route.queryParamMap);
   protected readonly espace = (this.route.snapshot.data['espace'] as string) ?? 'public';
   protected readonly base = this.espace === 'etudiant' ? '/app/explorer' : '/catalogue';
 
-  protected readonly categories = CATEGORIES;
   protected readonly niveaux = NIVEAUX;
-  protected readonly durees = [
-    { code: 'court', libelle: 'Moins de 2 h' },
-    { code: 'moyen', libelle: '2 à 3 h' },
-    { code: 'long', libelle: 'Plus de 3 h' },
-  ];
+  protected readonly etat = signal<Etat>('chargement');
+  private readonly cours = signal<Cours[]>([]);
+  /** Nom du formateur par identifiant ; « Formateur » tant qu'il n'est pas connu. */
+  private readonly noms = signal<Record<number, string>>({});
+  /** Image affichable par identifiant de cours (téléchargée avec le JWT) ; image par défaut en attendant. */
+  private readonly imagesCours = signal<Record<number, string>>({});
 
   protected readonly q = signal('');
   protected readonly domaines = signal<string[]>([]);
   protected readonly niveauxChoisis = signal<string[]>([]);
-  protected readonly duree = signal('');
-  protected readonly noteMin = signal(0);
-  protected readonly prix = signal<'' | 'gratuit' | 'payant'>('');
-  protected readonly tri = signal<Tri>('pertinence');
+  protected readonly prix = signal<FiltrePrix>('');
+  protected readonly tri = signal<Tri>('recents');
   protected readonly vue = signal<'grid' | 'row'>('grid');
   protected readonly page = signal(0);
   protected readonly parPage = signal(6);
   protected readonly filtresMobile = signal(false);
 
+  /** Liste commune des catégories, plus celles des cours qui n'en font pas partie. */
+  protected readonly categories = computed(() => {
+    const connues: string[] = CATEGORIES.map((c) => c.nom);
+    const autres = [...new Set(this.cours().map((c) => c.categorie).filter((n): n is string => !!n))].filter((n) => !connues.includes(n));
+    return [...connues, ...autres];
+  });
+
   constructor() {
     const p = this.route.snapshot.queryParamMap;
-    if (p.get('domaine')) this.domaines.set([p.get('domaine')!]);
+    // Un ancien libellé (Données, Back-end…) dans l'URL filtre sur « Informatique » au lieu d'afficher une liste vide.
+    if (p.get('domaine')) this.domaines.set([matiereDepuisUrl(p.get('domaine'))]);
     if (p.get('niveau')) this.niveauxChoisis.set([p.get('niveau')!]);
     if (p.get('q')) this.q.set(p.get('q')!);
-    if (p.get('prix') === 'gratuit' || p.get('prix') === 'payant') this.prix.set(p.get('prix') as 'gratuit' | 'payant');
+    if (p.get('prix') === 'gratuit' || p.get('prix') === 'payant') this.prix.set(p.get('prix') as FiltrePrix);
+    this.charger();
+  }
+
+  protected charger(): void {
+    this.etat.set('chargement');
+    this.service.findAll().subscribe({
+      next: (liste) => {
+        this.cours.set(liste);
+        this.etat.set('ok');
+        this.chargerFormateurs(liste);
+        this.chargerImages(liste);
+      },
+      error: (err) => {
+        this.snack.open(errorMessage(err, 'Impossible de charger le catalogue'), 'OK', { duration: 5000 });
+        this.etat.set('erreur');
+      },
+    });
+  }
+
+  private chargerFormateurs(liste: Cours[]): void {
+    for (const id of new Set(liste.map((c) => c.enseignantId))) {
+      this.formateurs.nom(id).subscribe((nom) => this.noms.update((n) => ({ ...n, [id]: nom })));
+    }
+  }
+
+  private chargerImages(liste: Cours[]): void {
+    for (const c of liste) {
+      this.images.url(c).subscribe((url) => this.imagesCours.update((m) => ({ ...m, [c.id]: url })));
+    }
   }
 
   protected readonly resultats = computed(() => {
     this.params();
     const q = this.q().trim().toLowerCase();
-    let l = COURS.filter((c) => meta(c.id).statut === 'PUBLIE');
-    if (q) l = l.filter((c) => (c.titre + ' ' + c.description + ' ' + c.motsCles.join(' ')).toLowerCase().includes(q));
-    if (this.domaines().length) l = l.filter((c) => this.domaines().includes(c.categorie));
-    if (this.niveauxChoisis().length) l = l.filter((c) => this.niveauxChoisis().includes(c.niveau));
-    const d = this.duree();
-    if (d) l = l.filter((c) => { const m = dureeTotale(c); return d === 'court' ? m < 120 : d === 'moyen' ? m >= 120 && m <= 180 : m > 180; });
-    if (this.noteMin()) l = l.filter((c) => meta(c.id).note >= this.noteMin());
-    if (this.prix()) l = l.filter((c) => (this.prix() === 'gratuit' ? c.prix === 0 : c.prix > 0));
-    const t = this.tri();
-    if (t === 'populaires') l = [...l].sort((a, b) => meta(b.id).inscrits - meta(a.id).inscrits);
-    if (t === 'note') l = [...l].sort((a, b) => meta(b.id).note - meta(a.id).note);
-    if (t === 'recents') l = [...l].sort((a, b) => b.id - a.id);
-    return l;
+    let l = this.cours();
+    if (q) l = l.filter((c) => (c.titre + ' ' + (c.description ?? '')).toLowerCase().includes(q));
+    if (this.domaines().length) l = l.filter((c) => !!c.categorie && this.domaines().includes(c.categorie));
+    if (this.niveauxChoisis().length) l = l.filter((c) => !!c.niveau && this.niveauxChoisis().includes(c.niveau));
+    if (this.prix()) l = l.filter((c) => (this.prix() === 'gratuit' ? !(c.prix > 0) : c.prix > 0));
+    if (this.tri() === 'titre') return [...l].sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+    return [...l].sort((a, b) => b.dateCreation.localeCompare(a.dateCreation));
   });
 
-  protected readonly pageCourante = computed(() => {
+  protected readonly pageCourante = computed<CourseTileData[]>(() => {
     const start = this.page() * this.parPage();
-    return this.resultats().slice(start, start + this.parPage()).map((c) => tuile(c, this.espace === 'etudiant' && c.inscrit));
+    return this.resultats().slice(start, start + this.parPage()).map((c) => ({
+      id: c.id,
+      titre: c.titre,
+      description: c.description ?? undefined,
+      categorie: libelleMatiere(c.categorie, c.categoriePrecision),
+      niveau: c.niveau ? LIBELLE_NIVEAU[c.niveau] : '',
+      enseignant: this.noms()[c.enseignantId] ?? FORMATEUR_DEFAUT,
+      image: this.imagesCours()[c.id] ?? IMAGE_DEFAUT,
+      prix: libellePrix(c.prix),
+      chapitres: c.nbChapitres,
+      duree: formatDuree(c.dureeTotaleMinutes) || undefined,
+    }));
   });
 
-  protected readonly nbFiltres = computed(() => this.domaines().length + this.niveauxChoisis().length + (this.duree() ? 1 : 0) + (this.noteMin() ? 1 : 0) + (this.prix() ? 1 : 0));
+  protected readonly nbFiltres = computed(() => this.domaines().length + this.niveauxChoisis().length + (this.prix() ? 1 : 0));
 
   protected basculer(liste: 'domaines' | 'niveauxChoisis', v: string): void {
     this[liste].update((l) => (l.includes(v) ? l.filter((x) => x !== v) : [...l, v]));
     this.page.set(0);
   }
   protected compte(nom: string): number {
-    return COURS.filter((c) => c.categorie === nom).length;
+    return this.cours().filter((c) => c.categorie === nom).length;
   }
   protected reinitialiser(): void {
     this.q.set('');
     this.domaines.set([]);
     this.niveauxChoisis.set([]);
-    this.duree.set('');
-    this.noteMin.set(0);
     this.prix.set('');
     this.page.set(0);
   }

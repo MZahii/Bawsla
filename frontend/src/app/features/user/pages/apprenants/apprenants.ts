@@ -1,74 +1,87 @@
-import { Component, computed, effect, signal, viewChild } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSort, MatSortModule } from '@angular/material/sort';
-import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 
-import { LIBELLE_PROFIL, NOTIONS } from '../../../../core/demo/demo-data';
-import { APPRENANTS, InscriptionApprenant, LIBELLE_RISQUE, Risque, coursDuFormateur } from '../../../../core/demo/demo-plus';
-import { AiBox, BwButton } from '../../../../shared';
-import { Avatar, BwChart, Kpi, PageHeader } from '../../../../shared/ui';
+import { errorMessage } from '../../../../shared/models/api-response.model';
+import { AiBox, EmptyState } from '../../../../shared';
+import { Avatar, Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
+import { ApprenantsFormateur, LigneApprenant, NiveauRisque } from '../../models/ia.model';
+import { AvatarService } from '../../services/avatar.service';
+import { IaUserService } from '../../services/ia-user.service';
+
+const LIBELLE: Record<NiveauRisque, string> = { faible: 'Suivi normal', moyen: 'À surveiller', eleve: 'Risque d’échec' };
 
 /**
- * Studio : les apprenants inscrits aux cours du formateur. Pas de classe ni de groupe : une ligne par
- * inscription (apprenant × cours), filtrable par cours, avec la date d'inscription, la progression,
- * la moyenne aux quiz et le risque d'abandon (prédit par le modèle du module User) pour ce cours.
- * Le risque n'est jamais montré à l'apprenant (DESIGN.md, section 8).
- * À brancher : UserService.apprenantsDuFormateur() (inscriptions de cours-service) et /api/ai/user/risque.
+ * Studio : les apprenants inscrits aux cours du formateur (GET /api/users/formateur/apprenants). Une ligne par
+ * inscription (apprenant × cours), avec le risque d'échec prédit par le Random Forest et ses raisons, quand les
+ * données de l'apprenant sont complètes. Le risque n'est jamais montré à l'apprenant (DESIGN.md).
+ * La liste des inscrits vient de cours-service (contrat 7) : tant qu'elle n'existe pas, la page l'explique.
  */
 @Component({
   selector: 'app-apprenants',
-  imports: [FormsModule, MatTableModule, MatSortModule, MatPaginatorModule, MatSelectModule, MatButtonToggleModule, MatIconModule, AiBox, BwButton, Avatar, BwChart, Kpi, PageHeader],
+  imports: [DatePipe, FormsModule, MatButtonToggleModule, MatIconModule, MatSelectModule, AiBox, EmptyState, Avatar, Kpi, PageHeader, Skeleton],
   templateUrl: './apprenants.html',
   styleUrl: './apprenants.scss',
 })
-export class Apprenants {
-  private readonly sort = viewChild(MatSort);
-  private readonly paginator = viewChild(MatPaginator);
+export class Apprenants implements OnInit {
+  private readonly api = inject(IaUserService);
+  private readonly avatars = inject(AvatarService);
+  protected readonly libelle = LIBELLE;
 
-  protected readonly colonnes = ['nom', 'cours', 'inscritLe', 'progression', 'moyenne', 'tendance', 'risque', 'activite'];
-  protected readonly libelle = LIBELLE_RISQUE;
-  protected readonly profil = LIBELLE_PROFIL;
-  protected readonly cours = coursDuFormateur().filter((c) => APPRENANTS.some((a) => a.coursId === c.id));
+  protected readonly donnees = signal<ApprenantsFormateur | null>(null);
+  protected readonly erreur = signal<string | null>(null);
+  protected readonly photos = signal<Record<number, string | undefined>>({});
   protected readonly coursChoisi = signal<number | null>(null);
-  protected readonly risque = signal<Risque | 'tous'>('tous');
+  protected readonly risque = signal<NiveauRisque | 'tous'>('tous');
   protected readonly q = signal('');
-  protected readonly source = new MatTableDataSource<InscriptionApprenant>(APPRENANTS);
-  protected readonly ouvert = signal<InscriptionApprenant | null>(null);
+  protected readonly ouvert = signal<LigneApprenant | null>(null);
 
-  protected readonly compte = (r: Risque) => APPRENANTS.filter((e) => e.risque === r).length;
-  protected readonly moyenne = Math.round(APPRENANTS.reduce((t, e) => t + e.moyenne, 0) / APPRENANTS.length);
-  protected readonly certifies = APPRENANTS.filter((e) => e.certifie).length;
-
-  protected readonly detail = computed(() => {
-    const e = this.ouvert();
-    if (!e) return null;
-    return {
-      courbe: { labels: ['S34', 'S35', 'S36', 'S37', 'S38', 'S39'], series: [{ label: 'Score moyen', data: e.tendance }] },
-      notions: NOTIONS.slice(0, 5).map((n, i) => ({ nom: n.nom, valeur: Math.max(15, Math.min(98, e.moyenne + ((i * 23) % 40) - 20)) })),
-    };
+  protected readonly lignes = computed(() => {
+    const c = this.coursChoisi();
+    const r = this.risque();
+    const q = this.q().trim().toLowerCase();
+    return (this.donnees()?.lignes ?? []).filter((l) =>
+      (!c || l.coursId === c) && (r === 'tous' || l.risque?.niveau === r) && this.nom(l).toLowerCase().includes(q));
+  });
+  protected readonly nbApprenants = computed(() => new Set((this.donnees()?.lignes ?? []).map((l) => l.etudiantId)).size);
+  protected readonly nbRisqueEleve = computed(() =>
+    new Set((this.donnees()?.lignes ?? []).filter((l) => l.risque?.niveau === 'eleve').map((l) => l.etudiantId)).size);
+  protected readonly progressionMoyenne = computed(() => {
+    const p = (this.donnees()?.lignes ?? []).map((l) => l.progression).filter((x): x is number => x !== undefined);
+    return p.length ? `${Math.round((p.reduce((a, b) => a + b, 0) / p.length) * 100)} %` : '—';
   });
 
-  constructor() {
-    effect(() => {
-      const c = this.coursChoisi();
-      const r = this.risque();
-      const q = this.q().toLowerCase();
-      this.source.data = APPRENANTS.filter((e) => (!c || e.coursId === c) && (r === 'tous' || e.risque === r) && e.nom.toLowerCase().includes(q));
-      const s = this.sort();
-      const p = this.paginator();
-      if (s) this.source.sort = s;
-      if (p) this.source.paginator = p;
+  ngOnInit(): void {
+    this.charger();
+  }
+
+  protected charger(): void {
+    this.erreur.set(null);
+    this.donnees.set(null);
+    this.api.apprenantsDuFormateur().subscribe({
+      next: (d) => {
+        this.donnees.set(d);
+        for (const l of d.lignes) {
+          this.avatars.url(l.etudiantId, l.avatarVersion).subscribe((url) => this.photos.update((p) => ({ ...p, [l.etudiantId]: url })));
+        }
+      },
+      error: (err) => this.erreur.set(errorMessage(err, 'La liste des apprenants est indisponible')),
     });
   }
 
-  /** Points d'une mini-courbe SVG (80 × 24) à partir des scores. */
-  protected sparkline(v: number[]): string {
-    const min = Math.min(...v);
-    const max = Math.max(...v);
-    return v.map((x, i) => `${(i / (v.length - 1)) * 80},${22 - ((x - min) / (max - min || 1)) * 20}`).join(' ');
+  protected nom(l: LigneApprenant): string {
+    return `${l.prenom} ${l.nom}`.trim();
+  }
+
+  /** 95 min -> « 1,6 h » (format français ; l'application n'a pas de LOCALE_ID français). */
+  protected heures(minutes: number | undefined): string {
+    return minutes === undefined ? '—' : `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(minutes / 60)} h`;
+  }
+
+  protected pct(x: number | undefined): string {
+    return x === undefined ? '—' : `${Math.round(x * 100)} %`;
   }
 }

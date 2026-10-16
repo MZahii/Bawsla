@@ -1,0 +1,291 @@
+package tn.esprit.bawsla.cours;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
+import tn.esprit.bawsla.cours.client.AudioIaRequestDto;
+import tn.esprit.bawsla.cours.client.FicheIaDto;
+import tn.esprit.bawsla.cours.client.FicheIaRequestDto;
+import tn.esprit.bawsla.cours.client.FideliteIaDto;
+import tn.esprit.bawsla.cours.client.FideliteIaRequestDto;
+import tn.esprit.bawsla.cours.client.NotionIaDto;
+import tn.esprit.bawsla.cours.common.exception.BadRequestException;
+import tn.esprit.bawsla.cours.common.exception.ServiceUnavailableException;
+import tn.esprit.bawsla.cours.common.exception.UnauthorizedException;
+import tn.esprit.bawsla.cours.entity.Niveau;
+import tn.esprit.bawsla.cours.service.IaGateway;
+import tn.esprit.bawsla.cours.service.IaGateway.AudioIa;
+
+/**
+ * Le VRAI client Feign de l'IA contre un faux serveur HTTP local (qui joue la gateway) : décodage de l'enveloppe
+ * ApiResponse, octets du MP3, transmission du Authorization et traduction des erreurs en exceptions du module.
+ */
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:cours_ia_client;MODE=MySQL;DB_CLOSE_DELAY=-1")
+@ActiveProfiles("test")
+class IaClientTest {
+
+    private static final HttpServer SERVEUR = demarrerServeur();
+    private static final byte[] MP3 = {'I', 'D', '3', 1, 2, 3, (byte) 0xFF, (byte) 0xFB};
+
+    /** chemin -> [statut, type, corps] programmés par chaque test. */
+    private static final Map<String, Object[]> REPONSES = new ConcurrentHashMap<>();
+    private static final List<String> AUTORISATIONS = new CopyOnWriteArrayList<>();
+    private static final List<String> CORPS_RECUS = new CopyOnWriteArrayList<>();
+
+    /** Valeur de l'en-tête X-TTS-Fournisseur renvoyée par le faux serveur sur la route audio ("" : pas d'en-tête). */
+    private static final java.util.concurrent.atomic.AtomicReference<String> FOURNISSEUR = new java.util.concurrent.atomic.AtomicReference<>("gtts");
+
+    /** Chemins pour lesquels le faux serveur attend 3 s avant de répondre. */
+    private static final List<String> LENT = new CopyOnWriteArrayList<>();
+
+    @Autowired IaGateway ia;
+
+    @DynamicPropertySource
+    static void proprietes(DynamicPropertyRegistry registry) {
+        registry.add("cours.ia.gateway-url", () -> "http://localhost:" + SERVEUR.getAddress().getPort());
+        registry.add("cours.stockage.dossier", () -> System.getProperty("java.io.tmpdir") + "/bawsla-ia-client-test");
+        registry.add("cours.ia.delai-controle-secondes", () -> "1");
+    }
+
+    @BeforeEach
+    void reinitialiser() {
+        REPONSES.clear();
+        AUTORISATIONS.clear();
+        CORPS_RECUS.clear();
+        LENT.clear();
+        FOURNISSEUR.set("gtts");
+    }
+
+    @AfterAll
+    static void arreter() {
+        SERVEUR.stop(0);
+    }
+
+    @Test
+    void ficheDecodeeEtAuthorizationTransmis() {
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {200, "application/json", """
+                {"success":true,"data":{"resume":"Résumé","motsCles":["SQL"],"notions":[{"titre":"JOIN","definition":"d","extraitSource":"e","justifiee":false}],
+                 "niveau":"DEBUTANT","scoreFidelite":64,"alertes":["a1"],"versionPrompt":"v3","modele":"gemini-x","champInconnu":1},
+                 "timestamp":"2026-10-11T16:48:07.164710Z"}"""});
+
+        FicheIaDto fiche = ia.fiche("Bearer jeton-xyz", new FicheIaRequestDto(5L, "Texte du cours", Niveau.DEBUTANT));
+
+        assertThat(fiche.resume()).isEqualTo("Résumé");
+        assertThat(fiche.scoreFidelite()).isEqualTo(64);
+        assertThat(fiche.niveau()).isEqualTo(Niveau.DEBUTANT);
+        assertThat(fiche.notions()).containsExactly(new NotionIaDto("JOIN", "d", "e", false));
+        assertThat(AUTORISATIONS).containsExactly("Bearer jeton-xyz");
+        assertThat(CORPS_RECUS.get(0)).contains("\"coursId\":5").contains("\"texte\":\"Texte du cours\"").contains("\"niveau\":\"DEBUTANT\"");
+    }
+
+    @Test
+    void fideliteDecodee() {
+        REPONSES.put("/api/ai/cours/fidelite", new Object[] {200, "application/json",
+                "{\"success\":true,\"data\":{\"scoreFidelite\":88,\"alertes\":[],\"notions\":[{\"titre\":\"JOIN\",\"justifiee\":true}]}}"});
+        FideliteIaDto f = ia.fidelite("Bearer t", new FideliteIaRequestDto(
+                new FideliteIaRequestDto.Fiche("r", List.of("m"), List.of(new NotionIaDto("JOIN", "d", "e"))), "texte"));
+        assertThat(f.scoreFidelite()).isEqualTo(88);
+        assertThat(f.notions()).containsExactly(new FideliteIaDto.NotionJustifieeDto("JOIN", true));
+        assertThat(CORPS_RECUS.get(0)).contains("\"fiche\":{").contains("\"motsCles\":[\"m\"]");
+    }
+
+    @Test
+    void audioRecuEnOctetsAvecSonTypeEtSonFournisseur() {
+        REPONSES.put("/api/ai/cours/audio", new Object[] {200, "audio/mpeg", MP3});
+        AudioIa son = ia.audio("Bearer t", new AudioIaRequestDto("Bonjour", "en"));
+        assertThat(son.octets()).isEqualTo(MP3);
+        assertThat(son.mime()).isEqualTo("audio/mpeg");
+        assertThat(son.fournisseur()).isEqualTo("gtts");
+        assertThat(CORPS_RECUS.get(0)).contains("\"texte\":\"Bonjour\"").contains("\"langue\":\"en\"");
+    }
+
+    @Test
+    void audioWavEtAbsenceDEnTeteFournisseur() {
+        REPONSES.put("/api/ai/cours/audio", new Object[] {200, "audio/wav", MP3});
+        FOURNISSEUR.set("");
+        AudioIa son = ia.audio("Bearer t", new AudioIaRequestDto("Bonjour"));
+        assertThat(son.mime()).isEqualTo("audio/wav");
+        assertThat(son.fournisseur()).isNull();
+        assertThat(CORPS_RECUS.get(0)).contains("\"langue\":\"fr\""); // français par défaut
+    }
+
+    @Test
+    void erreur400DeLIADevientUneBadRequest() {
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {400, "application/json",
+                "{\"success\":false,\"status\":400,\"error\":\"BAD_REQUEST\",\"message\":\"Données invalides\"}"});
+        assertThatThrownBy(() -> ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.AVANCE)))
+                .isInstanceOf(BadRequestException.class).hasMessage("Données invalides");
+    }
+
+    @Test
+    void quotaEtPannesDeLIADeviennentDesServiceUnavailable() {
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {429, "application/json",
+                "{\"success\":false,\"status\":429,\"error\":\"LLM_QUOTA_EXCEEDED\",\"message\":\"Quota du fournisseur LLM atteint, réessaie plus tard\"}"});
+        assertThatThrownBy(() -> ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.AVANCE)))
+                .isInstanceOf(ServiceUnavailableException.class).hasMessageContaining("Quota");
+
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {504, "application/json",
+                "{\"success\":false,\"status\":504,\"error\":\"LLM_TIMEOUT\",\"message\":\"Le fournisseur LLM n'a pas répondu à temps\"}"});
+        assertThatThrownBy(() -> ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.AVANCE)))
+                .isInstanceOf(ServiceUnavailableException.class).hasMessageContaining("pas répondu");
+
+        REPONSES.put("/api/ai/cours/audio", new Object[] {503, "text/html", "<html>Bad gateway</html>"});
+        assertThatThrownBy(() -> ia.audio("Bearer t", new AudioIaRequestDto("x")))
+                .isInstanceOf(ServiceUnavailableException.class).hasMessageContaining("indisponible");
+    }
+
+    @Test
+    void sessionRefuseeParLaGateway() {
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {401, "application/json",
+                "{\"success\":false,\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Token expiré\"}"});
+        assertThatThrownBy(() -> ia.fiche("Bearer vieux", new FicheIaRequestDto(1L, "x", Niveau.AVANCE)))
+                .isInstanceOf(ServiceUnavailableException.class).hasMessageContaining("Reconnecte-toi");
+    }
+
+    @Test
+    void reponseVideOuIllisible() {
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {200, "application/json", "{\"success\":true}"});
+        assertThatThrownBy(() -> ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.AVANCE)))
+                .isInstanceOf(ServiceUnavailableException.class);
+        REPONSES.put("/api/ai/cours/audio", new Object[] {200, "audio/mpeg", new byte[0]});
+        assertThatThrownBy(() -> ia.audio("Bearer t", new AudioIaRequestDto("x"))).isInstanceOf(ServiceUnavailableException.class);
+    }
+
+    @Test
+    void audioExplicationDe8MoEnBase64EstDecodeSansLimiteDeTaille() {
+        // ~8 Mo d'audio => ~11 Mo de base64 dans une seule chaîne JSON.
+        byte[] audio = new byte[8 * 1024 * 1024];
+        java.util.Arrays.fill(audio, (byte) 7);
+        REPONSES.put("/api/ai/cours/explication/audio", new Object[] {200, "application/json", enveloppeAudio(audio)});
+
+        var reponse = ia.audioExplication("Bearer t", new tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto(List.of(), "fr", "monologue"));
+
+        assertThat(java.util.Base64.getDecoder().decode(reponse.audioBase64())).hasSize(audio.length);
+        assertThat(reponse.minutageEstime()).isTrue();
+        assertThat(reponse.segments()).hasSize(1);
+    }
+
+    @Test
+    void audioExplicationAuDelaDeLaLimiteJacksonParDefautEstAccepte() {
+        // 18 Mo d'audio => 24 millions de caractères : au-dessus des 20 M de Jackson par défaut (relevée à 64 M par JacksonConfig).
+        byte[] audio = new byte[18 * 1024 * 1024];
+        REPONSES.put("/api/ai/cours/explication/audio", new Object[] {200, "application/json", enveloppeAudio(audio)});
+        var reponse = ia.audioExplication("Bearer t", new tn.esprit.bawsla.cours.client.AudioExplicationIaRequestDto(List.of(), "fr", "monologue"));
+        assertThat(reponse.audioBase64().length()).isGreaterThan(20_000_000);
+    }
+
+    @Test
+    void chaqueAppelDeLExplicationADonSproprDelaiDeLecture() {
+        // Le contrôle de fidélité n'a que 1 s dans ce test ; le faux serveur met 3 s à répondre.
+        REPONSES.put("/api/ai/cours/fidelite", new Object[] {200, "application/json", "{\"success\":true,\"data\":{\"scoreFidelite\":1}}"});
+        REPONSES.put("/api/ai/cours/explication/fidelite", new Object[] {200, "application/json", "{\"success\":true,\"data\":{\"scoreFidelite\":1}}"});
+        LENT.add("/api/ai/cours/explication/fidelite");
+        var demande = new tn.esprit.bawsla.cours.client.FideliteExplicationIaRequestDto(List.of(), List.of(), List.of());
+        assertThatThrownBy(() -> ia.fideliteExplication("Bearer t", demande)).isInstanceOf(ServiceUnavailableException.class);
+        // Et le délai court de ce seul appel n'affecte pas les autres : la fiche (délai par défaut) répond bien.
+        REPONSES.put("/api/ai/cours/fiche", new Object[] {200, "application/json",
+                "{\"success\":true,\"data\":{\"resume\":\"R\",\"motsCles\":[],\"notions\":[],\"niveau\":\"DEBUTANT\",\"scoreFidelite\":1}}"});
+        assertThat(ia.fiche("Bearer t", new FicheIaRequestDto(1L, "x", Niveau.DEBUTANT)).resume()).isEqualTo("R");
+    }
+
+    @Test
+    void imageDe3MoEnvoyeeEtTexteLuDecode() {
+        byte[] image = new byte[3 * 1024 * 1024];
+        java.util.Arrays.fill(image, (byte) 5);
+        REPONSES.put("/api/ai/cours/vision", new Object[] {200, "application/json",
+                "{\"success\":true,\"data\":{\"texte\":\"Limites et dérivées\",\"vide\":false,\"modele\":\"gemini-x\",\"fournisseur\":\"gemini\",\"versionPrompt\":\"vision_v1\",\"inconnu\":1}}"});
+
+        var lu = ia.vision("Bearer jeton-xyz", new tn.esprit.bawsla.cours.client.VisionIaRequestDto(
+                7L, 2, java.util.Base64.getEncoder().encodeToString(image), "image/png"));
+
+        assertThat(lu.texte()).isEqualTo("Limites et dérivées");
+        assertThat(lu.vide()).isFalse();
+        assertThat(lu.fournisseur()).isEqualTo("gemini");
+        assertThat(CORPS_RECUS.get(0).length()).isGreaterThan(4_000_000); // ~4 Mo de base64 passent sans limite de taille
+        assertThat(CORPS_RECUS.get(0)).contains("\"coursId\":7").contains("\"numero\":2").contains("\"mime\":\"image/png\"");
+        assertThat(AUTORISATIONS).containsExactly("Bearer jeton-xyz");
+    }
+
+    @Test
+    void visionEnQuotaDonneLeMessageClairDeLIA() {
+        REPONSES.put("/api/ai/cours/vision", new Object[] {503, "application/json",
+                "{\"success\":false,\"status\":503,\"error\":\"VISION_INDISPONIBLE\",\"message\":\"Lecture des images indisponible pour le moment, réessaie plus tard\"}"});
+        assertThatThrownBy(() -> ia.vision("Bearer t", new tn.esprit.bawsla.cours.client.VisionIaRequestDto(1L, 1, "AAAA", "image/png")))
+                .isInstanceOf(ServiceUnavailableException.class)
+                .hasMessage("Lecture des images indisponible pour le moment, réessaie plus tard");
+    }
+
+    private static String enveloppeAudio(byte[] audio) {
+        return "{\"success\":true,\"data\":{\"fournisseur\":\"gemini\",\"mime\":\"audio/mpeg\",\"audioBase64\":\""
+                + java.util.Base64.getEncoder().encodeToString(audio)
+                + "\",\"dureeMs\":1000,\"minutageEstime\":true,\"segments\":[{\"ordre\":1,\"debutMs\":0,\"finMs\":900}]}}";
+    }
+
+    @Test
+    void sansAuthorizationOnNAppellePasLIA() {
+        assertThatThrownBy(() -> ia.fiche(" ", new FicheIaRequestDto(1L, "x", Niveau.AVANCE))).isInstanceOf(UnauthorizedException.class);
+        assertThat(AUTORISATIONS).isEmpty();
+    }
+
+    // ------------------------------------------------------------------ faux serveur
+
+    private static HttpServer demarrerServeur() {
+        try {
+            HttpServer serveur = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+            serveur.createContext("/", IaClientTest::repondre);
+            serveur.start();
+            return serveur;
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void repondre(HttpExchange echange) throws IOException {
+        String autorisation = echange.getRequestHeaders().getFirst("Authorization");
+        if (autorisation != null) {
+            AUTORISATIONS.add(autorisation);
+        }
+        CORPS_RECUS.add(new String(echange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        if (LENT.contains(echange.getRequestURI().getPath())) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        Object[] reponse = REPONSES.get(echange.getRequestURI().getPath());
+        int statut = reponse == null ? 404 : (int) reponse[0];
+        String type = reponse == null ? "application/json" : (String) reponse[1];
+        byte[] corps = reponse == null ? new byte[0]
+                : reponse[2] instanceof byte[] octets ? octets : ((String) reponse[2]).getBytes(StandardCharsets.UTF_8);
+        echange.getResponseHeaders().set("Content-Type", type);
+        if (echange.getRequestURI().getPath().endsWith("/audio") && !FOURNISSEUR.get().isEmpty()) {
+            echange.getResponseHeaders().set("X-TTS-Fournisseur", FOURNISSEUR.get());
+        }
+        echange.sendResponseHeaders(statut, corps.length == 0 ? -1 : corps.length);
+        if (corps.length > 0) {
+            echange.getResponseBody().write(corps);
+        }
+        echange.close();
+    }
+}

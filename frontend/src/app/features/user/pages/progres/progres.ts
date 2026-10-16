@@ -1,46 +1,65 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { CAP_IA, COURS, NOTIONS, PROFIL_APPRENTISSAGE, coursParId, notionParId } from '../../../../core/demo/demo-data';
-import { ACTIVITE_JOURS, ACTIVITE_SEMAINES, BADGES, CERTIFICATS, OBJECTIF_SEMAINE, meta } from '../../../../core/demo/demo-plus';
-import { AiBox, BwButton, CompassRose, LIBELLE_MAITRISE, niveauMaitrise } from '../../../../shared';
-import { BwChart, Heatmap, Kpi, PageHeader, ProgressRing } from '../../../../shared/ui';
+import { errorMessage } from '../../../../shared/models/api-response.model';
+import { AiBox, BwButton, EmptyState } from '../../../../shared';
+import { Kpi, PageHeader, Skeleton } from '../../../../shared/ui';
+import { IaApprenant, StatutSource } from '../../models/ia.model';
+import { IaUserService } from '../../services/ia-user.service';
+
+/** Sources de données présentées à l'apprenant, en mots simples (clés de IndicateursResponse.sources). */
+/** `sinon` : clé dont reprendre le statut quand la source est absente (temps passé, lu avec les inscriptions). */
+const SOURCES: { cle: string; titre: string; icone: string; sinon?: string }[] = [
+  { cle: 'tentatives', titre: 'Tes résultats aux quiz', icone: 'quiz' },
+  { cle: 'notionsRatees', titre: 'Les notions à revoir', icone: 'psychology' },
+  { cle: 'inscriptions', titre: 'Ta progression dans les cours', icone: 'menu_book' },
+  { cle: 'tempsPasse', titre: 'Ton temps passé dans les cours', icone: 'schedule', sinon: 'inscriptions' },
+  { cle: 'activite', titre: 'Ton activité sur Bawsla', icone: 'calendar_month' },
+];
 
 /**
- * Espace étudiant : ma progression. Rose des notions (maîtrise par notion et cap conseillé par l'IA),
- * activité hebdomadaire, carte d'activité, badges et attestations.
- * À brancher : UserService.progression() et /api/ai/user/recommandation.
+ * Espace apprenant : ma progression, branchée sur le Machine Learning du module User (GET /api/users/me/ia).
+ * Cours recommandés (filtrage collaboratif), profil d'apprentissage (K-Means) et indicateurs. Le profil n'est
+ * calculé qu'avec des données complètes ; la page dit ce qui manque encore. Le risque d'échec n'y apparaît jamais.
  */
 @Component({
   selector: 'app-progres',
-  imports: [RouterLink, MatIconModule, AiBox, BwButton, CompassRose, BwChart, Heatmap, Kpi, PageHeader, ProgressRing],
+  imports: [RouterLink, MatIconModule, AiBox, BwButton, EmptyState, Kpi, PageHeader, Skeleton],
   templateUrl: './progres.html',
   styleUrl: './progres.scss',
 })
-export class Progres {
-  protected readonly notions = [...NOTIONS].sort((a, b) => a.maitrise - b.maitrise);
-  protected readonly cap = CAP_IA;
-  protected readonly capNotion = notionParId(CAP_IA.notionId);
-  protected readonly profil = PROFIL_APPRENTISSAGE;
-  protected readonly objectif = OBJECTIF_SEMAINE;
-  protected readonly objectifPct = Math.round((OBJECTIF_SEMAINE.fait / OBJECTIF_SEMAINE.cible) * 100);
-  protected readonly jours = ACTIVITE_JOURS;
-  protected readonly badges = BADGES;
-  protected readonly certificats = CERTIFICATS.map((c) => ({ ...c, cours: coursParId(c.coursId)!, image: meta(c.coursId).image }));
-  protected readonly coursSuivis = COURS.filter((c) => c.progression > 0);
-  protected readonly niveau = niveauMaitrise;
-  protected readonly libelle = LIBELLE_MAITRISE;
+export class Progres implements OnInit {
+  private readonly api = inject(IaUserService);
 
-  protected readonly activite = {
-    labels: ACTIVITE_SEMAINES.labels,
-    series: [{ label: 'Minutes d’étude', data: ACTIVITE_SEMAINES.minutes }],
-  };
-  protected readonly radar = {
-    labels: NOTIONS.map((n) => n.nom),
-    series: [
-      { label: 'Toi', data: NOTIONS.map((n) => n.maitrise) },
-      { label: 'Autres apprenants', data: NOTIONS.map((n, i) => Math.round(55 + ((i * 17) % 30))) },
-    ],
-  };
+  protected readonly ia = signal<IaApprenant | null>(null);
+  protected readonly erreur = signal<string | null>(null);
+
+  protected readonly sources = computed(() => {
+    const s = this.ia()?.sources ?? {};
+    return SOURCES.map((x) => ({ ...x, statut: s[x.cle]?.statut ?? (x.sinon ? s[x.sinon]?.statut : undefined) ?? ('INDISPONIBLE' as StatutSource) }));
+  });
+
+  ngOnInit(): void {
+    this.charger();
+  }
+
+  protected charger(): void {
+    this.erreur.set(null);
+    this.ia.set(null);
+    this.api.monIa().subscribe({
+      next: (r) => this.ia.set(r),
+      error: (err) => this.erreur.set(errorMessage(err, 'Ta progression est indisponible pour le moment')),
+    });
+  }
+
+  /** Valeur d'un indicateur, ou « — » si sa source n'est pas encore disponible. */
+  protected valeur(x: number | undefined, format: 'pct' | 'nombre' = 'nombre'): string {
+    if (x === undefined || x === null) return '—';
+    return format === 'pct' ? `${Math.round(x * 100)} %` : String(x);
+  }
+
+  protected pris(statut: StatutSource): boolean {
+    return statut === 'DISPONIBLE';
+  }
 }

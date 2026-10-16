@@ -1,83 +1,68 @@
-<bw-page-header title="Ma progression" subtitle="Où tu en es, notion par notion, et ce que l’IA te conseille de travailler." />
+<bw-page-header title="Ma progression" subtitle="Où tu en es, et les cours que ta boussole te conseille." />
 
-<div class="grid-4">
-  <bw-kpi label="Série en cours" [value]="profil.serie + ' jours'" icon="local_fire_department" />
-  <bw-kpi label="Temps d’étude cette semaine" value="3 h 25" icon="schedule" [delta]="12" deltaLabel="vs semaine dernière" [trend]="activite.series[0].data" />
-  <bw-kpi label="Chapitres terminés" value="17" icon="task_alt" [delta]="4" deltaLabel="ce mois" />
-  <bw-kpi label="Moyenne aux quiz" value="71 %" icon="percent" />
-</div>
+@if (erreur()) {
+  <section class="card"><bw-empty-state icon="cloud_off" title="Progression indisponible" [message]="erreur()!" actionLabel="Réessayer" (action)="charger()" /></section>
+} @else if (!ia()) {
+  <div class="grid-4" aria-busy="true" aria-label="Chargement de ta progression">
+    @for (i of [1, 2, 3, 4]; track i) { <bw-skeleton height="110px" /> }
+  </div>
+  <bw-skeleton class="mt" height="220px" />
+} @else {
+  @let r = ia()!;
+  @let i = r.indicateurs ?? {};
 
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head"><h2>Rose des notions</h2><span class="sub">Longueur d’une branche = maîtrise</span></div>
-    <div class="rose-wrap card-body">
-      <bw-compass-rose class="rose" [notions]="notions" [cap]="cap.notionId" />
-      <ul class="legend">
-        @for (n of notions; track n.id) {
-          <li>
-            <span class="nm">{{ n.nom }} @if (n.id === cap.notionId) { <mat-icon class="cap" aria-label="Cap conseillé">navigation</mat-icon> }</span>
-            <span class="bar-cell"><span class="bar"><span [style.width.%]="n.maitrise" [class]="niveau(n.maitrise)"></span></span><span class="num small">{{ n.maitrise }} %</span></span>
-            <span class="pill" [class.ok]="niveau(n.maitrise) === 'maitrisee'" [class.warn]="niveau(n.maitrise) === 'en-cours'" [class.ko]="niveau(n.maitrise) === 'a-revoir'">{{ libelle[niveau(n.maitrise)] }}</span>
-          </li>
-        }
-      </ul>
-    </div>
-  </section>
+  <div class="grid-4">
+    <bw-kpi label="Jours actifs (30 derniers)" [value]="valeur(i.joursActifs30j)" icon="local_fire_department" />
+    <bw-kpi label="Moyenne aux quiz" [value]="valeur(i.noteMoyenne, 'pct')" icon="percent" />
+    <bw-kpi label="Cours suivis" [value]="valeur(i.nbCoursSuivis)" icon="menu_book" />
+    <bw-kpi label="Notions à revoir" [value]="valeur(i.nbNotionsRatees)" icon="psychology" />
+  </div>
 
-  <div class="stack">
-    <bw-ai-box heading="Ton cap cette semaine">
-      <p><strong>{{ capNotion?.nom }}</strong> : {{ cap.raison }}</p>
-      <a bwButton="ia" routerLink="/app/cours/1/lecture">Reprendre le chapitre</a>
-      <span bwAiSource>Calculé à partir de tes 4 derniers quiz</span>
+  <div class="grid-main mt">
+    <bw-ai-box heading="Cours recommandés pour toi">
+      @if (r.recommandations?.length) {
+        <ul class="recos">
+          @for (c of r.recommandations; track c.coursId) {
+            <li>
+              <div>
+                <strong dir="auto">{{ c.titre }}</strong>
+                <span class="small muted">{{ c.raison }}</span>
+              </div>
+              <a bwButton="fantome" [routerLink]="['/app/explorer', c.coursId]" [attr.aria-label]="'Voir le cours ' + c.titre">Voir</a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">{{ r.recommandationsIndisponibles ?? 'Aucune recommandation pour l’instant.' }}</p>
+      }
+      <span bwAiSource>
+        Selon tes domaines d’intérêt, tes cours et les apprenants au profil proche du tien.
+        @if (r.donneesSimulees) { Modèle encore entraîné sur des données simulées. }
+      </span>
     </bw-ai-box>
-    <section class="card card-pad goal">
-      <bw-progress-ring [value]="objectifPct" [size]="88" label="Objectif hebdomadaire" />
-      <div>
-        <h3>Objectif de la semaine</h3>
-        <p class="muted small">{{ objectif.fait }} min sur {{ objectif.cible }} min. Encore {{ objectif.cible - objectif.fait }} min pour l’atteindre.</p>
-      </div>
-    </section>
-    <section class="card card-pad">
-      <h3 class="h">Ton profil : {{ profil.libelle }}</h3>
-      <p class="muted small" style="margin: 0">{{ profil.description }}</p>
+
+    <section class="card card-pad profil">
+      <h2 class="h">Ton profil d’apprentissage</h2>
+      @if (r.profil; as p) {
+        <p class="nom"><mat-icon aria-hidden="true">explore</mat-icon> {{ p.nom }}</p>
+        <p class="muted small">{{ p.description }}</p>
+      } @else {
+        <p class="muted small">{{ r.profilIndisponible }}</p>
+      }
+      <a bwButton="secondaire" routerLink="/app/profil">Mettre à jour mes centres d’intérêt</a>
     </section>
   </div>
-</div>
 
-<div class="grid-2 mt">
-  <section class="card">
-    <div class="card-head"><h2>Temps d’étude</h2><span class="sub">8 dernières semaines, en minutes</span></div>
-    <div class="card-body"><bw-chart type="area" [labels]="activite.labels" [series]="activite.series" unit="min" [height]="240" ariaLabel="Minutes d’étude par semaine" /></div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Toi et les autres apprenants</h2><span class="sub">Maîtrise par notion</span></div>
-    <div class="card-body"><bw-chart type="radar" [labels]="radar.labels" [series]="radar.series" [max]="100" [height]="240" ariaLabel="Maîtrise par notion comparée aux autres apprenants de tes cours" /></div>
-  </section>
-</div>
-
-<section class="card mt">
-  <div class="card-head"><h2>Activité</h2><span class="sub">18 dernières semaines</span></div>
-  <div class="card-body"><bw-heatmap [values]="jours" /></div>
-</section>
-
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head"><h2>Badges</h2><span class="sub">{{ 4 }} obtenus sur {{ badges.length }}</span></div>
-    <ul class="badges card-body">
-      @for (b of badges; track b.titre) {
-        <li [class.off]="!b.obtenu"><span class="medal"><mat-icon>{{ b.obtenu ? b.icone : 'lock' }}</mat-icon></span><span class="small">{{ b.titre }}</span></li>
+  <section class="card mt">
+    <div class="card-head"><div><h2>Ce que ta boussole prend en compte</h2><span class="sub">Tes données restent sur Bawsla : l’IA ne reçoit que des chiffres, jamais ton nom ni ton email.</span></div></div>
+    <ul class="sources card-body">
+      @for (s of sources(); track s.cle) {
+        <li>
+          <mat-icon aria-hidden="true">{{ s.icone }}</mat-icon>
+          <span>{{ s.titre }}</span>
+          @if (pris(s.statut)) { <span class="pill ok">Pris en compte</span> } @else { <span class="pill">Bientôt disponible</span> }
+        </li>
       }
     </ul>
   </section>
-  <section class="card">
-    <div class="card-head"><h2>Certificats</h2><a routerLink="/app/certificats" class="lnk small">Tous</a></div>
-    @for (c of certificats; track c.numero) {
-      <div class="cert card-body">
-        <img [src]="c.image" alt="" />
-        <div><strong>{{ c.cours.titre }}</strong><p class="muted small">Obtenu le {{ c.date }}, n° {{ c.numero }}</p></div>
-        <a class="icon-btn" [routerLink]="['/app/certificats', c.numero]" aria-label="Voir le certificat"><mat-icon>open_in_new</mat-icon></a>
-      </div>
-    }
-    <p class="card-body muted small">Termine un cours et réussis son examen final pour obtenir un certificat.</p>
-  </section>
-</div>
+}

@@ -18,8 +18,8 @@ type Choix = RegisterRequest['role'];
  * - Apprenant : compte créé, puis questionnaire d'accueil facultatif (/demarrer).
  * - Formateur : on demande en plus le domaine d'expertise et une courte présentation ; le profil
  *   est validé par l'admin avant la première publication (Admin → Demandes formateurs).
- * À brancher : expertise, bio et lien ne font pas encore partie de RegisterRequest. Les ajouter au DTO
- * (user-service, CONTRATS_API.md) ou les envoyer ensuite par POST /api/users/me/demande-formateur.
+ * Expertise, présentation et lien partent avec l'inscription : user-service crée la demande formateur,
+ * traitée dans Admin → Demandes formateurs, et son statut s'affiche dans « Mon compte ».
  */
 @Component({
   selector: 'app-register',
@@ -69,8 +69,9 @@ export class Register {
     }
     this.loading.set(true);
     this.error.set(null);
-    const { prenom, nom, email, motDePasse } = this.form.getRawValue();
-    this.auth.register({ prenom, nom, email, motDePasse, role: this.choix() }).subscribe({
+    const { prenom, nom, email, motDePasse, expertise, bio, lien } = this.form.getRawValue();
+    const profilFormateur = this.formateur() ? { expertise, presentation: bio, lien } : {};
+    this.auth.register({ prenom, nom, email, motDePasse, role: this.choix(), ...profilFormateur }).subscribe({
       next: () => {
         if (this.formateur()) {
           try {

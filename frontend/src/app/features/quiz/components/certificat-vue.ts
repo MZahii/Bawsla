@@ -1,17 +1,18 @@
-import { Component, computed, input } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { coursParId } from '../../../core/demo/demo-data';
-import { Certificat } from '../../../core/demo/demo-plus';
 import { Logo } from '../../../shared';
+import { Certificat } from '../models/quiz.model';
 
 /**
  * Rendu d'un certificat (page de l'apprenant, vérification publique, impression en PDF).
- * Couleurs du thème uniquement ; la bordure dorée reprend la boussole du logo.
+ * Le nom du titulaire n'est fourni que sur la page de l'apprenant connecté : la vérification publique
+ * ne renvoie aucune donnée personnelle. Couleurs du thème uniquement ; la bordure dorée reprend la boussole du logo.
  */
 @Component({
   selector: 'app-certificat-vue',
-  imports: [MatIconModule, Logo],
+  imports: [DatePipe, MatIconModule, Logo],
   template: `
     <article class="cert" aria-label="Certificat de réussite">
       <header>
@@ -19,19 +20,22 @@ import { Logo } from '../../../shared';
         <span class="num">N° {{ certificat().numero }}</span>
       </header>
       <p class="kind">Certificat de réussite</p>
-      <p class="intro">Ce certificat atteste que</p>
-      <p class="name">{{ certificat().titulaire }}</p>
-      <p class="intro">a suivi l’intégralité du cours et réussi son examen final</p>
-      <p class="course">{{ titre() }}</p>
+      @if (titulaire(); as nom) {
+        <p class="intro">Ce certificat atteste que</p>
+        <p class="name">{{ nom }}</p>
+        <p class="intro">a réussi l’examen final du cours</p>
+      } @else {
+        <p class="intro">Ce certificat atteste la réussite de l’examen final du cours</p>
+      }
+      <p class="course">{{ titreCours() }}</p>
       <dl>
-        <div><dt>Date</dt><dd>{{ certificat().date }}</dd></div>
+        <div><dt>Date</dt><dd>{{ certificat().dateEmission | date: 'dd/MM/yyyy' }}</dd></div>
         <div><dt>Score à l’examen</dt><dd>{{ certificat().score }} %</dd></div>
-        <div><dt>Durée du cours</dt><dd>{{ certificat().duree }}</dd></div>
-        <div><dt>Formateur</dt><dd>{{ certificat().formateur }}</dd></div>
+        <div><dt>Examen</dt><dd>{{ certificat().titreExamen }}</dd></div>
       </dl>
       <footer>
         <mat-icon aria-hidden="true">verified</mat-icon>
-        Vérifiable sur bawsla.tn/verifier avec le numéro {{ certificat().numero }}
+        Vérifiable sur la page « Vérifier un certificat » avec le numéro {{ certificat().numero }}
       </footer>
     </article>
   `,
@@ -53,5 +57,6 @@ import { Logo } from '../../../shared';
 })
 export class CertificatVue {
   readonly certificat = input.required<Certificat>();
-  protected readonly titre = computed(() => coursParId(this.certificat().coursId)?.titre ?? '');
+  readonly titreCours = input('');
+  readonly titulaire = input<string | null>(null);
 }
