@@ -43,8 +43,11 @@ public class ParametresService {
         DEFAUTS.put(QUESTIONS_PAR_HEURE, "5");
         DEFAUTS.put(MESSAGES_PAR_HEURE, "30");
         DEFAUTS.put(POINTS_VOTE_NEGATIF, "50");
-        DEFAUTS.put(SEUIL_SIMILAIRE, "0.75");
-        DEFAUTS.put(SEUIL_DOUBLON, "0.9");
+        // Mesurés avec gemini-embedding-001 (768 dimensions) sur 120 paires (evaluation/resultats/ANALYSE.md) :
+        // 0,725 = meilleur F1 (précision 0,965, rappel 0,917) ; 0,75 = premier seuil sans aucun faux doublon
+        // (précision 1). L'ancien 0,9 n'était jamais atteint : aucun cosinus mesuré ne dépasse 0,85.
+        DEFAUTS.put(SEUIL_SIMILAIRE, "0.725");
+        DEFAUTS.put(SEUIL_DOUBLON, "0.75");
         DEFAUTS.put(REPONSE_GENERALE, "true");
         DEFAUTS.put(SEUIL_PERTINENCE, "0.55");
     }
