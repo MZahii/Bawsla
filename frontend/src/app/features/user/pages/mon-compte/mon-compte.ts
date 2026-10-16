@@ -12,14 +12,17 @@ import { RouterLink } from '@angular/router';
 import { of, switchMap } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
-import { CATEGORIES, ONBOARDING } from '../../../../core/demo/demo-plus';
+import { ONBOARDING } from '../../../../core/demo/demo-plus';
 import { ThemeService } from '../../../../core/theme/theme.service';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { ROLE_LABELS } from '../../../../shared/models/user.model';
-import { BwButton, EmptyState } from '../../../../shared';
+import { AiBox, BwButton, EmptyState } from '../../../../shared';
 import { Avatar, Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
+import { SuggestionParcoursIa } from '../../models/ia-generative.model';
+import { DOMAINES_PARCOURS } from '../../models/parcours.constantes';
 import { DemandeFormateur, Parcours, Utilisateur } from '../../models/utilisateur.model';
 import { AvatarService } from '../../services/avatar.service';
+import { IaGenerativeService } from '../../services/ia-generative.service';
 import { UserService } from '../../services/user.service';
 
 /** Mêmes règles que MotDePasse côté user-service. */
@@ -36,7 +39,7 @@ const PHOTO_MAX = 2 * 1024 * 1024;
   selector: 'app-mon-compte',
   imports: [
     DatePipe, FormsModule, ReactiveFormsModule, RouterLink, MatTabsModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatRadioModule, MatIconModule, BwButton, EmptyState, Avatar, Dropzone, PageHeader, Skeleton,
+    MatRadioModule, MatIconModule, AiBox, BwButton, EmptyState, Avatar, Dropzone, PageHeader, Skeleton,
   ],
   templateUrl: './mon-compte.html',
   styleUrl: './mon-compte.scss',
@@ -91,7 +94,15 @@ export class MonCompte implements OnInit {
   protected readonly profils = ONBOARDING.profils;
   protected readonly objectifs = ONBOARDING.objectifs;
   protected readonly tempsListe = ONBOARDING.temps;
-  protected readonly domainesListe = CATEGORIES.map((c) => c.nom);
+  /** Les matières des cours, plus un ancien domaine encore enregistré (pour pouvoir le retirer). */
+  protected domainesListe: string[] = DOMAINES_PARCOURS;
+
+  // IA générative : domaines et objectif suggérés à partir d'une phrase (rien n'est enregistré sans « Enregistrer »).
+  private readonly iaGen = inject(IaGenerativeService);
+  protected texteSuggestion = '';
+  protected readonly suggestion = signal<SuggestionParcoursIa | null>(null);
+  protected readonly suggestionEnCours = signal(false);
+  protected readonly erreurSuggestion = signal<string | null>(null);
   protected readonly profilLibelle = signal('Non renseigné');
 
   // ---------- Demande formateur ----------
@@ -204,6 +215,35 @@ export class MonCompte implements OnInit {
     this.api.monParcours().subscribe({ next: (p) => this.appliquerParcours(p), error: () => undefined });
   }
 
+  protected suggerer(): void {
+    const texte = this.texteSuggestion.trim();
+    if (texte.length < 3 || this.suggestionEnCours()) return;
+    this.suggestionEnCours.set(true);
+    this.erreurSuggestion.set(null);
+    this.suggestion.set(null);
+    this.iaGen.suggererParcours(texte).subscribe({
+      next: (s) => {
+        this.suggestionEnCours.set(false);
+        this.suggestion.set(s);
+      },
+      error: (err) => {
+        this.suggestionEnCours.set(false);
+        this.erreurSuggestion.set(errorMessage(err, 'L’IA générative est indisponible pour le moment.'));
+      },
+    });
+  }
+
+  /** Ajoute les domaines suggérés (sans retirer les autres) et l'objectif ; l'apprenant enregistre ensuite. */
+  protected appliquerSuggestion(s: SuggestionParcoursIa): void {
+    this.parcours = {
+      ...this.parcours,
+      domaines: [...new Set([...(this.parcours.domaines ?? []), ...s.domaines])],
+      objectif: s.objectif ?? this.parcours.objectif,
+    };
+    this.suggestion.set(null);
+    this.snack.open('Suggestion appliquée : vérifie puis enregistre.', 'OK', { duration: 3500 });
+  }
+
   protected enregistrerParcours(): void {
     this.enregistrementParcours.set(true);
     this.api.enregistrerMonParcours(this.parcours).subscribe({
@@ -221,6 +261,7 @@ export class MonCompte implements OnInit {
 
   private appliquerParcours(p: Parcours): void {
     this.parcours = { ...p, domaines: [...(p.domaines ?? [])] };
+    this.domainesListe = [...new Set([...DOMAINES_PARCOURS, ...(p.domaines ?? [])])];
     this.profilLibelle.set(ONBOARDING.profils.find((x) => x.code === p.profil)?.titre ?? 'Non renseigné');
   }
 

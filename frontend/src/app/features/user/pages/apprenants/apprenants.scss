@@ -19,3 +19,12 @@
 .facts div { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 .facts strong { font: 600 20px var(--font-heading); }
 .facteurs { margin: var(--space-2) 0 0; padding-left: var(--space-5); display: grid; gap: var(--space-1); }
+
+// IA générative : rapport de la classe et explication du risque.
+.rapport { display: block; }
+.texte { margin: 0 0 var(--space-3); }
+.deux { display: grid; gap: var(--space-4); }
+@media (min-width: 720px) { .deux { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.deux h3, .explication h3 { margin: var(--space-3) 0 var(--space-2); font: 600 15px var(--font-heading); }
+.deux ul, .explication ul { margin: 0; padding-left: var(--space-5); display: grid; gap: var(--space-1); }
+.message { margin: 0 0 var(--space-3); padding: var(--space-3) var(--space-4); border-left: 3px solid var(--color-border); background: var(--color-bg); font-style: italic; }

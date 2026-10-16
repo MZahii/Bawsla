@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import tn.esprit.bawsla.user.common.ApiResponse;
 
 /**
@@ -28,4 +30,26 @@ public interface AiClient {
     @PostMapping("/api/ai/user/recommandations")
     ApiResponse<RecommandationsIaDto> recommandations(@RequestHeader("Authorization") String authorization,
                                                       @RequestBody RecommandationsIaRequestDto corps);
+
+    // ------------------------------------------------------------ IA générative (LLM) : le ML décide, le LLM explique
+
+    @PostMapping("/api/ai/user/conseil")
+    ApiResponse<JsonNode> conseil(@RequestHeader("Authorization") String authorization,
+                                  @RequestBody IaGenerativeDto.Conseil corps);
+
+    @PostMapping("/api/ai/user/explication-risque")
+    ApiResponse<JsonNode> explicationRisque(@RequestHeader("Authorization") String authorization,
+                                            @RequestBody IaGenerativeDto.ExplicationRisque corps);
+
+    @PostMapping("/api/ai/user/plan")
+    ApiResponse<JsonNode> plan(@RequestHeader("Authorization") String authorization,
+                               @RequestBody IaGenerativeDto.Plan corps);
+
+    @PostMapping("/api/ai/user/rapport-cohorte")
+    ApiResponse<JsonNode> rapportCohorte(@RequestHeader("Authorization") String authorization,
+                                         @RequestBody IaGenerativeDto.Cohorte corps);
+
+    @PostMapping("/api/ai/user/domaines")
+    ApiResponse<JsonNode> domaines(@RequestHeader("Authorization") String authorization,
+                                   @RequestBody IaGenerativeDto.Domaines corps);
 }

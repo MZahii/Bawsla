@@ -118,4 +118,26 @@
       <p class="muted small">Hybride retenu : collaboratif {{ pct(met.recommandation.poids['collaboratif'], 0) }}, popularité {{ pct(met.recommandation.poids['popularite'], 0) }}, domaines déclarés {{ pct(met.recommandation.poids['domaines'], 0) }} ({{ met.recommandation.kVoisins }} voisins).</p>
     </div>
   </section>
+
+  <!-- ===== IA générative ===== -->
+  <section class="card mt">
+    <div class="card-head">
+      <div><h2>IA générative : rapport de la plateforme</h2>
+        <span class="sub">Un LLM met en mots les résultats des trois modèles pour tous les apprenants inscrits, à partir de statistiques agrégées (aucun apprenant nommé). Généré à la demande pour ménager le quota du fournisseur.</span></div>
+    </div>
+    <div class="card-body">
+      <app-ia-generee titre="Rapport de la plateforme" libelleBouton="Générer le rapport"
+        invitation="Synthèse des risques, des profils et des notions les plus ratées sur l’ensemble des cours, avec des actions."
+        attente="La boussole analyse la plateforme…" [charger]="lireRapport" [generer]="genererRapport"
+        source="Statistiques agrégées de tous les cours.">
+        <ng-template let-r>
+          <p class="rapport-texte">{{ r.synthese }}</p>
+          <div class="grid-2">
+            <div><h3 class="rapport-h">Constats</h3><ul class="rapport-liste">@for (x of r.pointsCles; track $index) { <li>{{ x }}</li> }</ul></div>
+            <div><h3 class="rapport-h">Actions proposées</h3><ul class="rapport-liste">@for (x of r.recommandations; track $index) { <li>{{ x }}</li> }</ul></div>
+          </div>
+        </ng-template>
+      </app-ia-generee>
+    </div>
+  </section>
 }
