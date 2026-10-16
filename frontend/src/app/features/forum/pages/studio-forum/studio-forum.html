@@ -62,7 +62,7 @@
             <div class="vigie">
               <a class="lien-fil" [routerLink]="['/studio/forum', v.discussionId]" dir="auto">{{ v.discussionTitre }}</a>
               <app-vigie-box [reponse]="v.reponse" [moderateur]="true" [occupe]="occupe()" (valider)="decisionVigie('valider', v.reponse)"
-                             (corriger)="decisionVigie('corriger', v.reponse, $event)" (rejeter)="decisionVigie('rejeter', v.reponse, $event)" (regenerer)="regenerer(v.discussionId)" />
+                             (corriger)="decisionVigie('corriger', v.reponse, $event)" (rejeter)="decisionVigie('rejeter', v.reponse, { motif: $event })" (regenerer)="regenerer(v.discussionId)" />
             </div>
           } @empty { <bw-empty-state icon="explore" title="Aucune réponse dans cette catégorie" /> }
         </div>
@@ -93,12 +93,14 @@
               </p>
               @if (s.statut === 'OUVERT') {
                 <div class="decision">
-                  <input class="input" [ngModel]="motifDecision()[s.id] ?? ''" (ngModelChange)="motif(s.id, $event)" placeholder="Motif de la décision (obligatoire)" [attr.aria-label]="'Motif pour le signalement ' + s.id" />
-                  <button type="button" bwButton="fantome" (click)="decider(s, 'REJETE', false)">Rejeter</button>
-                  <button type="button" bwButton="secondaire" (click)="decider(s, 'OUVERT', false, true)">Transmettre à l’administration</button>
-                  <button type="button" bwButton="danger" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                  <app-motif-champ [valeur]="motifDecision()[s.id] ?? ''" (valeurChange)="motif(s.id, $event)" contexte="decision" libelle="Motif de ta décision" />
+                  <div class="boutons">
+                    <button type="button" bwButton="fantome" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'REJETE', false)">Rejeter le signalement</button>
+                    <button type="button" bwButton="secondaire" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'OUVERT', false, true)">Transmettre à l’administration</button>
+                    <button type="button" bwButton="danger" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                  </div>
                 </div>
-              } @else { <p class="small">Décision : {{ s.statut === 'CONFIRME' ? 'confirmé' : 'rejeté' }} – {{ s.decision }}</p> }
+              } @else { <p class="small">Décision : {{ libellesStatut[s.statut] }} – {{ s.decision }}</p> }
             </article>
           } @empty { <bw-empty-state icon="flag" title="Aucun signalement" message="La modération automatique et les membres signalent ici les messages à examiner." /> }
         </div>
@@ -173,14 +175,18 @@
             <mat-slide-toggle [checked]="r.reponseGeneraleAutorisee" (change)="modifierReglage('reponseGeneraleAutorisee', $event.checked)">Réponse générale hors cours autorisée (sur demande)</mat-slide-toggle>
             <mat-slide-toggle [checked]="r.modeExamen" (change)="modifierReglage('modeExamen', $event.checked)">Mode examen : indices seulement, pas de solution complète</mat-slide-toggle>
             @if (r.modeExamen) {
-              <label class="small">Fin du mode examen
-                <input class="input" type="datetime-local" [ngModel]="r.modeExamenFin?.slice(0, 16)" (ngModelChange)="modifierReglage('modeExamenFin', $event)" />
+              <label class="small">Fin du mode examen (vide = jusqu’à désactivation)
+                <input class="input" type="datetime-local" [ngModel]="versChampDate(r.modeExamenFin)" (ngModelChange)="modifierReglage('modeExamenFin', $event || undefined)"
+                       [attr.aria-invalid]="!!erreurFinExamen()" aria-describedby="aide-fin-examen" />
+                <app-champ-aide id="aide-fin-examen" [erreur]="erreurFinExamen()" />
               </label>
             }
             <label class="small">Modèle de question propre au cours
-              <textarea class="input zone" rows="5" [ngModel]="r.questionModele ?? ''" (ngModelChange)="modifierReglage('questionModele', $event)"></textarea>
+              <textarea class="input zone" rows="5" [attr.maxlength]="maxModele" [ngModel]="r.questionModele ?? ''" (ngModelChange)="modifierReglage('questionModele', $event)"
+                        [attr.aria-invalid]="!!erreurModele()" aria-describedby="aide-modele"></textarea>
+              <app-champ-aide id="aide-modele" [erreur]="erreurModele()" aide="Proposé aux apprenants dans l’éditeur de question." [longueur]="(r.questionModele ?? '').trim().length" [max]="maxModele" />
             </label>
-            <div><button type="button" bwButton="secondaire" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
+            <div><button type="button" bwButton="secondaire" [disabled]="!!erreurModele() || !!erreurFinExamen()" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
           }
         </div>
       </mat-tab>

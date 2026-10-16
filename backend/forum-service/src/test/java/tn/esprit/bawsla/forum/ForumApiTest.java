@@ -412,16 +412,16 @@ class ForumApiTest extends BaseApiTest {
     void unMessageMasqueNEstVisibleQueParSonAuteurEtLesModerateurs() throws Exception {
         long id = publierQuestion(YASSINE, TITRE);
         long r = repondre(SARA, id, "Contenu à masquer.");
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r), MOTIF).andExpect(status().isOk());
         ouvrir(YASSINE, id).andExpect(jsonPath("$.data.reponses[0].masquee").value(true))
                 .andExpect(jsonPath("$.data.reponses[0].contenu").doesNotExist());
         ouvrir(SARA, id).andExpect(jsonPath("$.data.reponses[0].contenu").value("Contenu à masquer."));
 
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/masquer", id)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/masquer", id), MOTIF).andExpect(status().isOk());
         ouvrir(SARA, id).andExpect(status().isNotFound());
         ouvrir(YASSINE, id).andExpect(status().isOk()).andExpect(jsonPath("$.data.masquee").value(true));
         en(SARA, ETUDIANT, get("/api/forum/discussions")).andExpect(jsonPath("$.data.total").value(0));
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/retablir", id)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/retablir", id), MOTIF).andExpect(status().isOk());
         ouvrir(SARA, id).andExpect(status().isOk());
     }
 
@@ -432,9 +432,9 @@ class ForumApiTest extends BaseApiTest {
         long autreCours = publier(SARA, question(COURS_INJOIGNABLE, "Question dans un autre cours"));
 
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/fusionner", doublon),
-                Map.of("versDiscussionId", autreCours)).andExpect(status().isBadRequest());
+                Map.of("versDiscussionId", autreCours, "motif", "Doublon de la question d'origine")).andExpect(status().isBadRequest());
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/fusionner", doublon),
-                Map.of("versDiscussionId", originale, "motif", "Doublon")).andExpect(status().isOk())
+                Map.of("versDiscussionId", originale, "motif", "Doublon de la question d'origine")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.fusionneeDansId").value(originale))
                 .andExpect(jsonPath("$.data.verrouillee").value(true));
         en(YASSINE, ETUDIANT, post("/api/forum/discussions/{id}/reponses", doublon),
@@ -445,7 +445,7 @@ class ForumApiTest extends BaseApiTest {
     void leFormateurDeplaceUnFilEtModifieSesEtiquettes() throws Exception {
         long id = publierQuestion(YASSINE, TITRE);
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/deplacer", id),
-                Map.of("chapitreId", 3, "page", 12)).andExpect(jsonPath("$.data.chapitreId").value(3))
+                Map.of("chapitreId", 3, "page", 12, "motif", "Question du chapitre 3, page 12")).andExpect(jsonPath("$.data.chapitreId").value(3))
                 .andExpect(jsonPath("$.data.page").value(12));
         en(FORMATRICE, ENSEIGNANT, put("/api/forum/discussions/{id}/etiquettes", id),
                 Map.of("etiquettes", List.of("LEFT JOIN"))).andExpect(jsonPath("$.data.etiquettes[0]").value("left join"));

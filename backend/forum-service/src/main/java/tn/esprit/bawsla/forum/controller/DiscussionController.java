@@ -25,6 +25,7 @@ import tn.esprit.bawsla.forum.dto.DiscussionResume;
 import tn.esprit.bawsla.forum.dto.EtiquettesRequest;
 import tn.esprit.bawsla.forum.dto.FusionnerRequest;
 import tn.esprit.bawsla.forum.dto.ModerationActionRequest;
+import tn.esprit.bawsla.forum.dto.MotifRequest;
 import tn.esprit.bawsla.forum.dto.PageResponse;
 import tn.esprit.bawsla.forum.dto.VersionResponse;
 import tn.esprit.bawsla.forum.entity.enums.TypeDiscussion;
@@ -124,16 +125,16 @@ public class DiscussionController {
 
     @PostMapping("/{id}/masquer")
     public ApiResponse<DiscussionDetail> masquer(@PathVariable Long id,
-                                                 @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                                 @Valid @RequestBody MotifRequest req,
                                                  CurrentUser user) {
-        return ApiResponse.ok(moderation.masquerDiscussion(id, true, motif(req), user), "Discussion masquée");
+        return ApiResponse.ok(moderation.masquerDiscussion(id, true, req.motif(), user), "Discussion masquée");
     }
 
     @PostMapping("/{id}/retablir")
     public ApiResponse<DiscussionDetail> retablir(@PathVariable Long id,
-                                                  @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                                  @Valid @RequestBody MotifRequest req,
                                                   CurrentUser user) {
-        return ApiResponse.ok(moderation.masquerDiscussion(id, false, motif(req), user), "Discussion rétablie");
+        return ApiResponse.ok(moderation.masquerDiscussion(id, false, req.motif(), user), "Discussion rétablie");
     }
 
     @PostMapping("/{id}/deplacer")

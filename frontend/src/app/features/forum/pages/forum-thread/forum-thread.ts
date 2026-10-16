@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -12,9 +13,12 @@ import { Observable } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { AiBox, Badge, BwButton, EmptyState } from '../../../../shared';
 import { Avatar, Skeleton } from '../../../../shared/ui';
+import { ChampAide } from '../../components/champ-aide';
+import { demander } from '../../components/dialogue';
 import { ForumEditeur } from '../../components/editeur';
 import { ForumMarkdown } from '../../components/markdown';
 import { LIBELLES_STATUT, MOTIFS, TempsRelatifPipe, messageErreur } from '../../components/outils';
+import { REGLES, erreurTexte } from '../../components/validation';
 import { VigieBox } from '../../components/vigie-box';
 import {
   Commentaire,
@@ -48,7 +52,7 @@ const REACTIONS: { type: TypeReaction; emoji: string; libelle: string }[] = [
   selector: 'app-forum-thread',
   imports: [
     FormsModule, NgTemplateOutlet, RouterLink, MatIconModule, MatMenuModule, MatCheckboxModule, MatTooltipModule,
-    AiBox, Badge, BwButton, EmptyState, Avatar, Skeleton, ForumEditeur, ForumMarkdown, VigieBox, TempsRelatifPipe,
+    AiBox, Badge, BwButton, EmptyState, Avatar, Skeleton, ForumEditeur, ForumMarkdown, VigieBox, TempsRelatifPipe, ChampAide,
   ],
   templateUrl: './forum-thread.html',
   styleUrl: './forum-thread.scss',
@@ -63,12 +67,17 @@ export class ForumThread {
   private readonly auth = inject(AuthService);
   protected readonly router = inject(Router);
   private readonly snack = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly base = this.router.url.startsWith('/studio') ? '/studio/forum' : this.router.url.startsWith('/admin') ? '/admin/forum' : '/app/forum';
   protected readonly apprenant = computed(() => this.auth.role() === 'ETUDIANT');
   protected readonly reactions = REACTIONS;
   protected readonly motifs = MOTIFS;
   protected readonly statuts = LIBELLES_STATUT;
+  protected readonly regles = REGLES;
+  protected readonly erreurTexte = erreurTexte;
+  /** Champs déjà quittés : leur erreur « obligatoire » s'affiche (les autres erreurs dès la saisie). */
+  protected readonly touches = signal<Set<string>>(new Set());
 
   protected readonly d = signal<DiscussionDetail | null>(null);
   protected readonly erreur = signal<string | null>(null);
@@ -86,6 +95,15 @@ export class ForumThread {
   protected readonly editionReponse = signal<{ id: number; contenu: string } | null>(null);
   protected readonly cible = signal<number | null>(null);
 
+  protected readonly erreurEdition = computed(() => {
+    const e = this.edition();
+    return e ? { titre: erreurTexte(REGLES.titre, e.titre), contenu: erreurTexte(REGLES.contenu, e.contenu) } : null;
+  });
+  protected readonly erreurReponse = computed(() => erreurTexte(REGLES.reponse, this.reponse()));
+  protected readonly erreurEditionReponse = computed(() => {
+    const e = this.editionReponse();
+    return e ? erreurTexte(REGLES.reponse, e.contenu) : null;
+  });
   protected readonly moderateur = computed(() => this.d()?.droits.moderer ?? false);
   protected readonly reponsesTriees = computed(() => this.d()?.reponses ?? []);
   protected readonly participants = computed(() => {
@@ -244,7 +262,8 @@ export class ForumThread {
   protected enregistrer(): void {
     const e = this.edition();
     const d = this.d();
-    if (!e || !d) {
+    const erreurs = this.erreurEdition();
+    if (!e || !d || erreurs?.titre || erreurs?.contenu) {
       return;
     }
     this.forum.modifier(d.id, { titre: e.titre.trim(), contenu: e.contenu.trim(), etiquettes: d.etiquettes }).subscribe({
@@ -258,13 +277,17 @@ export class ForumThread {
   }
 
   protected supprimer(): void {
-    if (!confirm('Supprimer cette discussion ? Elle ne sera plus visible.')) {
-      return;
-    }
-    this.forum.supprimer(this.d()!.id).subscribe({
-      next: () => this.router.navigate([this.base]),
-      error: (e) => this.toast(messageErreur(e)),
-    });
+    demander(this.dialog, {
+      titre: 'Supprimer cette discussion ?',
+      message: 'Elle ne sera plus visible dans le forum, ni ses réponses.',
+      confirmer: 'Supprimer',
+      danger: true,
+    }).subscribe(() =>
+      this.forum.supprimer(this.d()!.id).subscribe({
+        next: () => this.router.navigate([this.base]),
+        error: (e) => this.toast(messageErreur(e)),
+      }),
+    );
   }
 
   protected voirVersions(): void {
@@ -276,24 +299,47 @@ export class ForumThread {
   }
 
   protected outil(outil: OutilFil, actif = true): void {
-    const motif = outil === 'masquer' ? (prompt('Motif du masquage (obligatoire pour le journal) :') ?? '').trim() : undefined;
-    if (outil === 'masquer' && !motif) {
+    const appliquer = (motif?: string) =>
+      this.moderation.outilFil(this.d()!.id, outil, actif, motif).subscribe({
+        next: (x) => {
+          this.d.set(x);
+          this.toast('Décision enregistrée dans le journal de modération.');
+        },
+        error: (e) => this.toast(messageErreur(e)),
+      });
+    if (outil !== 'masquer' && outil !== 'retablir') {
+      appliquer();
       return;
     }
-    this.moderation.outilFil(this.d()!.id, outil, actif, motif).subscribe({
-      next: (x) => {
-        this.d.set(x);
-        this.toast('Décision enregistrée dans le journal de modération.');
-      },
-      error: (e) => this.toast(messageErreur(e)),
-    });
+    const masquer = outil === 'masquer';
+    demander(this.dialog, {
+      titre: masquer ? 'Masquer cette discussion ?' : 'Rétablir cette discussion ?',
+      message: masquer
+        ? 'Seuls son auteur et les modérateurs la verront. L’auteur est prévenu.'
+        : 'Elle redevient visible de tous les apprenants du cours.',
+      confirmer: masquer ? 'Masquer' : 'Rétablir',
+      danger: masquer,
+      motif: masquer ? 'masquage' : 'retablissement',
+      libelleMotif: masquer ? 'Motif du masquage' : 'Motif du rétablissement',
+    }).subscribe((motif) => appliquer(motif as string));
   }
 
   // ------------------------------------------------------------ Réponses
 
+  protected toucher(champ: string): void {
+    if (!this.touches().has(champ)) {
+      this.touches.set(new Set([...this.touches(), champ]));
+    }
+  }
+
+  /** Erreur affichée : le champ vide n'est signalé qu'une fois quitté. */
+  protected visible(champ: string, erreur: string | null, valeur: string | undefined): string | null {
+    return erreur && (this.touches().has(champ) || (valeur ?? '').trim()) ? erreur : null;
+  }
+
   protected repondre(): void {
     const d = this.d();
-    if (!d || !this.reponse().trim() || this.envoi()) {
+    if (!d || this.erreurReponse() || this.envoi()) {
       return;
     }
     this.envoi.set(true);
@@ -330,14 +376,25 @@ export class ForumThread {
   }
 
   protected masquerReponse(r: Reponse): void {
-    const motif = r.masquee ? undefined : (prompt('Motif du masquage :') ?? '').trim();
-    if (!r.masquee && !motif) {
-      return;
-    }
-    this.moderation.masquerMessage('reponses', r.id, !r.masquee, motif).subscribe({
-      next: () => this.recharger(),
-      error: (e) => this.toast(messageErreur(e)),
-    });
+    this.demanderMotif(r.masquee ? 'retablir' : 'masquer', 'cette réponse').subscribe((motif) =>
+      this.moderation.masquerMessage('reponses', r.id, !r.masquee, motif).subscribe({
+        next: () => this.recharger(),
+        error: (e) => this.toast(messageErreur(e)),
+      }),
+    );
+  }
+
+  /** Motif obligatoire d'un masquage ou d'un rétablissement (réponse, commentaire). */
+  private demanderMotif(action: 'masquer' | 'retablir', cible: string): Observable<string> {
+    const masquer = action === 'masquer';
+    return demander(this.dialog, {
+      titre: masquer ? `Masquer ${cible} ?` : `Rétablir ${cible} ?`,
+      message: masquer ? 'Seuls son auteur et les modérateurs la verront. L’auteur est prévenu.' : 'Le message redevient visible de tous.',
+      confirmer: masquer ? 'Masquer' : 'Rétablir',
+      danger: masquer,
+      motif: masquer ? 'masquage' : 'retablissement',
+      libelleMotif: masquer ? 'Motif du masquage' : 'Motif du rétablissement',
+    }) as Observable<string>;
   }
 
   protected reagir(r: Reponse, type: TypeReaction): void {
@@ -351,7 +408,7 @@ export class ForumThread {
 
   protected enregistrerReponse(): void {
     const e = this.editionReponse();
-    if (!e) {
+    if (!e || this.erreurEditionReponse()) {
       return;
     }
     this.forum.modifierReponse(e.id, e.contenu.trim()).subscribe({
@@ -364,9 +421,9 @@ export class ForumThread {
   }
 
   protected supprimerReponse(r: Reponse): void {
-    if (confirm('Supprimer cette réponse ?')) {
-      this.forum.supprimerReponse(r.id).subscribe({ next: () => this.recharger(), error: (e) => this.toast(messageErreur(e)) });
-    }
+    demander(this.dialog, { titre: 'Supprimer cette réponse ?', message: 'Elle ne sera plus visible dans le fil.', confirmer: 'Supprimer', danger: true }).subscribe(
+      () => this.forum.supprimerReponse(r.id).subscribe({ next: () => this.recharger(), error: (e) => this.toast(messageErreur(e)) }),
+    );
   }
 
   // ------------------------------------------------------------ Commentaires
@@ -392,7 +449,7 @@ export class ForumThread {
   protected commenter(reponseId?: number): void {
     const cle = this.cleCommentaires(reponseId);
     const texte = (this.commentaire()[cle] ?? '').trim();
-    if (!texte) {
+    if (erreurTexte(REGLES.commentaire, texte)) {
       return;
     }
     this.forum.commenter({ discussionId: this.d()!.id, reponseId }, { contenu: texte }).subscribe({
@@ -413,10 +470,12 @@ export class ForumThread {
   }
 
   protected masquerCommentaire(c: Commentaire): void {
-    this.moderation.masquerMessage('commentaires', c.id, !c.masque, c.masque ? undefined : 'Masqué par la modération').subscribe({
-      next: () => this.recharger(),
-      error: (e) => this.toast(messageErreur(e)),
-    });
+    this.demanderMotif(c.masque ? 'retablir' : 'masquer', 'ce commentaire').subscribe((motif) =>
+      this.moderation.masquerMessage('commentaires', c.id, !c.masque, motif).subscribe({
+        next: () => this.recharger(),
+        error: (e) => this.toast(messageErreur(e)),
+      }),
+    );
   }
 
   // ------------------------------------------------------------ La Vigie
@@ -455,8 +514,8 @@ export class ForumThread {
     this.vigieAction(this.vigieApi.valider(r.id), 'Réponse validée : elle rejoint la base de connaissances du forum.');
   }
 
-  protected corrigerVigie(r: VigieResponse, texte: string): void {
-    this.vigieAction(this.vigieApi.corriger(r.id, texte), 'Correction publiée. L’original est conservé.');
+  protected corrigerVigie(r: VigieResponse, saisie: { texte: string; motif: string }): void {
+    this.vigieAction(this.vigieApi.corriger(r.id, saisie.texte, saisie.motif), 'Correction publiée. L’original est conservé.');
   }
 
   protected rejeterVigie(r: VigieResponse, motif: string): void {

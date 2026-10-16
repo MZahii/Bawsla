@@ -47,8 +47,8 @@ export class VigieService {
     return this.post(`${this.url}/vigie/${id}/valider`, {});
   }
 
-  corriger(id: number, texte: string): Observable<VigieResponse> {
-    return this.post(`${this.url}/vigie/${id}/corriger`, { texte });
+  corriger(id: number, texte: string, motif: string): Observable<VigieResponse> {
+    return this.post(`${this.url}/vigie/${id}/corriger`, { texte, motif });
   }
 
   rejeter(id: number, motif: string): Observable<VigieResponse> {

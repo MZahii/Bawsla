@@ -11,7 +11,9 @@ import { Subject, debounceTime, distinctUntilChanged, filter, switchMap, tap, ca
 import { AuthService } from '../../../../core/auth/auth.service';
 import { AiBox, AiLoading, BwButton } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
+import { ChampAide } from '../../components/champ-aide';
 import { ForumEditeur } from '../../components/editeur';
+import { REGLES, erreurTexte } from '../../components/validation';
 import { messageErreur } from '../../components/outils';
 import { AmeliorerResponse, CoursOption, Etiquette, SimilairesResponse, TypeDiscussion } from '../../models';
 import { ForumService } from '../../services/forum.service';
@@ -39,7 +41,7 @@ interface Brouillon {
  */
 @Component({
   selector: 'app-forum-ask',
-  imports: [FormsModule, RouterLink, MatIconModule, MatSelectModule, MatCheckboxModule, AiBox, AiLoading, BwButton, PageHeader, ForumEditeur],
+  imports: [FormsModule, RouterLink, MatIconModule, MatSelectModule, MatCheckboxModule, AiBox, AiLoading, BwButton, PageHeader, ForumEditeur, ChampAide],
   templateUrl: './forum-ask.html',
   styleUrl: './forum-ask.scss',
 })
@@ -78,9 +80,14 @@ export class ForumAsk implements OnInit {
   protected readonly erreur = signal<string | null>(null);
   protected readonly restaure = signal(false);
 
-  protected readonly valide = computed(
-    () => !!this.coursId() && this.titre().trim().length >= 10 && this.contenu().trim().length >= 10,
-  );
+  protected readonly regles = REGLES;
+  /** Champs quittés au moins une fois : leur erreur « obligatoire » s'affiche. */
+  protected readonly touches = signal<Set<string>>(new Set());
+  protected readonly erreurCours = computed(() => (this.coursId() ? null : 'Le cours est obligatoire'));
+  protected readonly erreurTitre = computed(() => erreurTexte(REGLES.titre, this.titre()));
+  protected readonly erreurContenu = computed(() => erreurTexte(REGLES.contenu, this.contenu()));
+  protected readonly erreurEtiquette = computed(() => erreurTexte(REGLES.etiquette, this.saisieEtiquette()));
+  protected readonly valide = computed(() => !this.erreurCours() && !this.erreurTitre() && !this.erreurContenu());
   private readonly titres = new Subject<string>();
 
   constructor() {
@@ -138,6 +145,17 @@ export class ForumAsk implements OnInit {
     }
   }
 
+  protected toucher(champ: string): void {
+    if (!this.touches().has(champ)) {
+      this.touches.set(new Set([...this.touches(), champ]));
+    }
+  }
+
+  /** Erreur affichée sous le champ : un champ vide n'est signalé qu'une fois quitté. */
+  protected visible(champ: string, erreur: string | null, valeur: string | null | undefined): string | null {
+    return erreur && (this.touches().has(champ) || `${valeur ?? ''}`.trim()) ? erreur : null;
+  }
+
   protected changerTitre(t: string): void {
     this.titre.set(t);
     this.titres.next(t);
@@ -164,7 +182,7 @@ export class ForumAsk implements OnInit {
 
   protected ajouterEtiquette(libelle: string): void {
     const e = libelle.trim().toLowerCase();
-    if (e && !this.etiquettes().includes(e) && this.etiquettes().length < 5) {
+    if (e && e.length <= REGLES.etiquette.max && !this.etiquettes().includes(e) && this.etiquettes().length < 5) {
       this.etiquettes.set([...this.etiquettes(), e]);
     }
     this.saisieEtiquette.set('');

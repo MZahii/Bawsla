@@ -15,7 +15,7 @@ import tn.esprit.bawsla.forum.common.ApiResponse;
 import tn.esprit.bawsla.forum.common.security.CurrentUser;
 import tn.esprit.bawsla.forum.dto.CommentaireRequest;
 import tn.esprit.bawsla.forum.dto.CommentaireResponse;
-import tn.esprit.bawsla.forum.dto.ModerationActionRequest;
+import tn.esprit.bawsla.forum.dto.MotifRequest;
 import tn.esprit.bawsla.forum.dto.ReactionsResponse;
 import tn.esprit.bawsla.forum.dto.ReponseRequest;
 import tn.esprit.bawsla.forum.dto.ReponseResponse;
@@ -78,17 +78,17 @@ public class ReponseController {
 
     @PostMapping("/reponses/{id}/masquer")
     public ApiResponse<Void> masquerReponse(@PathVariable Long id,
-                                            @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                            @Valid @RequestBody MotifRequest req,
                                             CurrentUser user) {
-        moderation.masquerReponse(id, true, DiscussionController.motif(req), user);
+        moderation.masquerReponse(id, true, req.motif(), user);
         return ApiResponse.ok(null, "Réponse masquée");
     }
 
     @PostMapping("/reponses/{id}/retablir")
     public ApiResponse<Void> retablirReponse(@PathVariable Long id,
-                                             @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                             @Valid @RequestBody MotifRequest req,
                                              CurrentUser user) {
-        moderation.masquerReponse(id, false, DiscussionController.motif(req), user);
+        moderation.masquerReponse(id, false, req.motif(), user);
         return ApiResponse.ok(null, "Réponse rétablie");
     }
 
@@ -125,17 +125,17 @@ public class ReponseController {
 
     @PostMapping("/commentaires/{id}/masquer")
     public ApiResponse<Void> masquerCommentaire(@PathVariable Long id,
-                                                @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                                @Valid @RequestBody MotifRequest req,
                                                 CurrentUser user) {
-        moderation.masquerCommentaire(id, true, DiscussionController.motif(req), user);
+        moderation.masquerCommentaire(id, true, req.motif(), user);
         return ApiResponse.ok(null, "Commentaire masqué");
     }
 
     @PostMapping("/commentaires/{id}/retablir")
     public ApiResponse<Void> retablirCommentaire(@PathVariable Long id,
-                                                 @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                                 @Valid @RequestBody MotifRequest req,
                                                  CurrentUser user) {
-        moderation.masquerCommentaire(id, false, DiscussionController.motif(req), user);
+        moderation.masquerCommentaire(id, false, req.motif(), user);
         return ApiResponse.ok(null, "Commentaire rétabli");
     }
 

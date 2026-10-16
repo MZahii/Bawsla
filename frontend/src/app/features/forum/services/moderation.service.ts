@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
+import { User } from '../../../shared/models/user.model';
 import {
   ActionModeration,
   AdminStatistiques,
@@ -83,7 +84,7 @@ export class ModerationForumService {
       .pipe(map((r) => r.data));
   }
 
-  /** Outils d'un fil : epingler et verrouiller (POST active, DELETE désactive), masquer, retablir. */
+  /** Outils d'un fil : epingler et verrouiller (POST active, DELETE désactive) ; masquer et retablir exigent un motif. */
   outilFil(id: number, outil: OutilFil, actif = true, motif?: string): Observable<DiscussionDetail> {
     const chemin = `${this.url}/discussions/${id}/${outil}`;
     if (!actif && (outil === 'epingler' || outil === 'verrouiller')) {
@@ -92,8 +93,8 @@ export class ModerationForumService {
     return this.post(chemin, motif ? { motif } : {});
   }
 
-  masquerMessage(type: 'reponses' | 'commentaires', id: number, masquer: boolean, motif?: string): Observable<unknown> {
-    return this.post(`${this.url}/${type}/${id}/${masquer ? 'masquer' : 'retablir'}`, motif ? { motif } : {});
+  masquerMessage(type: 'reponses' | 'commentaires', id: number, masquer: boolean, motif: string): Observable<unknown> {
+    return this.post(`${this.url}/${type}/${id}/${masquer ? 'masquer' : 'retablir'}`, { motif });
   }
 
   // ------------------------------------------------------------ Administrateur
@@ -116,6 +117,11 @@ export class ModerationForumService {
 
   lever(id: number): Observable<Sanction> {
     return this.http.delete<ApiResponse<Sanction>>(`${this.url}/admin/sanctions/${id}`).pipe(map((r) => r.data));
+  }
+
+  /** Membres de la plateforme pour la recherche par nom ou email (GET /api/users de user-service, réservé à l'ADMIN). */
+  membres(): Observable<User[]> {
+    return this.http.get<ApiResponse<User[]>>(`${API_BASE_URL}/users`).pipe(map((r) => r.data));
   }
 
   historique(userId: number): Observable<HistoriqueMembre> {

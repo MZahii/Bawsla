@@ -253,7 +253,8 @@ class VigieTest extends BaseApiTest {
         String original = reponsesIa.findById(r).orElseThrow().getTexte();
 
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/vigie/{id}/corriger", r),
-                Map.of("texte", "Ta condition sur la table de droite doit aller dans le ON, pas dans le WHERE."))
+                Map.of("texte", "Ta condition sur la table de droite doit aller dans le ON, pas dans le WHERE.",
+                        "motif", "La réponse oubliait la clause ON"))
                 .andExpect(status().isOk());
         vigie(YASSINE, q)
                 .andExpect(jsonPath("$.data.principale.statut").value("CORRIGEE"))
@@ -264,6 +265,8 @@ class VigieTest extends BaseApiTest {
                 .andExpect(jsonPath("$.data.principale.texte").value(original))
                 .andExpect(jsonPath("$.data.principale.texteCorrige", startsWith("Ta condition")));
         assertThat(passagesForum.findAll()).anyMatch(p -> p.getTexte().contains("dans le ON"));
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/vigie/{id}/corriger", r), Map.of("texte", "Autre correction"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.motif").value("Le motif est obligatoire"));
     }
 
     @Test

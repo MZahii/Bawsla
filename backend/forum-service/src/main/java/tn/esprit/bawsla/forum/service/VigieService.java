@@ -361,13 +361,13 @@ public class VigieService {
     }
 
     @Transactional
-    public VigieResponse corriger(Long reponseIaId, String texte, CurrentUser user) {
+    public VigieResponse corriger(Long reponseIaId, String texte, String motif, CurrentUser user) {
         ReponseIa r = decidable(reponseIaId, user);
         r.setStatut(StatutReponseIa.CORRIGEE);
         r.setTexteCorrige(texte.trim());
         r.setCorrigeeParId(user.id());
         r.setCorrigeeLe(LocalDateTime.now(horloge));
-        journal.tracer(user, ActionModeration.CORRIGER_VIGIE, "REPONSE_IA", reponseIaId, r.getCoursId(), null);
+        journal.tracer(user, ActionModeration.CORRIGER_VIGIE, "REPONSE_IA", reponseIaId, r.getCoursId(), motif);
         baseConnaissance.ajouterVigie(r);
         return vue(r, user);
     }

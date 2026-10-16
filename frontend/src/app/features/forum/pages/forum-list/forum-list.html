@@ -5,11 +5,14 @@
 <form class="recherche card" role="search" (ngSubmit)="chercher()">
   <label class="field-search grande">
     <mat-icon aria-hidden="true">search</mat-icon>
-    <input #champ name="q" dir="auto" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" placeholder="Cherche ou pose ta question… (raccourci /)" aria-label="Rechercher dans le forum" />
+    <input #champ name="q" dir="auto" [attr.maxlength]="maxTitre" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" placeholder="Cherche ou pose ta question… (raccourci /)"
+           aria-label="Rechercher dans le forum" aria-describedby="aide-recherche" />
   </label>
   <mat-slide-toggle [checked]="lexical()" (change)="changer({ mode: $event.checked ? 'lexical' : 'semantique' })">Mots exacts</mat-slide-toggle>
   <button type="submit" bwButton="secondaire">Chercher</button>
   <button type="button" bwButton="fantome" (click)="poser()">Poser</button>
+  <app-champ-aide class="aide-recherche" id="aide-recherche" [longueur]="saisie().trim().length" [max]="maxTitre"
+                  aide="« Poser » reprend ce texte comme titre de ta question (200 caractères au plus)." />
 </form>
 
 @if (aide()) {

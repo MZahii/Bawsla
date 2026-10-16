@@ -7,6 +7,55 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 12 — 2026-10-16 — Contrôles de saisie, libellés et dates, recherche de membres
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto
+- **Objectif** : dernière série de corrections après le test manuel de Malek (des motifs « kkkkkkk », « nnnnnn »
+  étaient acceptés, des codes bruts s'affichaient, les dates étaient des ISO coupées, `confirm()` et `prompt()`
+  du navigateur restaient dans le fil).
+- **Contexte fourni** : DTO et contrôleurs de forum-service, `moderation.py` (règle de répétition), `DESIGN.md`
+  §6 (champs, boutons, modales), le motif `MatDialog` du module User, les captures « avant ».
+- **Prompt** :
+  > Dernière série de corrections du module Forum, puis push. […] Motifs : décision de signalement, sanction,
+  > masquage, rétablissement, déplacement, fusion, rejet ou correction d'une réponse de La Vigie, escalade. Tous
+  > obligatoires, de 10 à 500 caractères, au moins 2 mots ; refuser les textes répétitifs comme « kkkkkkk »
+  > (réutilise la logique de répétition de la modération). […] « Membres et sanctions » : recherche par nom ou email
+  > avec suggestions […] Plus aucun code brut à l'écran […] Dates : « 23 oct. 2026, 03:37 » […] Journal : nom de
+  > l'acteur […] Tous les formulaires du forum : message d'erreur sous chaque champ, identique à la règle du serveur,
+  > compteur, bouton désactivé […] motifs prédéfinis cliquables. Remplace les confirm() par une boîte Material.
+- **Résultat** :
+  - Serveur : contrainte `@Motif` (`dto/validation`) sur tous les motifs listés ; `MotifRequest` obligatoire pour
+    masquer, rétablir (discussion, réponse, commentaire) et rejeter ; `CorrectionVigieRequest` reçoit un motif, tracé
+    dans le journal. Règle dans `Repetitions` (reprise de `moderation.py` : lettre répétée, mots répétés, alphabet
+    pauvre), messages : « Le motif est obligatoire », « … trop répétitif : explique la raison en quelques mots »,
+    « … entre 10 et 500 caractères », « … au moins 2 mots ». `JournalResponse.acteurNom` (annuaire, comme les
+    auteurs). Messages des réglages sans clé technique (« Un seuil est un nombre entre 0 et 1 (ex. 0.85) »), `NaN`
+    refusé.
+  - Front : `validation.ts` (mêmes règles et messages que le serveur), `champ-aide` (erreur avec icône + compteur),
+    `motif-champ` (motifs prédéfinis cliquables), `dialogue` (MatDialog, 520 px, Annuler fantôme, action danger ou
+    principale) ; libellés français des sanctions, actions, cibles, rôles, statuts, et des codes en tête des motifs
+    déjà enregistrés (« CONFIRME : … » → « Confirmé : … ») ; pipe `dateHeure` ; recherche de membres avec
+    `mat-autocomplete` (rien n'est affiché avant 2 caractères).
+- **Vérification** : `mvnw test` 161 verts (19 nouveaux : `MotifValidatorTest`, refus d'API avec le message exact,
+  nom de l'acteur, réglages) ; `pytest` 218 verts ; `ng build` sans avertissement ; mêmes verdicts front et serveur
+  sur 29 cas (script Node jetable : le front n'a pas de lanceur de tests, en ajouter un toucherait la configuration
+  commune) ; écrans réels reconstruits dans Docker et photographiés.
+- **Gardé / modifié / rejeté** :
+  - Recherche de membres : lecture de `GET /api/users` (route ADMIN existante de user-service) depuis le front de
+    l'espace admin, filtrée côté client. Rejeté : une route forum-service qui appellerait user-service par Feign,
+    car ce serait une nouvelle route inter-modules à décrire d'abord dans `CONTRATS_API.md`.
+  - Seuils de répétition adaptés aux textes courts (4 lettres identiques, 4 mots) : ceux de la modération
+    (10 caractères, 12 mots) laissaient passer « kkkkkkk » et « ok ok ok ok ».
+  - Verrouiller un fil garde un motif facultatif : ce n'est pas dans la liste demandée.
+  - Défauts trouvés par les captures et corrigés : `\b` écrit par un script Python est devenu un caractère
+    « retour arrière » dans l'expression régulière des motifs ; filtres « Toutes les actions » vides ; Cours et
+    Type décalés dans « Nouvelle question ».
+- **Captures** : `captures/2026-10-16_13_avant-*.png` (5) et `captures/2026-10-16_13_apres-*.png` (8).
+- **Leçon** : écrire la règle une fois côté serveur, puis la recopier côté front avec les mêmes cas de test ; un
+  script qui compare les deux évite qu'elles divergent.
+
+---
+
 ### 11 — 2026-10-16 — Évaluation réelle, seuils mesurés, finalisation
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code, mode Auto (deux sessions : la première a

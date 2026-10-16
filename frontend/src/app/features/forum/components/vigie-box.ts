@@ -7,6 +7,9 @@ import { RouterLink } from '@angular/router';
 
 import { AiBox, AiLoading, BwButton } from '../../../shared';
 import { SourceVigie, VigieResponse } from '../models';
+import { ChampAide } from './champ-aide';
+import { MotifChamp } from './motif-champ';
+import { REGLES, erreurMotif, erreurTexte } from './validation';
 
 type Segment = { texte: string } | { numero: number };
 
@@ -50,7 +53,7 @@ export function surligner(passage: string, citation?: string): { avant: string; 
  */
 @Component({
   selector: 'app-vigie-box',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, MatIconModule, MatTooltipModule, AiBox, AiLoading, BwButton],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, MatIconModule, MatTooltipModule, AiBox, AiLoading, BwButton, ChampAide, MotifChamp],
   templateUrl: './vigie-box.html',
   styleUrl: './vigie-box.scss',
 })
@@ -65,7 +68,9 @@ export class VigieBox {
 
   readonly avis = output<boolean>();
   readonly valider = output<void>();
-  readonly corriger = output<string>();
+  /** Texte corrigé et motif (tracé dans le journal). */
+  readonly corriger = output<{ texte: string; motif: string }>();
+  /** Motif du rejet. */
   readonly rejeter = output<string>();
   readonly regenerer = output<void>();
   readonly demanderGenerale = output<void>();
@@ -75,6 +80,12 @@ export class VigieBox {
   protected readonly complete = signal(false);
   protected readonly edition = signal<'corriger' | 'rejeter' | null>(null);
   protected readonly brouillon = signal('');
+  protected readonly motif = signal('');
+  protected readonly maxCorrection = REGLES.correction.max;
+  protected readonly erreurCorrection = computed(() => (this.edition() === 'corriger' ? erreurTexte(REGLES.correction, this.brouillon()) : null));
+  protected readonly editionValide = computed(
+    () => erreurMotif(this.motif()) === null && (this.edition() !== 'corriger' || this.erreurCorrection() === null),
+  );
 
   protected readonly r = computed(() => this.reponse());
   protected readonly generale = computed(() => this.r().niveau === 'GENERAL');
@@ -116,15 +127,19 @@ export class VigieBox {
 
   protected ouvrirEdition(mode: 'corriger' | 'rejeter'): void {
     this.brouillon.set(mode === 'corriger' ? (this.r().texteCorrige ?? this.r().texte ?? '') : '');
+    this.motif.set('');
     this.edition.set(mode);
   }
 
   protected confirmerEdition(): void {
-    const texte = this.brouillon().trim();
-    if (this.edition() === 'corriger' && texte) {
-      this.corriger.emit(texte);
-    } else if (this.edition() === 'rejeter') {
-      this.rejeter.emit(texte || 'Réponse incorrecte');
+    if (!this.editionValide()) {
+      return;
+    }
+    const motif = this.motif().trim();
+    if (this.edition() === 'corriger') {
+      this.corriger.emit({ texte: this.brouillon().trim(), motif });
+    } else {
+      this.rejeter.emit(motif);
     }
     this.edition.set(null);
   }

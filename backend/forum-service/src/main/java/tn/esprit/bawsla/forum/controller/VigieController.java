@@ -22,7 +22,7 @@ import tn.esprit.bawsla.forum.dto.ConversationResponse;
 import tn.esprit.bawsla.forum.dto.CorrectionVigieRequest;
 import tn.esprit.bawsla.forum.dto.MessageVigieRequest;
 import tn.esprit.bawsla.forum.dto.MessageVigieResponse;
-import tn.esprit.bawsla.forum.dto.ModerationActionRequest;
+import tn.esprit.bawsla.forum.dto.MotifRequest;
 import tn.esprit.bawsla.forum.dto.VigieAVerifier;
 import tn.esprit.bawsla.forum.dto.VigieFilResponse;
 import tn.esprit.bawsla.forum.dto.VigieResponse;
@@ -82,14 +82,14 @@ public class VigieController {
     @PostMapping("/vigie/{id}/corriger")
     public ApiResponse<VigieResponse> corriger(@PathVariable Long id, @Valid @RequestBody CorrectionVigieRequest req,
                                                CurrentUser user) {
-        return ApiResponse.ok(vigie.corriger(id, req.texte(), user), "Réponse de La Vigie corrigée");
+        return ApiResponse.ok(vigie.corriger(id, req.texte(), req.motif(), user), "Réponse de La Vigie corrigée");
     }
 
     @PostMapping("/vigie/{id}/rejeter")
     public ApiResponse<VigieResponse> rejeter(@PathVariable Long id,
-                                              @Valid @RequestBody(required = false) ModerationActionRequest req,
+                                              @Valid @RequestBody MotifRequest req,
                                               CurrentUser user) {
-        return ApiResponse.ok(vigie.rejeter(id, DiscussionController.motif(req), user), "Réponse de La Vigie rejetée");
+        return ApiResponse.ok(vigie.rejeter(id, req.motif(), user), "Réponse de La Vigie rejetée");
     }
 
     // ---------------------------------------------------------------- Assistant privé « Demander au cours »

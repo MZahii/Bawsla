@@ -9,7 +9,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BwButton, EmptyState } from '../../../../shared';
 import { Avatar, PageHeader, Skeleton } from '../../../../shared/ui';
 import { DiscussionLigne } from '../../components/discussion-ligne';
+import { ChampAide } from '../../components/champ-aide';
 import { messageErreur } from '../../components/outils';
+import { REGLES } from '../../components/validation';
 import {
   ClassementEntree,
   CoursOption,
@@ -32,7 +34,7 @@ const TAILLE = 20;
  */
 @Component({
   selector: 'app-forum-list',
-  imports: [FormsModule, RouterLink, MatIconModule, MatSelectModule, MatSlideToggleModule, BwButton, EmptyState, Avatar, PageHeader, Skeleton, DiscussionLigne],
+  imports: [FormsModule, RouterLink, MatIconModule, MatSelectModule, MatSlideToggleModule, BwButton, EmptyState, Avatar, PageHeader, Skeleton, DiscussionLigne, ChampAide],
   templateUrl: './forum-list.html',
   styleUrl: './forum-list.scss',
 })
@@ -69,6 +71,7 @@ export class ForumList implements OnInit {
   protected readonly cours = signal<CoursOption[]>([]);
   protected readonly filtres = signal<DiscussionsFiltres>({});
   protected readonly saisie = signal('');
+  protected readonly maxTitre = REGLES.titre.max;
   protected readonly discussions = signal<DiscussionResume[]>([]);
   protected readonly total = signal(0);
   protected readonly suivante = signal(false);

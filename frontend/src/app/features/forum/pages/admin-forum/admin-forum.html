@@ -51,7 +51,7 @@
             <mat-button-toggle value="REJETE">Rejetés</mat-button-toggle>
             <mat-button-toggle value="TOUS">Tous</mat-button-toggle>
           </mat-button-toggle-group>
-          <mat-select class="sel" [value]="categorie()" (valueChange)="categorie.set($event); chargerFile()" aria-label="Catégorie de l’IA">
+          <mat-select class="sel" [value]="categorie()" (valueChange)="categorie.set($event); chargerFile()" placeholder="Toutes les catégories" aria-label="Catégorie de l’IA">
             <mat-option [value]="null">Toutes les catégories</mat-option>
             @for (c of listeCategories; track c) { <mat-option [value]="c">{{ categories[c] }}</mat-option> }
           </mat-select>
@@ -71,11 +71,13 @@
               @if (s.discussionId) { · <a [routerLink]="['/admin/forum', s.discussionId]">voir le fil</a> }</p>
             @if (s.statut === 'OUVERT') {
               <div class="decision">
-                <input class="input" [ngModel]="motifDecision()[s.id] ?? ''" (ngModelChange)="motif(s.id, $event)" placeholder="Motif (obligatoire)" [attr.aria-label]="'Motif pour le signalement ' + s.id" />
-                <button type="button" bwButton="fantome" (click)="decider(s, 'REJETE', false)">Rejeter</button>
-                <button type="button" bwButton="danger" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                <app-motif-champ [valeur]="motifDecision()[s.id] ?? ''" (valeurChange)="motif(s.id, $event)" contexte="decision" libelle="Motif de la décision" />
+                <div class="boutons">
+                  <button type="button" bwButton="fantome" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'REJETE', false)">Rejeter le signalement</button>
+                  <button type="button" bwButton="danger" [disabled]="motifInvalide(s.id)" (click)="decider(s, 'CONFIRME', true)">Confirmer et masquer</button>
+                </div>
               </div>
-            } @else { <p class="small">{{ s.statut === 'CONFIRME' ? 'Confirmé' : 'Rejeté' }} : {{ s.decision }}</p> }
+            } @else { <p class="small">{{ libellesStatut[s.statut] }} : {{ s.decision }}</p> }
           </article>
         } @empty { <bw-empty-state icon="verified_user" title="File vide" message="Aucun signalement ne correspond à ces filtres." /> }
       </div>
@@ -84,33 +86,42 @@
     <!-- 3. Membres et sanctions -->
     <mat-tab label="Membres et sanctions">
       <div class="onglet">
-        <div class="toolbar">
-          <label class="small" for="membre">Numéro du membre</label>
-          <input id="membre" class="input court" type="number" min="1" [ngModel]="membreId()" (ngModelChange)="membreId.set($event)" />
-          <button type="button" bwButton="secondaire" (click)="voirMembre(membreId() ?? undefined)">Voir l’historique</button>
+        <div class="recherche-membre">
+          <label class="small" for="membre"><strong>Rechercher un membre</strong></label>
+          <span class="field-search">
+            <mat-icon aria-hidden="true">person_search</mat-icon>
+            <input id="membre" type="search" autocomplete="off" [value]="recherche()" (input)="chercherMembre($any($event.target).value)"
+                   [matAutocomplete]="choixMembre" placeholder="Nom, prénom ou email" aria-describedby="membre-aide" />
+          </span>
+          <mat-autocomplete #choixMembre="matAutocomplete" [displayWith]="afficherMembre" (optionSelected)="choisirMembre($event.option.value)">
+            @for (u of suggestions(); track u.id) {
+              <mat-option [value]="u"><span class="option-membre"><strong>{{ u.prenom }} {{ u.nom }}</strong> <span class="small muted">{{ u.email }} · {{ libellesRole[u.role] ?? u.role }}</span></span></mat-option>
+            }
+          </mat-autocomplete>
+          <app-champ-aide id="membre-aide" [erreur]="erreurRecherche()" aide="Tape au moins 2 caractères, puis choisis le membre dans la liste." />
         </div>
         @if (historique(); as h) {
           <section class="membre">
             <h2 class="h">{{ h.membre.nom }} <span class="muted small">· {{ h.reputation.niveauLibelle }}, {{ h.reputation.points }} points</span></h2>
             <p class="small">{{ h.messagesMasques }} message(s) masqué(s) · {{ h.signalementsRecus.length }} signalement(s) reçu(s) · {{ h.sanctions.length }} sanction(s)</p>
             <div class="sanction-form">
-              <mat-select class="sel" [value]="typeSanction()" (valueChange)="typeSanction.set($event)" aria-label="Type de sanction">
-                <mat-option value="AVERTISSEMENT">Avertir</mat-option>
-                <mat-option value="LECTURE_SEULE">Lecture seule</mat-option>
-                <mat-option value="SUSPENSION">Suspendre</mat-option>
-              </mat-select>
-              @if (typeSanction() !== 'AVERTISSEMENT') {
-                <mat-select class="sel" [value]="duree()" (valueChange)="duree.set($event)" aria-label="Durée">
-                  <mat-option [value]="24">24 heures</mat-option>
-                  <mat-option [value]="168">7 jours</mat-option>
-                  <mat-option [value]="720">30 jours</mat-option>
-                  <mat-option [value]="null">Jusqu’à levée</mat-option>
+              <div class="ligne">
+                <mat-select class="sel" [value]="typeSanction()" (valueChange)="typeSanction.set($event)" aria-label="Type de sanction">
+                  @for (t of typesSanction; track t) { <mat-option [value]="t">{{ libellesSanction[t] }}</mat-option> }
                 </mat-select>
-              }
-              <input class="input" [ngModel]="motifSanction()" (ngModelChange)="motifSanction.set($event)" placeholder="Motif (obligatoire, visible du membre)" aria-label="Motif de la sanction" />
-              <button type="button" bwButton="danger" (click)="sanctionner()">Appliquer</button>
+                @if (typeSanction() !== 'AVERTISSEMENT') {
+                  <mat-select class="sel" [value]="duree()" (valueChange)="duree.set($event)" aria-label="Durée">
+                    <mat-option [value]="24">24 heures</mat-option>
+                    <mat-option [value]="168">7 jours</mat-option>
+                    <mat-option [value]="720">30 jours</mat-option>
+                    <mat-option [value]="null">Jusqu’à levée</mat-option>
+                  </mat-select>
+                }
+              </div>
+              <app-motif-champ [(valeur)]="motifSanction" contexte="sanction" libelle="Motif de la sanction (visible du membre)" />
+              <div><button type="button" bwButton="danger" [disabled]="!!erreurMotif(motifSanction())" (click)="sanctionner()">Appliquer la sanction</button></div>
             </div>
-            <ul class="small">@for (s of h.sanctions; track s.id) { <li>{{ s.type }} – {{ s.motif }} ({{ s.active ? 'active' : 'terminée' }}, {{ s.dateDebut | tempsRelatif }})</li> }</ul>
+            <ul class="small">@for (s of h.sanctions; track s.id) { <li>{{ libellesSanction[s.type] }} – {{ s.motif }} ({{ s.active ? 'active' : 'terminée' }}, depuis le {{ s.dateDebut | dateHeure }})</li> }</ul>
           </section>
         }
         <h2 class="h mt">Sanctions actives</h2>
@@ -118,7 +129,7 @@
           <thead><tr><th>Membre</th><th>Type</th><th>Motif</th><th>Fin</th><th><span class="bw-visually-hidden">Actions</span></th></tr></thead>
           <tbody>
             @for (s of sanctions(); track s.id) {
-              <tr><td>{{ s.membre.nom }}</td><td>{{ s.type }}</td><td>{{ s.motif }}</td><td class="small">{{ s.dateFin ? (s.dateFin | slice: 0 : 16) : 'jusqu’à levée' }}</td>
+              <tr><td>{{ s.membre.nom }}</td><td>{{ libellesSanction[s.type] }}</td><td dir="auto">{{ s.motif }}</td><td class="small">{{ s.dateFin ? (s.dateFin | dateHeure) : 'Jusqu’à levée' }}</td>
                 <td><button type="button" bwButton="fantome" (click)="lever(s)">Lever</button></td></tr>
             } @empty { <tr><td colspan="5" class="muted">Aucune sanction active.</td></tr> }
           </tbody>
@@ -161,11 +172,16 @@
     <mat-tab label="Réglages">
       <div class="onglet reglages">
         @for (r of reglagesConnus; track r.cle) {
+          @let erreurR = erreurReglage(r.cle, valeurs()[r.cle]);
           <label class="reglage"><span><strong>{{ r.libelle }}</strong><span class="small muted block">{{ r.aide }}</span></span>
-            <input class="input" [ngModel]="valeurs()[r.cle] ?? ''" (ngModelChange)="modifierValeur(r.cle, $event)" [attr.aria-label]="r.libelle" />
+            <span class="valeur">
+              <input class="input" [ngModel]="valeurs()[r.cle] ?? ''" (ngModelChange)="modifierValeur(r.cle, $event)" [attr.aria-label]="r.libelle"
+                     [attr.aria-invalid]="!!erreurR" [attr.aria-describedby]="'reglage-' + $index" />
+              <app-champ-aide [id]="'reglage-' + $index" [erreur]="erreurR" />
+            </span>
           </label>
         }
-        <div><button type="button" bwButton="secondaire" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
+        <div><button type="button" bwButton="secondaire" [disabled]="!reglagesValides()" (click)="enregistrerReglages()">Enregistrer les réglages</button></div>
       </div>
     </mat-tab>
 
@@ -173,9 +189,9 @@
     <mat-tab label="Journal">
       <div class="onglet">
         <div class="toolbar">
-          <mat-select class="sel" [value]="filtresJournal().action ?? null" (valueChange)="filtrerJournal({ action: $event ?? undefined })" aria-label="Action">
+          <mat-select class="sel" [value]="filtresJournal().action ?? null" (valueChange)="filtrerJournal({ action: $event ?? undefined })" placeholder="Toutes les actions" aria-label="Action">
             <mat-option [value]="null">Toutes les actions</mat-option>
-            @for (a of actions; track a) { <mat-option [value]="a">{{ a }}</mat-option> }
+            @for (a of actions; track a) { <mat-option [value]="a">{{ libellesAction[a] }}</mat-option> }
           </mat-select>
           <label class="small">Du <input class="input court" type="date" (change)="filtrerJournal({ du: $any($event.target).value || undefined })" /></label>
           <label class="small">Au <input class="input court" type="date" (change)="filtrerJournal({ au: $any($event.target).value || undefined })" /></label>
@@ -188,8 +204,10 @@
               <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Cible</th><th>Motif</th></tr></thead>
               <tbody>
                 @for (l of j.contenu; track l.id) {
-                  <tr><td class="small num">{{ l.creeLe | slice: 0 : 16 }}</td><td class="small">{{ l.role === 'IA' ? 'IA' : 'n° ' + l.acteurId + ' (' + l.role + ')' }}</td><td><span class="pill plain">{{ l.action }}</span></td>
-                    <td class="small">{{ l.cibleType }} {{ l.cibleId ?? '' }}</td><td class="small" dir="auto">{{ l.motif ?? '' }}</td></tr>
+                  <tr><td class="small num date">{{ l.creeLe | dateHeure }}</td>
+                    <td class="small">@if (l.role === 'IA') { {{ libellesRole['IA'] }} } @else { <strong>{{ l.acteurNom ?? 'Membre n° ' + l.acteurId }}</strong><span class="muted block">{{ libellesRole[l.role] ?? l.role }}</span> }</td>
+                    <td><span class="pill plain">{{ libellesAction[l.action] }}</span></td>
+                    <td class="small">{{ libellesCible[l.cibleType] ?? l.cibleType }}@if (l.cibleId) { n° {{ l.cibleId }} }</td><td class="small" dir="auto">{{ motifLisible(l.motif) }}</td></tr>
                 } @empty { <tr><td colspan="5" class="muted">Aucune décision enregistrée.</td></tr> }
               </tbody>
             </table>

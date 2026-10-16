@@ -8,7 +8,7 @@ et le tester.
 
 Documents liés, dans ce même dossier :
 - `PLAN_FORUM.md` : le plan complet, avec les choix et leur justification ;
-- `JOURNAL.md` : le journal des prompts, entrées 01 à 11 ;
+- `JOURNAL.md` : le journal des prompts, entrées 01 à 12 ;
 - `captures/` : les captures de chaque lot et de chaque écran (clair, sombre, mobile) ;
 - `PR_FORUM.md` : le texte de la pull request.
 
@@ -53,7 +53,7 @@ ai-service/app/modules/forum/             FastAPI : routes /api/ai/forum/** (voi
   evaluation/     jeux de données, script evaluer_forum.py, resultats/ (réel) et resultats/dry-run/
 ai-service/tests/forum/                   tests pytest + e2e_forum.py (boîte noire via la gateway)
 frontend/src/app/features/forum/          Angular : pages, services, modèles, composant <app-forum-apercu>
-prompts_journal/forum/                    plan, journal (entrées 01 à 11), captures, ce README
+prompts_journal/forum/                    plan, journal (entrées 01 à 12), captures, ce README
 ```
 
 ---
@@ -186,7 +186,7 @@ docker compose up -d --build                 # http://localhost:4200
 cd backend && ./mvnw -pl forum-service -am spring-boot:run
 
 # Tests
-cd backend && ./mvnw -pl forum-service -am test          # 142 tests (MockMvc, H2, IA simulée)
+cd backend && ./mvnw -pl forum-service -am test          # 161 tests (MockMvc, H2, IA simulée)
 cd ai-service && .venv/Scripts/python -m pytest tests/forum   # tests du forum, couverture de branches ≥ 95 %
 cd frontend && npx ng build                              # sans avertissement
 cd ai-service && .venv/Scripts/python tests/forum/e2e_forum.py   # boîte noire via la gateway (pile lancée)
@@ -203,7 +203,7 @@ Hors `--dry-run`, le script d'évaluation annonce le nombre d'appels et demande 
 passer). Il espace les appels, envoie les vecteurs par lots de 20 et attend 65 s sur une erreur 429 (5 essais).
 
 Résultats à la date de la PR :
-- **Java :** 142 tests verts.
+- **Java :** 161 tests verts.
 - **Python :** 218 tests verts sur toute la suite de l'ai-service, dont 106 du forum (couverture de branches d'environ 97 %).
 - **Front :** `ng build` sans avertissement.
 - **Boîte noire :** 26 contrôles réussis, 0 échec. Elle vérifie aussi les accès refusés : 401 sans jeton, en-têtes `X-User-*` forgés ignorés, 403 croisés.

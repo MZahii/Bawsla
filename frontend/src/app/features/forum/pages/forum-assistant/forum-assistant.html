@@ -48,10 +48,12 @@
       @if (mode() === 'GENERAL') { <p class="small avert"><mat-icon aria-hidden="true">public</mat-icon> Réponse générale : sans source, non vérifiée, à confirmer avec ton formateur.</p> }
       @if (erreur(); as msg) { <p class="small erreur" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ msg }}</p> }
       <div class="ligne">
-        <textarea name="texte" dir="auto" rows="2" maxlength="2000" [ngModel]="texte()" (ngModelChange)="texte.set($event)"
-                  (keydown.enter)="entree($any($event))" placeholder="Ta question (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)" aria-label="Ta question"></textarea>
-        <button type="submit" bwButton="ia" [disabled]="!texte().trim() || envoi()">Envoyer</button>
+        <textarea name="texte" dir="auto" rows="2" [attr.maxlength]="maxQuestion" [ngModel]="texte()" (ngModelChange)="texte.set($event)"
+                  (keydown.enter)="entree($any($event))" placeholder="Ta question (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)" aria-label="Ta question"
+                  aria-describedby="aide-question" [attr.aria-invalid]="!!erreurVisible()"></textarea>
+        <button type="submit" bwButton="ia" [disabled]="!!erreurQuestion() || envoi()">Envoyer</button>
       </div>
+      <app-champ-aide id="aide-question" [erreur]="erreurVisible()" [longueur]="texte().trim().length" [max]="maxQuestion" />
     </form>
   </section>
 </div>

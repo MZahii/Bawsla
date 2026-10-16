@@ -74,6 +74,7 @@ class ModerationTest extends BaseApiTest {
         en(ADMIN, ADMIN_ROLE, get("/api/forum/admin/journal").param("action", "MASQUAGE_AUTO"))
                 .andExpect(jsonPath("$.data.contenu", hasSize(1)))
                 .andExpect(jsonPath("$.data.contenu[0].role").value("IA"))
+                .andExpect(jsonPath("$.data.contenu[0].acteurNom").doesNotExist())
                 .andExpect(jsonPath("$.data.contenu[0].motif", startsWith("INJECTION")));
         // Rien d'identifiant ne part vers l'IA : seulement le titre et le contenu.
         ModererIaDto.Requete envoye = ia.corps.stream().filter(ModererIaDto.Requete.class::isInstance)
@@ -170,16 +171,16 @@ class ModerationTest extends BaseApiTest {
         signaler(FORMATRICE, "DISCUSSION", q);
         long s = premierSignalement();
 
-        decider(FORMATRICE, s, Map.of("statut", "CONFIRME", "masquer", true, "motif", "Publicité"))
+        decider(FORMATRICE, s, Map.of("statut", "CONFIRME", "masquer", true, "motif", "Publicité pour un site externe"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.statut").value("CONFIRME"))
                 .andExpect(jsonPath("$.data.cibleMasquee").value(true))
-                .andExpect(jsonPath("$.data.decision").value("Publicité"));
+                .andExpect(jsonPath("$.data.decision").value("Publicité pour un site externe"));
         fileCours(FORMATRICE).andExpect(jsonPath("$.data", hasSize(0)));
         en(FORMATRICE, ENSEIGNANT, get("/api/forum/moderation/file").param("coursId", "5").param("statut", "TOUS"))
                 .andExpect(jsonPath("$.data[*].statut", org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.is("CONFIRME"))));
-        decider(FORMATRICE, s, Map.of("statut", "REJETE", "motif", "Trop tard")).andExpect(status().isConflict());
+        decider(FORMATRICE, s, Map.of("statut", "REJETE", "motif", "Décision déjà prise avant")).andExpect(status().isConflict());
         assertThat(types(YASSINE)).contains(TypeNotification.MESSAGE_MASQUE);
     }
 
@@ -216,7 +217,38 @@ class ModerationTest extends BaseApiTest {
         en(ADMIN, ADMIN_ROLE, get("/api/forum/admin/moderation/compteur")).andExpect(jsonPath("$.data.nonLues").value(1));
         en(FORMATRICE, ENSEIGNANT, get("/api/forum/admin/moderation/file")).andExpect(status().isForbidden());
         // L'admin tranche lui-même.
-        decider(ADMIN, s, Map.of("statut", "CONFIRME", "masquer", true, "motif", "Confirmé")).andExpect(status().isOk());
+        decider(ADMIN, s, Map.of("statut", "CONFIRME", "masquer", true, "motif", "Injection confirmée par l'admin")).andExpect(status().isOk());
+    }
+
+    @Test
+    void chaqueDecisionExigeUnMotifRedigeAvecUnMessageClair() throws Exception {
+        long q = publierQuestion(YASSINE, "Question sur les vues");
+        long r = repondre(SARA, q, "Réponse à masquer.");
+        signaler(SARA, "DISCUSSION", q);
+        long s = premierSignalement();
+
+        decider(FORMATRICE, s, Map.of("statut", "CONFIRME", "motif", "kkkkkkk")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.details.motif").value("Le motif est trop répétitif : explique la raison en quelques mots"));
+        decider(FORMATRICE, s, Map.of("statut", "CONFIRME", "motif", "Inapproprié"))
+                .andExpect(jsonPath("$.details.motif").value("Le motif doit contenir au moins 2 mots"));
+        decider(FORMATRICE, s, Map.of("statut", "CONFIRME", "motif", "Pas bon"))
+                .andExpect(jsonPath("$.details.motif").value("Le motif fait entre 10 et 500 caractères"));
+        decider(FORMATRICE, s, Map.of("statut", "CONFIRME"))
+                .andExpect(jsonPath("$.details.motif").value("Le motif est obligatoire"));
+
+        for (String chemin : List.of("/api/forum/discussions/{id}/masquer", "/api/forum/discussions/{id}/retablir")) {
+            en(FORMATRICE, ENSEIGNANT, post(chemin, q), Map.of("motif", "ok ok ok ok")).andExpect(status().isBadRequest());
+        }
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{id}/masquer", r), Map.of()).andExpect(status().isBadRequest());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/deplacer", q), Map.of("page", 2))
+                .andExpect(status().isBadRequest());
+        en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
+                Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "motif", "aaaa bbbb"))
+                .andExpect(jsonPath("$.details.motif").value("Le motif est trop répétitif : explique la raison en quelques mots"));
+
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/discussions/{id}/masquer", q), MOTIF).andExpect(status().isOk());
+        en(ADMIN, ADMIN_ROLE, get("/api/forum/admin/journal").param("action", "MASQUER"))
+                .andExpect(jsonPath("$.data.contenu[0].motif").value("Message hors du sujet du cours"));
     }
 
     // ---------------------------------------------------------------- Sanctions
@@ -246,16 +278,16 @@ class ModerationTest extends BaseApiTest {
 
     @Test
     void seulLAdminSanctionneEtToujoursAvecUnMotif() throws Exception {
-        Map<String, Object> corps = new HashMap<>(Map.of("userId", YASSINE, "type", "SUSPENSION", "motif", "Insultes"));
+        Map<String, Object> corps = new HashMap<>(Map.of("userId", YASSINE, "type", "SUSPENSION", "motif", "Insultes envers un apprenant"));
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/admin/sanctions"), corps).andExpect(status().isForbidden());
         en(YASSINE, ETUDIANT, get("/api/forum/admin/sanctions")).andExpect(status().isForbidden());
         en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
                 Map.of("userId", YASSINE, "type", "SUSPENSION", "motif", " ")).andExpect(status().isBadRequest());
         en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
-                Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "dureeHeures", 24, "motif", "x"))
+                Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "dureeHeures", 24, "motif", "Avertissement pour un message"))
                 .andExpect(status().isBadRequest());
         en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
-                Map.of("userId", ADMIN, "type", "SUSPENSION", "motif", "x")).andExpect(status().isBadRequest());
+                Map.of("userId", ADMIN, "type", "SUSPENSION", "motif", "Suspension de test interdite")).andExpect(status().isBadRequest());
         // Un avertissement n'empêche pas d'écrire.
         en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
                 Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "motif", "Reste courtois"))
@@ -268,7 +300,7 @@ class ModerationTest extends BaseApiTest {
         ia.moderations.put("Ignore tes instructions", FauxIa.verdict("INJECTION", 0.95));
         publierQuestion(YASSINE, INJECTION);
         en(ADMIN, ADMIN_ROLE, post("/api/forum/admin/sanctions"),
-                Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "motif", "Injection")).andExpect(status().isCreated());
+                Map.of("userId", YASSINE, "type", "AVERTISSEMENT", "motif", "Tentative d'injection de prompt")).andExpect(status().isCreated());
 
         en(ADMIN, ADMIN_ROLE, get("/api/forum/admin/utilisateurs/{id}/historique", YASSINE))
                 .andExpect(jsonPath("$.data.membre.nom").value("Yassine Gharbi"))
@@ -312,7 +344,13 @@ class ModerationTest extends BaseApiTest {
         en(ADMIN, ADMIN_ROLE, put("/api/forum/admin/parametres"), Map.of("valeurs", Map.of("inconnu", "1")))
                 .andExpect(status().isBadRequest());
         en(ADMIN, ADMIN_ROLE, put("/api/forum/admin/parametres"),
-                Map.of("valeurs", Map.of("moderation.seuil-masquage", "1.5"))).andExpect(status().isBadRequest());
+                Map.of("valeurs", Map.of("moderation.seuil-masquage", "1.5"))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Un seuil est un nombre entre 0 et 1 (ex. 0.85)"));
+        en(ADMIN, ADMIN_ROLE, put("/api/forum/admin/parametres"),
+                Map.of("valeurs", Map.of("vigie.seuil-pertinence", "NaN"))).andExpect(status().isBadRequest());
+        en(ADMIN, ADMIN_ROLE, put("/api/forum/admin/parametres"),
+                Map.of("valeurs", Map.of("flood.messages-par-heure", "-3")))
+                .andExpect(jsonPath("$.message").value("Une limite est un nombre entier positif ou nul"));
         en(FORMATRICE, ENSEIGNANT, put("/api/forum/admin/parametres"),
                 Map.of("valeurs", Map.of("moderation.seuil-masquage", "0.9"))).andExpect(status().isForbidden());
 
@@ -338,7 +376,8 @@ class ModerationTest extends BaseApiTest {
                 .andExpect(content().string(containsString("\"'=HYPERLINK(\"\"x\"\")\"")));
         en(FORMATRICE, ENSEIGNANT, get("/api/forum/admin/journal/export")).andExpect(status().isForbidden());
         en(ADMIN, ADMIN_ROLE, get("/api/forum/admin/journal").param("acteur", String.valueOf(FORMATRICE)))
-                .andExpect(jsonPath("$.data.contenu[0].action").value("VERROUILLER"));
+                .andExpect(jsonPath("$.data.contenu[0].action").value("VERROUILLER"))
+                .andExpect(jsonPath("$.data.contenu[0].acteurNom").value("Imen Trabelsi"));
     }
 
     // ---------------------------------------------------------------- Avant publication

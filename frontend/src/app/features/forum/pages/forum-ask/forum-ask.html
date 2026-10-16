@@ -13,9 +13,11 @@
     <div class="ligne-2">
       <div class="champ">
         <label for="cours">Cours <span aria-hidden="true">*</span></label>
-        <mat-select id="cours" class="sel" [value]="coursId()" (valueChange)="changerCours($event)" placeholder="Choisis le cours" aria-required="true">
+        <mat-select id="cours" class="sel" [value]="coursId()" (valueChange)="changerCours($event)" (closed)="toucher('cours')" placeholder="Choisis le cours"
+                    aria-required="true" [attr.aria-invalid]="!!visible('cours', erreurCours(), '')" aria-describedby="aide-cours">
           @for (c of cours(); track c.id) { <mat-option [value]="c.id">{{ c.titre }}</mat-option> }
         </mat-select>
+        <app-champ-aide id="aide-cours" [erreur]="visible('cours', erreurCours(), '')" />
       </div>
       <div class="champ">
         <label for="type">Type</label>
@@ -32,9 +34,11 @@
 
     <div class="champ">
       <label for="titre">Titre <span aria-hidden="true">*</span></label>
-      <input id="titre" class="input" dir="auto" maxlength="200" [ngModel]="titre()" (ngModelChange)="changerTitre($event)" name="titre"
-             placeholder="Ex. : Pourquoi mon LEFT JOIN renvoie autant de lignes qu’un INNER JOIN ?" aria-describedby="aide-titre" />
-      <span id="aide-titre" class="small muted">Au moins 10 caractères. Les questions proches s’affichent pendant que tu écris.</span>
+      <input id="titre" class="input" dir="auto" [attr.maxlength]="regles.titre.max" [ngModel]="titre()" (ngModelChange)="changerTitre($event)" (blur)="toucher('titre')" name="titre"
+             placeholder="Ex. : Pourquoi mon LEFT JOIN renvoie autant de lignes qu’un INNER JOIN ?" aria-describedby="aide-titre" aria-required="true"
+             [attr.aria-invalid]="!!visible('titre', erreurTitre(), titre())" />
+      <app-champ-aide id="aide-titre" [erreur]="visible('titre', erreurTitre(), titre())" aide="Entre 10 et 200 caractères. Les questions proches s’affichent pendant que tu écris."
+                      [longueur]="titre().trim().length" [max]="regles.titre.max" />
     </div>
 
     <section class="proches" aria-live="polite" aria-label="Questions proches">
@@ -63,8 +67,9 @@
 
     <div class="champ">
       <span class="label">Détails <span aria-hidden="true">*</span></span>
-      <app-forum-editeur [(valeur)]="contenu" libelle="Détails de la question" [modele]="modele" [lignes]="10"
+      <app-forum-editeur [(valeur)]="contenu" (focusout)="toucher('contenu')" libelle="Détails de la question" [modele]="modele" [lignes]="10" [max]="regles.contenu.max"
                          placeholder="Explique ce que tu essaies de faire, ce que tu as essayé, et colle le message d’erreur." />
+      <app-champ-aide [erreur]="visible('contenu', erreurContenu(), contenu())" />
     </div>
 
     <div class="champ">
@@ -73,9 +78,11 @@
         @for (e of etiquettes(); track e) {
           <span class="pill plain">{{ e }} <button type="button" class="x" (click)="retirerEtiquette(e)" [attr.aria-label]="'Retirer ' + e"><mat-icon>close</mat-icon></button></span>
         }
-        <input id="etiquette" class="input mini" [ngModel]="saisieEtiquette()" (ngModelChange)="chercherEtiquettes($event)" name="etiquette"
-               (keydown.enter)="$event.preventDefault(); ajouterEtiquette(saisieEtiquette())" placeholder="sql, jointures…" [disabled]="etiquettes().length >= 5" />
+        <input id="etiquette" class="input mini" [attr.maxlength]="regles.etiquette.max" [ngModel]="saisieEtiquette()" (ngModelChange)="chercherEtiquettes($event)" name="etiquette"
+               (keydown.enter)="$event.preventDefault(); ajouterEtiquette(saisieEtiquette())" placeholder="sql, jointures…" [disabled]="etiquettes().length >= 5" aria-describedby="aide-etiquette" />
       </div>
+      <app-champ-aide id="aide-etiquette" [erreur]="erreurEtiquette()" [aide]="etiquettes().length >= 5 ? '5 étiquettes au plus : retires-en une pour en ajouter une autre.' : 'Entrée pour ajouter.'"
+                      [longueur]="saisieEtiquette().trim().length" [max]="regles.etiquette.max" />
       @if (suggestionsEtiquettes().length) {
         <div class="suggestions" role="listbox" aria-label="Étiquettes existantes">
           @for (s of suggestionsEtiquettes(); track s.id) {

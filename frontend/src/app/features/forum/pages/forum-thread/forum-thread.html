@@ -34,9 +34,13 @@
           </div>
 
           @if (edition(); as e) {
-            <input class="input" dir="auto" [ngModel]="e.titre" (ngModelChange)="edition.set({ titre: $event, contenu: e.contenu })" aria-label="Titre" />
-            <app-forum-editeur [valeur]="e.contenu" (valeurChange)="edition.set({ titre: e.titre, contenu: $event })" libelle="Contenu" />
-            <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="edition.set(null)">Annuler</button><button type="button" bwButton="secondaire" (click)="enregistrer()">Enregistrer</button></div>
+            <input class="input" dir="auto" [attr.maxlength]="regles.titre.max" [ngModel]="e.titre" (ngModelChange)="edition.set({ titre: $event, contenu: e.contenu })" (blur)="toucher('titre')"
+                   aria-label="Titre" [attr.aria-invalid]="!!erreurEdition()?.titre" aria-describedby="aide-edition-titre" />
+            <app-champ-aide id="aide-edition-titre" [erreur]="visible('titre', erreurEdition()?.titre ?? null, e.titre)" [longueur]="e.titre.trim().length" [max]="regles.titre.max" />
+            <app-forum-editeur [valeur]="e.contenu" (valeurChange)="edition.set({ titre: e.titre, contenu: $event }); toucher('contenu')" libelle="Contenu" [max]="regles.contenu.max" />
+            <app-champ-aide [erreur]="visible('contenu', erreurEdition()?.contenu ?? null, e.contenu)" />
+            <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="edition.set(null)">Annuler</button>
+              <button type="button" bwButton="secondaire" [disabled]="!!erreurEdition()?.titre || !!erreurEdition()?.contenu" (click)="enregistrer()">Enregistrer</button></div>
           } @else {
             <h1 id="titre-fil" class="titre" dir="auto">{{ d.titre }}</h1>
             <app-forum-markdown [texte]="d.contenu" />
@@ -125,8 +129,10 @@
                 @if (r.masquee) { <span class="pill ko">Masquée</span> }
               </div>
               @if (editionReponse()?.id === r.id) {
-                <app-forum-editeur [valeur]="editionReponse()!.contenu" (valeurChange)="editionReponse.set({ id: r.id, contenu: $event })" libelle="Réponse" [lignes]="6" />
-                <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="editionReponse.set(null)">Annuler</button><button type="button" bwButton="secondaire" (click)="enregistrerReponse()">Enregistrer</button></div>
+                <app-forum-editeur [valeur]="editionReponse()!.contenu" (valeurChange)="editionReponse.set({ id: r.id, contenu: $event })" libelle="Réponse" [lignes]="6" [max]="regles.reponse.max" />
+                <app-champ-aide [erreur]="erreurEditionReponse()" />
+                <div class="ligne-actions"><button type="button" bwButton="fantome" (click)="editionReponse.set(null)">Annuler</button>
+                  <button type="button" bwButton="secondaire" [disabled]="!!erreurEditionReponse()" (click)="enregistrerReponse()">Enregistrer</button></div>
               } @else if (r.contenu) {
                 <app-forum-markdown [texte]="r.contenu" />
               } @else {
@@ -182,11 +188,12 @@
       @if (d.droits.repondre) {
         <section class="card card-pad bloc repondre" id="repondre" aria-labelledby="titre-repondre">
           <h2 id="titre-repondre" class="h2">Ta réponse</h2>
-          <app-forum-editeur [(valeur)]="reponse" libelle="Ta réponse" [lignes]="6" placeholder="Explique ta solution ; cite le cours si tu peux." />
+          <app-forum-editeur [(valeur)]="reponse" (focusout)="toucher('reponse')" libelle="Ta réponse" [lignes]="6" [max]="regles.reponse.max" placeholder="Explique ta solution ; cite le cours si tu peux." />
+          <app-champ-aide [erreur]="visible('reponse', erreurReponse(), reponse())" />
           <div class="ligne-actions">
             @if (apprenant()) { <mat-checkbox [checked]="anonyme()" (change)="anonyme.set($event.checked)">Anonyme pour les autres apprenants</mat-checkbox> }
             <span class="grow"></span>
-            <button type="button" bwButton="principal" [bwLoading]="envoi()" [disabled]="!reponse().trim() || envoi()" (click)="repondre()">Publier ma réponse</button>
+            <button type="button" bwButton="principal" [bwLoading]="envoi()" [disabled]="!!erreurReponse() || envoi()" (click)="repondre()">Publier ma réponse</button>
           </div>
         </section>
       } @else if (d.verrouillee) {
@@ -245,10 +252,14 @@
           }
         </ul>
         @if (d.droits.repondre) {
+          @let saisie = commentaire()[cle] ?? '';
+          @let erreurC = erreurTexte(regles.commentaire, saisie);
           <div class="ajout">
-            <input class="input" dir="auto" maxlength="600" [ngModel]="commentaire()[cle] ?? ''" (ngModelChange)="saisirCommentaire(cle, $event)" (keydown.enter)="commenter(reponseId)" placeholder="Ajouter un commentaire (600 caractères)" aria-label="Ajouter un commentaire" />
-            <button type="button" bwButton="secondaire" (click)="commenter(reponseId)">Commenter</button>
+            <input class="input" dir="auto" [attr.maxlength]="regles.commentaire.max" [ngModel]="saisie" (ngModelChange)="saisirCommentaire(cle, $event)" (blur)="toucher('c-' + cle)"
+                   (keydown.enter)="commenter(reponseId)" placeholder="Ajouter un commentaire" aria-label="Ajouter un commentaire" [attr.aria-describedby]="'aide-c-' + cle" />
+            <button type="button" bwButton="secondaire" [disabled]="!!erreurC" (click)="commenter(reponseId)">Commenter</button>
           </div>
+          <app-champ-aide [id]="'aide-c-' + cle" [erreur]="visible('c-' + cle, erreurC, saisie)" [longueur]="saisie.trim().length" [max]="regles.commentaire.max" />
         }
       }
     </div>

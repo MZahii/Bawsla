@@ -11,8 +11,20 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { BwButton, EmptyState } from '../../../../shared';
 import { BwChart, ChartSerie, Kpi, PageHeader } from '../../../../shared/ui';
+import { ChampAide } from '../../components/champ-aide';
 import { DiscussionLigne } from '../../components/discussion-ligne';
-import { LIBELLES_CATEGORIE, MOTIFS, TempsRelatifPipe, messageErreur, pourcent } from '../../components/outils';
+import { MotifChamp } from '../../components/motif-champ';
+import {
+  LIBELLES_CATEGORIE,
+  LIBELLES_STATUT_SIGNALEMENT,
+  MOTIFS,
+  TempsRelatifPipe,
+  depuisChampDate,
+  messageErreur,
+  pourcent,
+  versChampDate,
+} from '../../components/outils';
+import { REGLES, erreurMotif, erreurTexte } from '../../components/validation';
 import { VigieBox } from '../../components/vigie-box';
 import {
   ApprenantBloque,
@@ -41,7 +53,7 @@ import { VigieService } from '../../services/vigie.service';
   selector: 'app-studio-forum',
   imports: [
     FormsModule, RouterLink, MatIconModule, MatSelectModule, MatTabsModule, MatButtonToggleModule, MatSlideToggleModule,
-    BwButton, EmptyState, BwChart, Kpi, PageHeader, DiscussionLigne, VigieBox, TempsRelatifPipe,
+    BwButton, EmptyState, BwChart, Kpi, PageHeader, DiscussionLigne, VigieBox, TempsRelatifPipe, ChampAide, MotifChamp,
   ],
   templateUrl: './studio-forum.html',
   styleUrl: './studio-forum.scss',
@@ -56,6 +68,9 @@ export class StudioForum implements OnInit {
   protected readonly pourcent = pourcent;
   protected readonly categories = LIBELLES_CATEGORIE;
   protected readonly motifs = Object.fromEntries(MOTIFS.map((m) => [m.code, m.libelle]));
+  protected readonly libellesStatut = LIBELLES_STATUT_SIGNALEMENT;
+  protected readonly versChampDate = versChampDate;
+  protected readonly maxModele = REGLES.modele.max;
   protected readonly cours = signal<CoursOption[]>([]);
   protected readonly coursId = signal<number | null>(null);
   protected readonly stats = signal<Statistiques | null>(null);
@@ -76,6 +91,14 @@ export class StudioForum implements OnInit {
   protected readonly urgentes = computed(() => {
     const limite = Date.now() - 24 * 3600 * 1000;
     return this.sansReponse().filter((d) => new Date(d.creeLe).getTime() < limite);
+  });
+  protected readonly erreurModele = computed(() => erreurTexte(REGLES.modele, this.reglages()?.questionModele));
+  protected readonly erreurFinExamen = computed(() => {
+    const r = this.reglages();
+    if (!r?.modeExamen || !r.modeExamenFin) {
+      return null;
+    }
+    return new Date(r.modeExamenFin).getTime() > Date.now() ? null : 'La fin du mode examen doit être dans le futur';
   });
   protected readonly faibles = computed(() =>
     this.aVerifier().filter((v) => v.reponse.statut === 'HORS_COURS' || v.reponse.statut === 'ERREUR' || (v.reponse.confiance ?? 100) < 50),
@@ -116,10 +139,14 @@ export class StudioForum implements OnInit {
     this.vigie.duCours(this.coursId()!, this.filtreVigie()).subscribe({ next: (v) => this.reponsesVigie.set(v) });
   }
 
-  protected decisionVigie(appel: 'valider' | 'corriger' | 'rejeter', r: VigieResponse, texte?: string): void {
+  protected decisionVigie(appel: 'valider' | 'corriger' | 'rejeter', r: VigieResponse, saisie?: { texte?: string; motif: string }): void {
     this.occupe.set(true);
     const action =
-      appel === 'valider' ? this.vigie.valider(r.id) : appel === 'corriger' ? this.vigie.corriger(r.id, texte!) : this.vigie.rejeter(r.id, texte!);
+      appel === 'valider'
+        ? this.vigie.valider(r.id)
+        : appel === 'corriger'
+          ? this.vigie.corriger(r.id, saisie!.texte!, saisie!.motif)
+          : this.vigie.rejeter(r.id, saisie!.motif);
     action.subscribe({
       next: () => {
         this.occupe.set(false);
@@ -154,10 +181,13 @@ export class StudioForum implements OnInit {
     this.motifDecision.set({ ...this.motifDecision(), [id]: texte });
   }
 
+  protected motifInvalide(id: number): boolean {
+    return erreurMotif(this.motifDecision()[id]) !== null;
+  }
+
   protected decider(s: Signalement, statut: StatutSignalement, masquer: boolean, escalader = false): void {
     const motif = (this.motifDecision()[s.id] ?? '').trim();
-    if (!motif) {
-      this.toast('Écris le motif de ta décision (il est tracé dans le journal).');
+    if (erreurMotif(motif)) {
       return;
     }
     this.moderation.decider(s.id, { statut, masquer, escalader, motif }).subscribe({
@@ -197,10 +227,10 @@ export class StudioForum implements OnInit {
 
   protected enregistrerReglages(): void {
     const r = this.reglages();
-    if (!r) {
+    if (!r || this.erreurModele() || this.erreurFinExamen()) {
       return;
     }
-    const corps = { ...r, modeExamenFin: r.modeExamen && r.modeExamenFin ? `${r.modeExamenFin.slice(0, 16)}:00` : undefined };
+    const corps = { ...r, modeExamenFin: r.modeExamen ? depuisChampDate(r.modeExamenFin) : undefined };
     this.moderation.modifierParametresCours(this.coursId()!, corps).subscribe({
       next: (x) => {
         this.reglages.set(x);

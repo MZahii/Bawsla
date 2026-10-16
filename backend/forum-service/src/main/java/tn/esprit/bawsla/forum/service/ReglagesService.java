@@ -3,6 +3,7 @@ package tn.esprit.bawsla.forum.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,16 +46,18 @@ public class ReglagesService {
     private final JournalModerationRepository journalRepository;
     private final AccesService acces;
     private final JournalService journal;
+    private final AnnuaireService annuaire;
     private final Clock horloge;
 
     public ReglagesService(ParametresService parametres, ParametresForumCoursRepository coursRepository,
                            JournalModerationRepository journalRepository, AccesService acces, JournalService journal,
-                           Clock horloge) {
+                           AnnuaireService annuaire, Clock horloge) {
         this.parametres = parametres;
         this.coursRepository = coursRepository;
         this.journalRepository = journalRepository;
         this.acces = acces;
         this.journal = journal;
+        this.annuaire = annuaire;
         this.horloge = horloge;
     }
 
@@ -111,8 +114,12 @@ public class ReglagesService {
         acces.exigerAdmin(user);
         int numero = page == null ? 0 : Math.max(0, page);
         Page<JournalModeration> r = rechercher(acteurId, action, du, au, PageRequest.of(numero, TAILLE_JOURNAL));
-        return PageResponse.of(r.getContent().stream().map(JournalResponse::from).toList(), numero, TAILLE_JOURNAL,
-                r.getTotalElements());
+        Map<Long, String> noms = new HashMap<>();
+        List<JournalResponse> lignes = r.getContent().stream()
+                .map(j -> JournalResponse.from(j, j.getActeurId() == null || ModerationAutoService.ROLE_IA.equals(j.getRole())
+                        ? null : noms.computeIfAbsent(j.getActeurId(), id -> annuaire.membre(id).nom())))
+                .toList();
+        return PageResponse.of(lignes, numero, TAILLE_JOURNAL, r.getTotalElements());
     }
 
     /** Export CSV (séparateur « ; », UTF-8 avec BOM pour Excel), au plus 5000 lignes. */

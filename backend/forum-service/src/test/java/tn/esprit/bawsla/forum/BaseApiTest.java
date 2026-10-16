@@ -79,6 +79,8 @@ abstract class BaseApiTest {
     static final String ADMIN_ROLE = "ADMIN";
     static final String ENSEIGNANT = "ENSEIGNANT";
     static final String ETUDIANT = "ETUDIANT";
+    /** Motif valable (règle @Motif : 10 à 500 caractères, 2 mots, non répétitif). */
+    static final Map<String, String> MOTIF = Map.of("motif", "Message hors du sujet du cours");
 
     @Autowired
     MockMvc mvc;

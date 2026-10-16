@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,7 +7,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AiLoading, BwButton, EmptyState } from '../../../../shared';
 import { PageHeader } from '../../../../shared/ui';
+import { ChampAide } from '../../components/champ-aide';
 import { TempsRelatifPipe, messageErreur } from '../../components/outils';
+import { REGLES, erreurTexte } from '../../components/validation';
 import { VigieBox } from '../../components/vigie-box';
 import { ConversationVigie, CoursOption, ModeVigie } from '../../models';
 import { ForumService } from '../../services/forum.service';
@@ -20,7 +22,7 @@ import { VigieService } from '../../services/vigie.service';
  */
 @Component({
   selector: 'app-forum-assistant',
-  imports: [FormsModule, MatIconModule, MatSelectModule, MatButtonToggleModule, AiLoading, BwButton, EmptyState, PageHeader, VigieBox, TempsRelatifPipe],
+  imports: [FormsModule, MatIconModule, MatSelectModule, MatButtonToggleModule, AiLoading, BwButton, EmptyState, PageHeader, VigieBox, TempsRelatifPipe, ChampAide],
   templateUrl: './forum-assistant.html',
   styleUrl: './forum-assistant.scss',
 })
@@ -39,6 +41,10 @@ export class ForumAssistant implements OnInit {
   protected readonly mode = signal<ModeVigie>('DIRECTE');
   protected readonly envoi = signal(false);
   protected readonly erreur = signal<string | null>(null);
+  protected readonly maxQuestion = REGLES.question.max;
+  protected readonly erreurQuestion = computed(() => erreurTexte(REGLES.question, this.texte()));
+  /** « La question est obligatoire » n'apparaît pas sur une zone vide : seule la longueur est signalée en direct. */
+  protected readonly erreurVisible = computed(() => (this.texte().trim() ? this.erreurQuestion() : null));
 
   ngOnInit(): void {
     const c = this.route.snapshot.queryParamMap.get('coursId');
@@ -72,6 +78,9 @@ export class ForumAssistant implements OnInit {
   /** Crée la conversation au premier message, puis envoie la question. */
   protected envoyer(): void {
     const texte = this.texte().trim();
+    if (this.erreurQuestion()) {
+      return;
+    }
     if (!texte || this.envoi()) {
       return;
     }

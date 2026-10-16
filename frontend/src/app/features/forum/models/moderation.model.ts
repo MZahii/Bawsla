@@ -169,6 +169,8 @@ export interface ParametresForum {
 export interface JournalModeration {
   id: number;
   acteurId: number;
+  /** Absent pour la modération automatique (role IA). */
+  acteurNom?: string;
   role: string;
   action: ActionModeration;
   cibleType: string;

@@ -1,6 +1,6 @@
-import { SlicePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -10,8 +10,25 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 
 import { BwButton, EmptyState } from '../../../../shared';
+import { User } from '../../../../shared/models/user.model';
 import { BwChart, ChartSerie, Kpi, PageHeader } from '../../../../shared/ui';
-import { LIBELLES_CATEGORIE, MOTIFS, TempsRelatifPipe, messageErreur, pourcent } from '../../components/outils';
+import { ChampAide } from '../../components/champ-aide';
+import { MotifChamp } from '../../components/motif-champ';
+import {
+  DateHeurePipe,
+  LIBELLES_ACTION,
+  LIBELLES_CATEGORIE,
+  LIBELLES_CIBLE,
+  LIBELLES_ROLE,
+  LIBELLES_SANCTION,
+  LIBELLES_STATUT_SIGNALEMENT,
+  MOTIFS,
+  TempsRelatifPipe,
+  messageErreur,
+  motifLisible,
+  pourcent,
+} from '../../components/outils';
+import { erreurMotif, erreurReglage } from '../../components/validation';
 import {
   ActionModeration,
   AdminStatistiques,
@@ -47,6 +64,11 @@ const ACTIONS: ActionModeration[] = [
   'CORRIGER_VIGIE', 'REJETER_VIGIE', 'MODIFIER_PARAMETRES',
 ];
 
+/** Comparaison sans accents ni majuscules pour la recherche de membres. */
+function simple(texte: string): string {
+  return texte.toLowerCase().normalize('NFD').replace(/\p{M}+/gu, '');
+}
+
 /**
  * Espace admin du forum (plan §7.7) : santé de la plateforme, file de modération globale (escalades et décisions
  * de l'IA), membres et sanctions motivées, supervision de La Vigie (coût, fiabilité, sécurité), réglages globaux,
@@ -55,8 +77,8 @@ const ACTIONS: ActionModeration[] = [
 @Component({
   selector: 'app-admin-forum',
   imports: [
-    FormsModule, SlicePipe, RouterLink, MatIconModule, MatSelectModule, MatTabsModule, MatButtonToggleModule, MatSlideToggleModule,
-    BwButton, EmptyState, BwChart, Kpi, PageHeader, TempsRelatifPipe,
+    FormsModule, RouterLink, MatIconModule, MatSelectModule, MatTabsModule, MatButtonToggleModule, MatSlideToggleModule, MatAutocompleteModule,
+    BwButton, EmptyState, BwChart, Kpi, PageHeader, TempsRelatifPipe, DateHeurePipe, ChampAide, MotifChamp,
   ],
   templateUrl: './admin-forum.html',
   styleUrl: './admin-forum.scss',
@@ -71,6 +93,16 @@ export class AdminForum implements OnInit {
   protected readonly motifs = Object.fromEntries(MOTIFS.map((m) => [m.code, m.libelle]));
   protected readonly reglagesConnus = REGLAGES;
   protected readonly actions = ACTIONS;
+  protected readonly libellesAction = LIBELLES_ACTION;
+  protected readonly libellesCible = LIBELLES_CIBLE;
+  protected readonly libellesRole = LIBELLES_ROLE;
+  protected readonly libellesSanction = LIBELLES_SANCTION;
+  protected readonly libellesStatut = LIBELLES_STATUT_SIGNALEMENT;
+  protected readonly motifLisible = motifLisible;
+  protected readonly erreurMotif = erreurMotif;
+  protected readonly erreurReglage = erreurReglage;
+  protected readonly typesSanction: TypeSanction[] = ['AVERTISSEMENT', 'LECTURE_SEULE', 'SUSPENSION'];
+  protected readonly afficherMembre = (u: User | string | null): string => (u && typeof u !== 'string' ? this.libelleMembre(u) : (u ?? ''));
 
   protected readonly periode = signal(30);
   protected readonly stats = signal<AdminStatistiques | null>(null);
@@ -81,6 +113,28 @@ export class AdminForum implements OnInit {
   protected readonly file = signal<Signalement[]>([]);
   protected readonly motifDecision = signal<Partial<Record<number, string>>>({});
   protected readonly membreId = signal<number | null>(null);
+  /** Recherche de membres : la liste n'est chargée qu'à la première frappe, rien n'est affiché par défaut. */
+  protected readonly recherche = signal('');
+  private readonly annuaire = signal<User[] | null>(null);
+  protected readonly annuaireErreur = signal<string | null>(null);
+  private readonly chargementAnnuaire = signal(false);
+  protected readonly erreurRecherche = computed(() => {
+    if (this.annuaireErreur()) {
+      return this.annuaireErreur();
+    }
+    const q = this.recherche().trim();
+    return q.length >= 2 && !this.chargementAnnuaire() && this.annuaire() !== null && !this.suggestions().length && this.membreId() === null
+      ? `Aucun membre ne correspond à « ${q} ».`
+      : null;
+  });
+  protected readonly suggestions = computed(() => {
+    const q = simple(this.recherche().trim());
+    const tous = this.annuaire();
+    if (q.length < 2 || !tous) {
+      return [];
+    }
+    return tous.filter((u) => simple(`${u.prenom} ${u.nom} ${u.nom} ${u.prenom} ${u.email}`).includes(q)).slice(0, 8);
+  });
   protected readonly historique = signal<HistoriqueMembre | null>(null);
   protected readonly sanctions = signal<Sanction[]>([]);
   protected readonly typeSanction = signal<TypeSanction>('LECTURE_SEULE');
@@ -90,6 +144,9 @@ export class AdminForum implements OnInit {
   protected readonly journal = signal<PageResponse<JournalModeration> | null>(null);
   protected readonly filtresJournal = signal<FiltresJournal>({});
   protected readonly erreur = signal<string | null>(null);
+  protected readonly reglagesValides = computed(() =>
+    REGLAGES.every((r) => erreurReglage(r.cle, this.valeurs()[r.cle]) === null),
+  );
 
   ngOnInit(): void {
     this.chargerVue();
@@ -144,10 +201,13 @@ export class AdminForum implements OnInit {
     this.motifDecision.set({ ...this.motifDecision(), [id]: texte });
   }
 
+  protected motifInvalide(id: number): boolean {
+    return erreurMotif(this.motifDecision()[id]) !== null;
+  }
+
   protected decider(s: Signalement, statut: StatutSignalement, masquer: boolean): void {
     const motif = (this.motifDecision()[s.id] ?? '').trim();
-    if (!motif) {
-      this.toast('Le motif est obligatoire.');
+    if (erreurMotif(motif)) {
       return;
     }
     this.moderation.decider(s.id, { statut, masquer, escalader: false, motif }).subscribe({
@@ -160,6 +220,35 @@ export class AdminForum implements OnInit {
   }
 
   // ------------------------------------------------------------ Membres et sanctions
+
+  protected chercherMembre(q: string): void {
+    this.recherche.set(q);
+    this.membreId.set(null);
+    this.historique.set(null);
+    if (q.trim().length >= 2 && this.annuaire() === null && !this.chargementAnnuaire()) {
+      this.chargementAnnuaire.set(true);
+      this.annuaireErreur.set(null);
+      this.moderation.membres().subscribe({
+        next: (u) => {
+          this.annuaire.set(u);
+          this.chargementAnnuaire.set(false);
+        },
+        error: (e) => {
+          this.chargementAnnuaire.set(false);
+          this.annuaireErreur.set(messageErreur(e, 'La liste des membres est indisponible pour le moment.'));
+        },
+      });
+    }
+  }
+
+  protected libelleMembre(u: User): string {
+    return `${u.prenom} ${u.nom}`;
+  }
+
+  protected choisirMembre(u: User): void {
+    this.recherche.set(this.libelleMembre(u));
+    this.voirMembre(u.id);
+  }
 
   protected voirMembre(id: number | undefined): void {
     if (!id) {
@@ -176,8 +265,7 @@ export class AdminForum implements OnInit {
   protected sanctionner(): void {
     const userId = this.membreId();
     const motif = this.motifSanction().trim();
-    if (!userId || !motif) {
-      this.toast('Choisis un membre et écris le motif.');
+    if (!userId || erreurMotif(motif)) {
       return;
     }
     const type = this.typeSanction();
@@ -214,6 +302,9 @@ export class AdminForum implements OnInit {
   }
 
   protected enregistrerReglages(): void {
+    if (!this.reglagesValides()) {
+      return;
+    }
     this.moderation.modifierParametresGlobaux(this.valeurs() as Record<string, string>).subscribe({
       next: (p) => {
         this.valeurs.set(p.valeurs);

@@ -110,11 +110,17 @@
     @if (moderateur() && !prive()) {
       @if (edition(); as mode) {
         <div class="edition">
-          <label class="small" [for]="'ed-' + r().id">{{ mode === 'corriger' ? 'Texte corrigé (l’original est conservé)' : 'Motif du rejet' }}</label>
-          <textarea [id]="'ed-' + r().id" dir="auto" [rows]="mode === 'corriger' ? 5 : 2" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)"></textarea>
+          @if (mode === 'corriger') {
+            <label class="small" [for]="'ed-' + r().id">Texte corrigé (l’original est conservé) <span aria-hidden="true">*</span></label>
+            <textarea [id]="'ed-' + r().id" dir="auto" rows="5" [attr.maxlength]="maxCorrection" [ngModel]="brouillon()" (ngModelChange)="brouillon.set($event)"
+                      [attr.aria-invalid]="!!erreurCorrection()" [attr.aria-describedby]="'ed-aide-' + r().id"></textarea>
+            <app-champ-aide [id]="'ed-aide-' + r().id" [erreur]="erreurCorrection()" [longueur]="brouillon().trim().length" [max]="maxCorrection" />
+          }
+          <app-motif-champ [(valeur)]="motif" [contexte]="mode === 'corriger' ? 'correction-vigie' : 'rejet-vigie'"
+                           [libelle]="mode === 'corriger' ? 'Motif de la correction' : 'Motif du rejet'" />
           <div class="ligne">
             <button type="button" bwButton="fantome" (click)="edition.set(null)">Annuler</button>
-            <button type="button" [bwButton]="mode === 'corriger' ? 'principal' : 'danger'" [disabled]="occupe() || (mode === 'corriger' && !brouillon().trim())" (click)="confirmerEdition()">
+            <button type="button" [bwButton]="mode === 'corriger' ? 'principal' : 'danger'" [disabled]="occupe() || !editionValide()" (click)="confirmerEdition()">
               {{ mode === 'corriger' ? 'Publier la correction' : 'Rejeter la réponse' }}
             </button>
           </div>

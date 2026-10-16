@@ -122,31 +122,40 @@ public class ParametresService {
                 && (p.getModeExamenFin() == null || p.getModeExamenFin().isAfter(LocalDateTime.now(horloge)));
     }
 
+    /** Messages repris tels quels sous chaque champ des réglages (features/forum/components/validation.ts). */
+    static final String ERREUR_SEUIL = "Un seuil est un nombre entre 0 et 1 (ex. 0.85)";
+    static final String ERREUR_LIMITE = "Une limite est un nombre entier positif ou nul";
+    static final String ERREUR_INTERRUPTEUR = "La valeur est true (activé) ou false (désactivé)";
+
     private static void valider(String cle, String valeur) {
-        try {
-            switch (cle) {
-                case SEUIL_MASQUAGE, SEUIL_SIGNALEMENT, SEUIL_SIMILAIRE, SEUIL_DOUBLON, SEUIL_PERTINENCE -> {
-                    double v = Double.parseDouble(valeur);
-                    if (v < 0 || v > 1) {
-                        throw new BadRequestException("Le réglage " + cle + " est compris entre 0 et 1");
-                    }
-                }
-                case QUESTIONS_PAR_HEURE, MESSAGES_PAR_HEURE, POINTS_VOTE_NEGATIF -> {
-                    if (Integer.parseInt(valeur) < 0) {
-                        throw new BadRequestException("Le réglage " + cle + " est positif");
-                    }
-                }
-                case REPONSE_GENERALE -> {
-                    if (!valeur.equals("true") && !valeur.equals("false")) {
-                        throw new BadRequestException("Le réglage " + cle + " vaut true ou false");
-                    }
-                }
-                default -> {
-                    // texte libre (mots interdits)
+        switch (cle) {
+            case SEUIL_MASQUAGE, SEUIL_SIGNALEMENT, SEUIL_SIMILAIRE, SEUIL_DOUBLON, SEUIL_PERTINENCE -> {
+                Double v = nombre(valeur);
+                if (v == null || v.isNaN() || v < 0 || v > 1) {
+                    throw new BadRequestException(ERREUR_SEUIL);
                 }
             }
+            case QUESTIONS_PAR_HEURE, MESSAGES_PAR_HEURE, POINTS_VOTE_NEGATIF -> {
+                if (!valeur.matches("\\d{1,9}")) {
+                    throw new BadRequestException(ERREUR_LIMITE);
+                }
+            }
+            case REPONSE_GENERALE -> {
+                if (!valeur.equals("true") && !valeur.equals("false")) {
+                    throw new BadRequestException(ERREUR_INTERRUPTEUR);
+                }
+            }
+            default -> {
+                // texte libre (mots interdits)
+            }
+        }
+    }
+
+    private static Double nombre(String valeur) {
+        try {
+            return Double.parseDouble(valeur);
         } catch (NumberFormatException e) {
-            throw new BadRequestException("Valeur invalide pour " + cle);
+            return null;
         }
     }
 }

@@ -95,9 +95,9 @@ class EngagementApiTest extends BaseApiTest {
         en(FORMATRICE, ENSEIGNANT, delete("/api/forum/reponses/{r}/approbation", r)).andExpect(status().isOk());
         assertThat(points(SARA)).isZero();
 
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r), MOTIF).andExpect(status().isOk());
         assertThat(points(SARA)).isEqualTo(-10);
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/retablir", r)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/retablir", r), MOTIF).andExpect(status().isOk());
         assertThat(points(SARA)).isZero();
     }
 
@@ -276,7 +276,7 @@ class EngagementApiTest extends BaseApiTest {
         long r2 = repondre(SARA, q, "Réponse à masquer.");
         accepter(YASSINE, q, r);
         en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/approbation", r)).andExpect(status().isOk());
-        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r2)).andExpect(status().isOk());
+        en(FORMATRICE, ENSEIGNANT, post("/api/forum/reponses/{r}/masquer", r2), MOTIF).andExpect(status().isOk());
         assertThat(types(SARA)).contains("REPONSE_ACCEPTEE", "APPROBATION", "MESSAGE_MASQUE");
     }
 

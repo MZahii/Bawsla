@@ -11,7 +11,12 @@ td { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--color-b
 .lien { padding: 0; border: 0; background: none; font: inherit; text-decoration: underline; cursor: pointer; }
 .s-haut { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .extrait { font-style: italic; }
-.decision, .sanction-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.decision, .sanction-form { display: grid; gap: var(--space-3); }
+.boutons, .ligne { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.recherche-membre { display: grid; gap: var(--space-2); max-width: 560px; }
+.option-membre { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.valeur { display: grid; gap: 4px; }
+.date { white-space: nowrap; }
 .input { flex: 1; min-width: 180px; height: 40px; padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-sizing: border-box; background: var(--color-surface); color: var(--color-text); font: 400 15px var(--font-body); }
 .input.court { flex: none; width: 160px; min-width: 0; }
 .membre { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }

@@ -48,10 +48,10 @@ Aucun changement de comportement pour les autres modules, hormis la cloche (elle
 - **Prompts** : `repondre`, `guider`, `repondre_general`, `reformuler`, `moderer` en v1 → v3 ; `resumer`,
   `ameliorer`, `nommer_groupes` en v1 → v2.
 
-**Tests** : `mvnw test` 142 verts (forum-service) ; `pytest` 218 verts dont 106 du forum ;
+**Tests** : `mvnw test` 161 verts (forum-service) ; `pytest` 218 verts dont 106 du forum ;
 `ng build` sans avertissement ; test boîte noire `ai-service/tests/forum/e2e_forum.py` via la gateway.
 **Évaluation** : `ai-service/app/modules/forum/evaluation/` (jeux, script, résultats, analyse des seuils).
-**Journal** : `prompts_journal/forum/JOURNAL.md` (entrées 01 à 11) et `captures/`.
+**Journal** : `prompts_journal/forum/JOURNAL.md` (entrées 01 à 12) et `captures/`.
 **Guide du module** : [`prompts_journal/forum/README.md`](README.md) (code, lancement, réglages, tests, évaluation).
 
 **Points d'attention pour la relecture**
