@@ -469,24 +469,28 @@ async def evaluer_moderation(llm: LLMClient, messages: list[dict], versions: lis
     lignes, syntheses = [], []
     regles = [(module_moderation.appliquer_regles(None, m["texte"]) or None) for m in messages]
     predits = [r.categorie if r else "OK" for r in regles]
-    lignes += [{"version": "regles", "id": m["id"], "attendu": a, "predit": p} for m, a, p in zip(messages, vrais, predits)]
-    syntheses.append(("regles", vrais, predits))
+    lignes += [{"version": "regles", "id": m["id"], "attendu": a, "predit": p, "erreur": ""}
+               for m, a, p in zip(messages, vrais, predits)]
+    syntheses.append(("regles", vrais, predits, 0))
     for v in (versions if avec_llm else []):
         r_version = reglages.model_copy(update={"prompt_forum_version": v})
-        predits_v = []
+        predits_v, erreurs = [], []
         for m in messages:
-            try:
-                r = await module_moderation.moderer(ModererRequest(contenu=m["texte"]), llm, sanitizer, r_version)
-                predits_v.append(r.categorie)
-            except LLMError:
-                predits_v.append("OK")
-        lignes += [{"version": v, "id": m["id"], "attendu": a, "predit": p} for m, a, p in zip(messages, vrais, predits_v)]
-        syntheses.append((v, vrais, predits_v))
+            r = await module_moderation.moderer(ModererRequest(contenu=m["texte"]), llm, sanitizer, r_version)
+            # En production, un LLM indisponible laisse passer le message (« OK », règle « repli ») : pour
+            # l'évaluation ce n'est pas une prédiction, on l'écarte des mesures et on la compte.
+            predits_v.append(r.categorie if r.regle != "repli" else "")
+            erreurs.append("" if r.regle != "repli" else "LLM indisponible")
+        lignes += [{"version": v, "id": m["id"], "attendu": a, "predit": p, "erreur": e}
+                   for m, a, p, e in zip(messages, vrais, predits_v, erreurs)]
+        gardes = [(a, p) for a, p, e in zip(vrais, predits_v, erreurs) if not e]
+        syntheses.append((v, [a for a, _ in gardes], [p for _, p in gardes], len(messages) - len(gardes)))
     resume = []
-    for v, a, p in syntheses:
+    for v, a, p, nb_erreurs in syntheses:
         mat = matrice(a, p)
         par_classe = scores_classes(mat)
-        resume.append({"version": v, "exactitude": round(sum(x == y for x, y in zip(a, p)) / len(a), 3),
+        resume.append({"version": v, "messages": len(a), "erreurs": nb_erreurs,
+                       "exactitude": round(sum(x == y for x, y in zip(a, p)) / len(a), 3) if a else 0.0,
                        "f1_macro": round(statistics.mean(f for _, _, f in par_classe.values()), 3),
                        "matrice": mat, "par_classe": par_classe})
     rapport.lignes["moderation"] = lignes
@@ -566,8 +570,9 @@ def markdown(rapport: Rapport) -> str:
                f"éléments (taux {_fmt(r['pii_masquees'])}) dans {r['pii_messages']} messages ; signalées à l'auteur "
                f"par les règles : {r['pii_signalees_n']} / {r['pii_messages']} messages\n"]
     if "moderation" in r:
-        md += ["## 4. Modération\n", "| Version | Exactitude | F1 macro |", "|---|---|---|"]
-        md += [f"| {x['version']} | {_fmt(x['exactitude'])} | {_fmt(x['f1_macro'])} |" for x in r["moderation"]]
+        md += ["## 4. Modération\n", "| Version | Messages | Erreurs | Exactitude | F1 macro |", "|---|---|---|---|---|"]
+        md += [f"| {x['version']} | {x['messages']} | {x['erreurs']} | {_fmt(x['exactitude'])} | {_fmt(x['f1_macro'])} |"
+               for x in r["moderation"]]
         derniere = r["moderation"][-1]
         md += ["", f"Matrice de confusion ({derniere['version']}, lignes = attendu, colonnes = prédit) :\n",
                "| | " + " | ".join(c[:6] for c in CATEGORIES) + " |", "|---" * (len(CATEGORIES) + 1) + "|"]

@@ -136,6 +136,25 @@ async def test_le_faux_llm_refuse_un_schema_non_simule():
                                             PucesLLM, module="forum")
 
 
+async def test_une_erreur_du_llm_en_moderation_est_comptee_et_ecartee_des_mesures():
+    from app.core.errors import LLMQuotaError
+
+    class Quota(ev.LLMFactice):
+        async def complete_json(self, *args, **kwargs):
+            raise LLMQuotaError("quota")
+
+    messages = ev.lire_jsonl(DOSSIER / "moderation.jsonl")[:4]
+    rapport = ev.Rapport(mode="test")
+    await ev.evaluer_moderation(Quota(), messages, ["v3"], rapport, ev.BasicSanitizer(20_000),
+                                ev.get_forum_ai_settings(), True)
+    regles, v3 = rapport.resume["moderation"]
+    assert regles["erreurs"] == 0 and regles["messages"] == 4
+    # Avant : chaque erreur comptait comme une prédiction « OK » et faussait l'exactitude.
+    assert v3["erreurs"] == 4 and v3["messages"] == 0 and v3["exactitude"] == 0.0
+    assert all(l["erreur"] == "LLM indisponible" for l in rapport.lignes["moderation"] if l["version"] == "v3")
+    assert "| v3 | 0 | 4 |" in ev.markdown(rapport)
+
+
 def test_ecrire_csv_ignore_une_liste_vide(tmp_path):
     ev.ecrire_csv(tmp_path / "vide.csv", [])
     assert not (tmp_path / "vide.csv").exists()
