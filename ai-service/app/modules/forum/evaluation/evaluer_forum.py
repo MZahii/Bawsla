@@ -37,7 +37,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from app.core.errors import LLMError
+from app.core.errors import LLMError, LLMQuotaError
 from app.core.llm_client import LLMClient, StubLLMClient, get_llm_client
 from app.core.sanitizer import BasicSanitizer, Sanitizer
 from app.modules.forum import moderation as module_moderation
@@ -202,6 +202,60 @@ def valider_donnees(cours: dict[str, str], questions: list[dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------- faux LLM (--dry-run)
+
+
+class AvecPatience:
+    """Client réel de l'évaluation, sans rien changer au cœur : pause entre deux appels et, sur un 429 (quota),
+    attente de 65 s puis nouvel essai, au plus 5 fois. Si le quota reste épuisé, les appels suivants échouent tout de
+    suite (inutile d'attendre des heures) : la partie concernée garde ce qui a tourné et compte le reste en erreurs.
+    """
+
+    LOT_EMBEDDING = 20
+    PAUSE_LOT_EMBEDDING = 15.0
+
+    def __init__(self, llm: LLMClient, *, pause: float = 4.0, attente_quota: float = 65.0, essais: int = 5,
+                 dormir=None) -> None:
+        self._llm = llm
+        self._pause = pause
+        self._attente = attente_quota
+        self._essais = essais
+        self._dormir = dormir or asyncio.sleep
+        self.nom = getattr(llm, "nom", "?")
+        self.relances = 0
+        self.bloque = False
+
+    async def complete_json(self, *args, **kwargs):
+        return await self._appeler(self._llm.complete_json, *args, **kwargs)
+
+    async def embed(self, textes: list[str], **kwargs):
+        """Par petits lots : en offre gratuite, chaque texte compte comme une requête, et un lot de 100 (taille du
+        cœur) dépasse à lui seul la limite par minute, même après attente."""
+        if len(textes) <= self.LOT_EMBEDDING:
+            return await self._appeler(self._llm.embed, textes, **kwargs)
+        vecteurs, r = [], None
+        for i in range(0, len(textes), self.LOT_EMBEDDING):
+            if i:
+                await self._dormir(self.PAUSE_LOT_EMBEDDING)
+            r = await self._appeler(self._llm.embed, textes[i:i + self.LOT_EMBEDDING], **kwargs)
+            vecteurs += r.vecteurs
+        return r.model_copy(update={"vecteurs": vecteurs})
+
+    async def _appeler(self, fonction, *args, **kwargs):
+        if self.bloque:
+            raise LLMQuotaError("Quota du fournisseur LLM épuisé pendant l'évaluation")
+        for essai in range(self._essais + 1):
+            await self._dormir(self._pause)
+            try:
+                return await fonction(*args, **kwargs)
+            except LLMQuotaError:
+                if essai == self._essais:
+                    self.bloque = True
+                    raise
+                self.relances += 1
+                print(f"Quota atteint (429) : attente de {self._attente:.0f} s, nouvel essai {essai + 1}/{self._essais}",
+                      flush=True)
+                await self._dormir(self._attente)
+        raise AssertionError("inaccessible")  # pragma: no cover
 
 
 class LLMFactice(StubLLMClient):
@@ -528,6 +582,11 @@ def markdown(rapport: Rapport) -> str:
                   "mesures sémantiques et de génération vérifient la chaîne de calcul, elles NE mesurent PAS un vrai "
                   "modèle. Les mesures lexicales, de récupération lexicale, de sécurité et des règles de modération "
                   "sont réelles. Relancer sans `--dry-run` (clé dans le .env) pour fixer les seuils.\n")
+    if "relances_quota" in r:
+        md.append(f"- **Relances après un quota atteint (429)** : {r['relances_quota']}\n")
+    if r.get("parties_bloquees"):
+        md.append(f"> **Parties interrompues** (quota ou fournisseur indisponible) : "
+                  f"{', '.join(r['parties_bloquees'])}. Leurs mesures sont absentes ou partielles.\n")
     if "recherche" in rapport.lignes:
         md += ["## 1. Questions similaires\n",
                f"Seuil « similaire » (meilleur F1 du cosinus) : **{_fmt(r.get('seuil_similaire'))}** · "
@@ -611,7 +670,7 @@ async def executer(args: argparse.Namespace) -> Rapport:
     injections = lire_jsonl(DOSSIER / "injections.jsonl")
     messages = lire_jsonl(DOSSIER / "moderation.jsonl")[: args.limite]
 
-    llm: LLMClient = LLMFactice() if args.dry_run else get_llm_client()
+    llm: LLMClient = LLMFactice() if args.dry_run else AvecPatience(get_llm_client(), pause=args.pause)
     if not args.dry_run:
         n = appels_prevus(args.parties, versions, len(paires), len(questions), len(messages), args.reformuler,
                           not args.sans_generation)
@@ -621,14 +680,27 @@ async def executer(args: argparse.Namespace) -> Rapport:
     sanitizer = BasicSanitizer(20_000)
     reglages = get_forum_ai_settings()
     rapport = Rapport(mode="dry-run (faux LLM, vecteurs du stub)" if args.dry_run else f"réel ({getattr(llm, 'nom', '?')})")
-    if "similarite" in args.parties:
-        await evaluer_similarite(llm, paires, rapport, sanitizer, reglages, args.reformuler and not args.dry_run)
-    if "rag" in args.parties:
-        await evaluer_rag(llm, cours, questions, versions, rapport, sanitizer, reglages, not args.sans_generation)
-    if "securite" in args.parties:
-        evaluer_securite(injections, rapport, sanitizer)
-    if "moderation" in args.parties:
-        await evaluer_moderation(llm, messages, versions, rapport, sanitizer, reglages, True)
+    etapes = {
+        "similarite": lambda: evaluer_similarite(llm, paires, rapport, sanitizer, reglages,
+                                                 args.reformuler and not args.dry_run),
+        "rag": lambda: evaluer_rag(llm, cours, questions, versions, rapport, sanitizer, reglages,
+                                   not args.sans_generation),
+        "moderation": lambda: evaluer_moderation(llm, messages, versions, rapport, sanitizer, reglages, True),
+    }
+    for partie in PARTIES:
+        if partie not in args.parties:
+            continue
+        if partie == "securite":
+            evaluer_securite(injections, rapport, sanitizer)
+            continue
+        try:
+            await etapes[partie]()
+        except LLMError as e:
+            # Quota épuisé ou fournisseur indisponible : on garde les autres parties et on le dit dans le rapport.
+            rapport.resume.setdefault("parties_bloquees", []).append(f"{partie} ({type(e).__name__})")
+            print(f"Partie « {partie} » interrompue : {type(e).__name__}", flush=True)
+    if not args.dry_run:
+        rapport.resume["relances_quota"] = llm.relances
     return rapport
 
 
@@ -655,6 +727,7 @@ def analyser_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--limite", type=int, default=None, help="nombre maximal d'éléments par jeu (essai rapide)")
     p.add_argument("--reformuler", action="store_true", help="reformuler les questions avant la recherche (LLM)")
     p.add_argument("--sans-generation", action="store_true", help="RAG : récupération seulement, sans LLM")
+    p.add_argument("--pause", type=float, default=4.0, help="secondes entre deux appels réels (quota par minute)")
     return p.parse_args(argv)
 
 

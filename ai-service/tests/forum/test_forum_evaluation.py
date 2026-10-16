@@ -155,6 +155,90 @@ async def test_une_erreur_du_llm_en_moderation_est_comptee_et_ecartee_des_mesure
     assert "| v3 | 0 | 4 |" in ev.markdown(rapport)
 
 
+class _Quota:
+    """Faux client : échoue sur un 429 les `echecs` premières fois, puis répond."""
+
+    nom = "faux"
+
+    def __init__(self, echecs):
+        self.echecs, self.appels = echecs, 0
+
+    async def _repondre(self):
+        from app.core.errors import LLMQuotaError
+
+        self.appels += 1
+        if self.appels <= self.echecs:
+            raise LLMQuotaError("quota")
+        return "ok"
+
+    async def complete_json(self, *args, **kwargs):
+        return await self._repondre()
+
+    async def embed(self, *args, **kwargs):
+        return await self._repondre()
+
+
+async def test_un_429_est_relance_apres_une_attente():
+    attentes = []
+
+    async def dormir(s):
+        attentes.append(s)
+
+    llm = ev.AvecPatience(_Quota(2), pause=1, dormir=dormir)
+    assert await llm.complete_json() == "ok" and await llm.embed(["x"]) == "ok"
+    assert llm.relances == 2 and attentes == [1, 65, 1, 65, 1, 1] and llm.nom == "faux"
+
+
+async def test_la_vectorisation_passe_par_petits_lots_dans_l_ordre():
+    from app.core.llm_client import EmbeddingResult
+
+    lots, attentes = [], []
+
+    class Vecteurs:
+        nom = "faux"
+
+        async def embed(self, textes, **kwargs):
+            lots.append(len(textes))
+            return EmbeddingResult(vecteurs=[[float(t)] for t in textes], modele="m", dimension=1)
+
+    async def dormir(s):
+        attentes.append(s)
+
+    llm = ev.AvecPatience(Vecteurs(), pause=0, dormir=dormir)
+    r = await llm.embed([str(i) for i in range(45)], module="forum")
+    assert lots == [20, 20, 5] and [v[0] for v in r.vecteurs] == list(range(45)) and r.modele == "m"
+    assert attentes.count(ev.AvecPatience.PAUSE_LOT_EMBEDDING) == 2
+    assert len((await llm.embed(["1"], module="forum")).vecteurs) == 1
+
+
+async def test_un_quota_epuise_bloque_la_suite_sans_attendre():
+    from app.core.errors import LLMQuotaError
+
+    async def dormir(_):
+        return None
+
+    faux = _Quota(99)
+    llm = ev.AvecPatience(faux, dormir=dormir)
+    with pytest.raises(LLMQuotaError):
+        await llm.complete_json()
+    assert faux.appels == 6 and llm.bloque and llm.relances == 5
+    with pytest.raises(LLMQuotaError):
+        await llm.embed(["x"])
+    assert faux.appels == 6  # aucun nouvel appel au fournisseur
+
+
+def test_une_partie_bloquee_n_arrete_pas_l_evaluation(tmp_path, monkeypatch):
+    async def dormir(_):
+        return None
+
+    monkeypatch.setattr(ev, "get_llm_client", lambda: _Quota(99))
+    monkeypatch.setattr(ev.asyncio, "sleep", dormir)
+    assert ev.main(["--oui", "--sortie", str(tmp_path), "--parties", "similarite,securite", "--pause", "0"]) == 0
+    md = (tmp_path / "RESULTATS.md").read_text(encoding="utf-8")
+    assert "Parties interrompues** (quota ou fournisseur indisponible) : similarite (LLMQuotaError)" in md
+    assert "Relances après un quota atteint (429)** : 5" in md and "**20 / 20**" in md
+
+
 def test_ecrire_csv_ignore_une_liste_vide(tmp_path):
     ev.ecrire_csv(tmp_path / "vide.csv", [])
     assert not (tmp_path / "vide.csv").exists()
