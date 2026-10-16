@@ -105,15 +105,22 @@ public class RechercheService {
         Optional<Vecteur> vecteur = ia.vectoriserRequete(ia.reformuler(texte, List.of()));
 
         List<Score> classement;
+        List<Score> semantiques = List.of();
         if (vecteur.isPresent()) {
-            classement = semantique(candidats, vecteur.get()).stream().filter(s -> s.score() >= seuil).toList();
+            semantiques = semantique(candidats, vecteur.get()).stream().filter(s -> s.score() >= seuil).toList();
+            // Discussion sans vecteur de ce modèle (vectorisation en échec à la publication : quota, panne) : repli
+            // lexical pour elle seule, sinon elle resterait invisible. Jamais « doublon » : le score n'est pas un cosinus.
+            List<Discussion> sansVecteur = candidats.stream().filter(d -> d.getEmbedding() == null
+                    || !vecteur.get().modele().equals(d.getModeleEmbedding())).toList();
+            classement = new ArrayList<>(semantiques);
+            classement.addAll(lexicalJava(sansVecteur, texte).stream().filter(s -> s.score() >= 0.5).toList());
         } else {
             // Repli lexical : le score de mots n'est pas un cosinus, on garde un seuil fixe et prudent.
             classement = lexicalJava(candidats, texte).stream().filter(s -> s.score() >= 0.5).toList();
         }
         List<SimilaireResponse> resultats = classement.stream().limit(MAX_SIMILAIRES)
                 .map(s -> similaire(parId.get(s.id()), s.score(), seuilDoublon)).toList();
-        Long doublon = vecteur.isEmpty() ? null : classement.stream()
+        Long doublon = vecteur.isEmpty() ? null : semantiques.stream()
                 .filter(s -> s.score() >= seuilDoublon && parId.get(s.id()).getStatut() == StatutDiscussion.RESOLUE)
                 .map(Score::id).findFirst().orElse(null);
         return new SimilairesResponse(resultats, vecteur.isPresent(), doublon);

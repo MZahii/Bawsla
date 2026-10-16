@@ -55,6 +55,11 @@ def test_les_regles_laissent_passer_une_vraie_question():
     assert appliquer_regles(None, "Chapitre 3, page 12, cours de 2026") is None
     # Deux liens restent permis (documentation).
     assert appliquer_regles(None, "Voir https://dev.mysql.com et https://sql.sh") is None
+    # Un contenu qui reformule le titre n'est pas du spam (faux positif trouvé par l'e2e : question masquée).
+    assert appliquer_regles("Pourquoi mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN ?",
+                            "Mon LEFT JOIN renvoie autant de lignes qu'un INNER JOIN.") is None
+    # La répétition reste détectée dans le titre ou dans le contenu pris seul.
+    assert appliquer_regles("achetez " * 12, "Bonjour").regle == "repetitions"
 
 
 # ---------------------------------------------------------------- LLM

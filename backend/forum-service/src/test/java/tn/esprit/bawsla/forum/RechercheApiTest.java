@@ -90,7 +90,8 @@ class RechercheApiTest extends BaseApiTest {
     @Test
     void uneQuestionEnDerjaRetrouveLaQuestionResolueFormuleeAutrement() throws Exception {
         long resolue = questionResolue();
-        publierQuestion(SARA, "Comment créer un index composite sur deux colonnes ?");
+        publierSur(SARA, "Comment créer un index composite sur deux colonnes ?",
+                "CREATE INDEX sur client_id puis date_commande : dans quel ordre ?");
         ia.reformulations.put(DERJA, RESOLUE);
 
         en(YASSINE, ETUDIANT, post("/api/forum/discussions/similaires"), Map.of("coursId", COURS, "texte", DERJA))
@@ -122,6 +123,19 @@ class RechercheApiTest extends BaseApiTest {
         en(SARA, ETUDIANT, post("/api/forum/discussions/similaires"),
                 Map.of("coursId", COURS, "texte", "LEFT JOIN renvoie autant de lignes qu'un INNER JOIN"))
                 .andExpect(jsonPath("$.data.semantique").value(false))
+                .andExpect(jsonPath("$.data.similaires[0].discussionId").value(id))
+                .andExpect(jsonPath("$.data.doublonId").doesNotExist());
+    }
+
+    @Test
+    void uneQuestionPublieePendantUnePanneResteTrouvableEnMotsCles() throws Exception {
+        ia.panne = true;
+        long id = publierQuestion(YASSINE, RESOLUE);  // vectorisation impossible (quota, panne) : aucun vecteur
+        ia.panne = false;
+        iaService.oublierCaches();
+        en(SARA, ETUDIANT, post("/api/forum/discussions/similaires"),
+                Map.of("coursId", COURS, "texte", "LEFT JOIN renvoie autant de lignes qu'un INNER JOIN"))
+                .andExpect(jsonPath("$.data.semantique").value(true))
                 .andExpect(jsonPath("$.data.similaires[0].discussionId").value(id))
                 .andExpect(jsonPath("$.data.doublonId").doesNotExist());
     }

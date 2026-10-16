@@ -70,7 +70,8 @@ def appliquer_regles(titre: str | None, contenu: str) -> Verdict | None:
                        "donnees-personnelles")
     if len(_LIEN.findall(texte)) >= LIENS_MAX:
         return Verdict("SPAM", 0.85, f"Au moins {LIENS_MAX} liens dans un même message", "liens")
-    if _CARACTERE_REPETE.search(texte) or _repetitif(simple):
+    # Répétition mesurée dans le titre et dans le contenu séparément : un contenu qui reformule le titre est normal.
+    if _CARACTERE_REPETE.search(texte) or any(_repetitif(_sans_accents(p.lower())) for p in (titre or "", contenu)):
         return Verdict("SPAM", 0.85, "Texte très répétitif", "repetitions")
     return None
 
