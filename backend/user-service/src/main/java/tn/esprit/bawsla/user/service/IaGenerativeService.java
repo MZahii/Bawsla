@@ -269,8 +269,9 @@ public class IaGenerativeService {
         try {
             contenuRepository.save(contenu);
         } catch (DataIntegrityViolationException e) {
-            // Double clic : une autre requête vient d'enregistrer le même texte. On renvoie quand même celui-ci.
-            log.debug("Contenu IA déjà enregistré par une requête concurrente");
+            // Double clic (une autre requête vient d'enregistrer ce texte) ou texte refusé par la base : l'apprenant
+            // reçoit quand même le texte, il sera simplement régénéré au prochain clic.
+            log.warn("Texte IA ({}) non gardé : {}", type, e.getMostSpecificCause().getMessage());
         }
         return new ContenuIaResponse(type.name(), genere, fournisseur, contenu.getDateGeneration(), false);
     }

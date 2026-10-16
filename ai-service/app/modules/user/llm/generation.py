@@ -98,7 +98,8 @@ async def _appeler(llm: LLMClient, prompt: Prompt, champs: dict[str, str], schem
     messages = [LLMMessage(role="system", content=prompt.systeme),
                 LLMMessage(role="user", content=prompt.utilisateur(**champs))]
     reponse = await llm.complete_json(messages, schema, module=MODULE, temperature=temperature, max_tokens=max_tokens)
-    return reponse, fournisseur_courant()
+    # Sans fournisseur de secours, le client Gemini est appelé directement : on prend alors son nom.
+    return reponse, fournisseur_courant() or getattr(llm, "nom", None)
 
 
 # ---------------------------------------------------------------- 1. conseil
