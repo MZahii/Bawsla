@@ -39,9 +39,12 @@ public class ContenuIa {
     @Column(nullable = false, length = 64)
     private String empreinte;
 
-    /** Réponse de l'IA (JSON), telle que renvoyée au front. */
+    /**
+     * Réponse de l'IA (JSON), telle que renvoyée au front. Longueur explicite : sans elle, Hibernate crée un
+     * {@code tinytext} (255 caractères) sous MySQL ; ici un {@code mediumtext}.
+     */
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1_000_000)
     private String contenu;
 
     @Column(length = 20)
