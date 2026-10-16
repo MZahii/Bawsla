@@ -7,6 +7,36 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 19 — 2026-10-16 — IA générative (LLM) : le Machine Learning décide, le LLM explique
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
+- **Objectif** : ajouter un LLM au module User sans remplacer le Machine Learning : 5 fonctionnalités qui mettent en mots les résultats des modèles (K-Means, Random Forest, filtrage collaboratif)
+- **Contexte fourni** : client LLM du socle (`app/core/llm_client.py`, Gemini avec secours), Sanitizer, modèle des prompts versionnés du module Quiz, règles de CLAUDE.md (aucune donnée personnelle au LLM, `bw-ai-box` pour tout contenu généré)
+- **Prompts** :
+  > if i wanna add LLM in my ia is it possible ? also is bettre to add another idea for LLM in my module and what are they ?
+  > WE CAN ADD THE 5 IDEAS ?
+  > OKAY START WORKING ON THEM
+- **Résultat** :
+  - ai-service (`app/modules/user/llm/`) : 5 routes, prompts v1 versionnés (`prompts.py`), un seul appel `complete_json` par route :
+    1. `POST /conseil` : conseil de la boussole et 1 à 3 actions (apprenant) ;
+    2. `POST /explication-risque` : explication du risque, actions et message à envoyer (formateur, admin) ;
+    3. `POST /plan` : plan des 7 prochains jours, 1 à 6 séances dans le temps disponible du parcours ;
+    4. `POST /rapport-cohorte` : rapport de la classe sur des statistiques agrégées (formateur, admin) ;
+    5. `POST /domaines` : domaines et objectif du parcours depuis une phrase libre.
+  - Contrôles après le LLM : aucun mot de risque, d'échec ni d'abandon dans un texte destiné à l'apprenant (sinon réponse écartée, 502) ; domaines et objectif pris uniquement dans les listes ; jours valides, une séance par jour, durées bornées et total réduit au temps disponible.
+  - user-service : collecte des données (indicateurs, profil, risque, notions ratées, titres de cours) sans nom, email ni identifiant ; table `contenus_ia` : le texte est gardé et réutilisé tant que l'empreinte SHA-256 des données envoyées ne change pas (quota) ; LLM indisponible : 503 avec un message clair, le Machine Learning reste affiché.
+  - Front : composant `ia-generee` (texte gardé au chargement, génération au clic, compas d'attente, source et date) sur Progrès (conseil, plan), Apprenants (rapport de la classe, « Comprendre et agir » dans la fiche, message à copier), IA admin (rapport de la plateforme) ; Mon parcours : « Suggérer mes domaines » puis « Appliquer à mon parcours ».
+  - Corrigé au passage : Mon parcours proposait les anciennes catégories (« Données », « Back-end »…) qui ne correspondent à aucune matière de cours ; il propose maintenant les matières (Informatique, Mathématiques…).
+  - `CONTRATS_API.md` (contrat 5, endpoints internes) : commit séparé, à relire en PR.
+- **Vérification** : ai-service 87 tests du module User (12 nouveaux, faux LLM : données masquées, balises retirées, rôles, identifiant refusé, quota 429, réponses écartées, plan borné, domaines filtrés) ; user-service 101 (12 nouveaux : aucune donnée personnelle envoyée, texte gardé sans nouvel appel, nouvelle génération si les données changent, 503, rôles, statistiques agrégées) ; build du front sans erreur ; essai de bout en bout par la gateway (35/35) sans clé LLM : les 5 routes atteignent bien ai-service, les données passent la validation stricte, 503 clair, 403 et 400 ; navigateur : message d'indisponibilité, puis affichage des 5 fonctionnalités avec des réponses simulées dans le navigateur de test seulement.
+- **Gardé / modifié / rejeté** :
+  - Gardé : le ML reste la source de vérité ; le LLM ne recalcule rien.
+  - Rejeté : générer à chaque ouverture de page (quota gratuit vite épuisé) → génération au clic et texte gardé.
+  - Rejeté : faire juger les demandes « devenir formateur » par le LLM (elles contiennent des données personnelles).
+  - Limite : sans `LLM_API_KEY` dans `.env`, le LLM est en mode stub ; le test avec de vrais textes Gemini reste à faire avec la clé.
+  - À signaler en PR : la page d'accueil du questionnaire (`pages/onboarding`, socle) propose encore les anciennes catégories.
+- **Captures** : `captures/2026-10-16_19_progres_conseil_plan.png`, `captures/2026-10-16_19_apprenants_rapport_explication.png`, `captures/2026-10-16_19_parcours_suggestion.png`
+- **Leçon** : faire expliquer un modèle par un LLM demande des garde-fous APRÈS la réponse (mots interdits, valeurs autorisées, bornes) : le prompt seul ne suffit pas.
 ### 18 — 2026-10-15 — Branche integration/user-cours-quiz : ce qui manquait dans Cours et Quiz, test complet de l'IA
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5), extension VS Code
