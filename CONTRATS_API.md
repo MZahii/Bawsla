@@ -60,14 +60,14 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | Fournisseur | cours-service |
 | Consommateurs | ai-service (résumé, fiche de révision), forum-service |
 | Rôles | tout utilisateur authentifié |
-| Statut | **stub** : renvoie le titre et la description préfixés de `[STUB]`, avec `stub: true` |
+| Statut | **implémenté** : texte extrait du PDF (vision si scanné), emails et téléphones masqués, `stub: false` ; `pages` et `estScanne` facultatifs |
 
 `200` :
 ```json
 { "success": true, "data": { "coursId": 1, "texte": "…texte brut extrait du PDF…", "stub": false } }
 ```
 - Erreur : `404` si le cours n'existe pas.
-- À faire (membre cours) : extraire le texte du PDF et passer `stub` à `false`. Le texte ne doit contenir aucune donnée personnelle.
+- Le texte ne contient aucune donnée personnelle. Cours sans PDF : `texte` vide.
 
 ## 3. `GET /api/quiz/notions-ratees?etudiantId={id}`
 
@@ -116,7 +116,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | Fournisseur | ai-service, joint via la gateway (`/api/ai/**`, URL statique `AI_SERVICE_URL`) |
 | Consommateurs | front, services Java |
 | Rôles | tout utilisateur authentifié (la gateway exige le JWT) |
-| Statut | **stubs** : `stub: true`, `message: "stub"` |
+| Statut | **implémenté** pour les 4 modules ; seul `POST /api/ai/forum/questions-similaires` reste un stub (la recherche est faite par forum-service, `POST /api/forum/discussions/similaires`) |
 
 | Endpoint | Corps de la requête | `data` de la réponse |
 |---|---|---|
@@ -168,6 +168,72 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 ---
 
+> **Contrats 6 à 8 : proposés par le module User** pour son Machine Learning (sujet : « regroupe les étudiants selon leurs notes, leur temps passé et les cours suivis », « prédit le risque d'échec à partir de ses résultats aux quiz », « les étudiants au profil proche du tien ont suivi tel cours »). user-service les appelle par Feign, calcule des **indicateurs chiffrés** et n'envoie à ai-service **que ces nombres** (contrat 5, module User) : jamais de nom, d'email ni d'identifiant. En attendant leur mise en place, les modèles sont entraînés sur un jeu de données simulé.
+
+## 6. `GET /api/quiz/tentatives?etudiantId={id}`
+
+| | |
+|---|---|
+| Fournisseur | quiz-service |
+| Consommateurs | user-service (indicateurs du ML : note moyenne, quiz passés, bonnes réponses), front (tableau de bord formateur) |
+| Rôles | l'étudiant lui-même (`X-User-Id == etudiantId`), `ENSEIGNANT`, `ADMIN` |
+| Statut | **implémenté** (entité `Tentative`) |
+
+`200` (une ligne par tentative corrigée, la plus récente d'abord) :
+```json
+{
+  "success": true,
+  "data": [
+    { "quizId": 4, "coursId": 1, "nbCorrectes": 7, "nbQuestions": 10, "pourcentage": 70, "reussie": true, "dateTentative": "2026-10-14T18:02:11" }
+  ]
+}
+```
+- `pourcentage` est un entier de 0 à 100 ; `reussie` suit la règle de réussite du quiz.
+- Tableau vide si l'apprenant n'a passé aucun quiz.
+- Erreurs : `400` si `etudiantId` est absent ; `403` si un étudiant demande les tentatives d'un autre étudiant.
+- Utilisation par user-service : `nbQuiz` = nombre de tentatives, `noteMoyenne` = moyenne de `pourcentage` / 100, `tauxReussite` = somme de `nbCorrectes` / somme de `nbQuestions`.
+
+## 7. `GET /api/cours/inscriptions?etudiantId={id}` et `GET /api/cours/{id}/inscriptions`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | user-service (indicateurs du ML : cours suivis, progression, temps passé, cours terminés ; page Apprenants du formateur), front |
+| Rôles | par `etudiantId` : l'étudiant lui-même, `ENSEIGNANT`, `ADMIN` ; par cours : l'`ENSEIGNANT` propriétaire du cours, `ADMIN` |
+| Statut | **implémenté** : entité `Inscription` de cours-service (`etudiantId`, `coursId`, `dateInscription`, progression, temps passé), alimentée par le lecteur de cours |
+
+`200` (une ligne par inscription) :
+```json
+{
+  "success": true,
+  "data": [
+    { "etudiantId": 12, "coursId": 1, "dateInscription": "2026-10-01T09:00:00", "progression": 0.65, "tempsPasseMinutes": 240, "termine": false, "dateDerniereActivite": "2026-10-14T20:15:00" }
+  ]
+}
+```
+- `progression` de 0 à 1 (part des chapitres terminés) ; `termine` vaut `true` quand tous les chapitres le sont ; `tempsPasseMinutes` entier positif ; `dateDerniereActivite` facultative.
+- Par cours (`/api/cours/{id}/inscriptions`) : les inscrits d'un cours, pour la page Apprenants du formateur.
+- Erreurs : `400` si `etudiantId` est absent ; `403` si un étudiant demande les inscriptions d'un autre, ou un formateur celles d'un cours qui n'est pas le sien ; `404` si le cours n'existe pas.
+
+## 8. `GET /api/cours/inscriptions/toutes`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | user-service (entraînement du filtrage collaboratif : matrice apprenants × cours suivis) |
+| Rôles | `ADMIN` uniquement |
+| Statut | **implémenté** (même entité `Inscription` que le contrat 7) |
+
+`200` :
+```json
+{ "success": true, "data": [ { "etudiantId": 12, "coursId": 1, "progression": 0.65, "termine": false } ] }
+```
+- Toutes les inscriptions de la plateforme, sans autre donnée sur l'apprenant.
+- user-service remplace `etudiantId` par un pseudonyme avant l'envoi à ai-service : le modèle ne voit jamais d'identifiant réel.
+- Erreur : `403` pour tout autre rôle que `ADMIN`.
+
+---
+
 ## Endpoints internes à chaque module (hors contrat)
 
 Ils peuvent évoluer librement par leur propriétaire :
@@ -188,4 +254,6 @@ Ils peuvent évoluer librement par leur propriétaire :
 | 2026-10-13 | Contrat 4 : ajout de `formateurValide` (validation des formateurs par l'admin), à utiliser par cours-service avant publication ; liste des endpoints internes du module user mise à jour | PR `feature/user` |
 | 2026-10-15 | Contrat 5 : endpoints ML du module User (`profil`, `risque`, `recommandations`, `metriques`, `entrainer`) ; l'ancien stub `recommandations { etudiantId }` est remplacé par des indicateurs chiffrés, sans identifiant | PR `feature/user` |
 | 2026-10-15 | Contrat 5 : champ facultatif `coursDisponibles` (vrai catalogue) pour `recommandations` ; endpoints internes du module user (indicateurs, ia) | PR `feature/user` |
+| 2026-10-15 | Contrats 6 (tentatives d'un apprenant, quiz-service), 7 et 8 (inscriptions, cours-service) proposés par le module User pour son Machine Learning | docs/contrat-user-ia |
 | 2026-10-16 | Contrat 5 : IA générative du module User (`conseil`, `explication-risque`, `plan`, `rapport-cohorte`, `domaines`) ; endpoints internes du module user correspondants | PR `feature/user-ia` |
+| 2026-10-18 | Statuts mis à jour à l'intégration des 4 modules : contrats 2, 5, 6, 7 et 8 implémentés (seul `forum/questions-similaires` reste un stub) | integration/finale |
