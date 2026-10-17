@@ -83,6 +83,28 @@
           <mat-tab label="Mon parcours">
             <div class="form">
               <p class="muted small">Ces réponses servent à l’IA pour te recommander des cours. Elles ne sont jamais envoyées avec ton nom ou ton email.</p>
+              <div class="suggestion">
+                <mat-form-field appearance="outline" class="large"><mat-label>Dis-nous en une phrase ce que tu veux apprendre</mat-label>
+                  <textarea matInput rows="2" maxlength="500" [(ngModel)]="texteSuggestion" placeholder="Par exemple : je veux devenir data analyst"></textarea>
+                </mat-form-field>
+                <button type="button" bwButton="ia" (click)="suggerer()" [bwLoading]="suggestionEnCours()" [disabled]="suggestionEnCours() || texteSuggestion.trim().length < 3">
+                  <mat-icon aria-hidden="true">auto_awesome</mat-icon> Suggérer mes domaines
+                </button>
+                @if (erreurSuggestion()) { <p class="small erreur" role="alert">{{ erreurSuggestion() }}</p> }
+                @if (suggestion(); as s) {
+                  <bw-ai-box heading="Suggestion pour ton parcours">
+                    @if (s.domaines.length) {
+                      <p class="chips">@for (d of s.domaines; track d) { <span class="pill ia">{{ d }}</span> }</p>
+                      @if (s.objectif) { <p class="small">Objectif : <strong>{{ s.objectif }}</strong></p> }
+                      <p class="small muted">{{ s.explication }}</p>
+                      <button type="button" bwButton="secondaire" (click)="appliquerSuggestion(s)">Appliquer à mon parcours</button>
+                    } @else {
+                      <p class="small muted">Aucun domaine ne correspond : précise un peu ta phrase.</p>
+                    }
+                    <span bwAiSource>Seule ta phrase est envoyée à l’IA, après masquage des emails et numéros de téléphone.</span>
+                  </bw-ai-box>
+                }
+              </div>
               <mat-form-field appearance="outline"><mat-label>Ce qui te décrit le mieux</mat-label>
                 <mat-select [(ngModel)]="parcours.profil">
                   @for (p of profils; track p.code) { <mat-option [value]="p.code">{{ p.titre }}</mat-option> }

@@ -1,4 +1,4 @@
-"""Module User (IA). Propriétaire : membre User. Machine Learning classique, sans LLM.
+"""Module User (IA). Propriétaire : membre User. Machine Learning classique, et un LLM qui en explique les résultats.
 
 - POST /api/ai/user/profil : groupe K-Means de chaque apprenant (débutant en difficulté, régulier, décrocheur…).
 - POST /api/ai/user/risque : risque d'échec (Random Forest), niveau et raisons. Formateur ou admin uniquement :
@@ -6,6 +6,13 @@
 - POST /api/ai/user/recommandations : cours recommandés (filtrage collaboratif hybride) avec une raison chacun.
 - GET  /api/ai/user/metriques : scores des modèles pour le tableau de bord admin.
 - POST /api/ai/user/entrainer : nouvel entraînement (admin).
+
+IA générative (LLM du socle, prompts versionnés dans llm/prompts.py) : le ML décide, le LLM explique.
+- POST /api/ai/user/conseil : conseil personnalisé de l'apprenant (sans jamais parler de risque).
+- POST /api/ai/user/explication-risque : explication du risque et actions, pour le formateur ou l'admin.
+- POST /api/ai/user/plan : plan d'étude des 7 prochains jours, dans le temps disponible de l'apprenant.
+- POST /api/ai/user/rapport-cohorte : rapport sur des statistiques agrégées de la classe (formateur, admin).
+- POST /api/ai/user/domaines : domaines et objectif du parcours depuis une phrase libre.
 
 Les entrées ne sont que des nombres (voir schemas.py) ; les calculs, lourds pour le processeur, tournent hors de la
 boucle asynchrone (run_in_threadpool). Le premier appel charge les modèles, ou les entraîne s'ils manquent (≈ 30 s).
@@ -15,8 +22,23 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from starlette.concurrency import run_in_threadpool
 
+from app.core.llm_client import LLMClient, get_llm_client
+from app.core.sanitizer import Sanitizer, get_sanitizer
 from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
+from app.modules.user.llm import generation
+from app.modules.user.llm.schemas import (
+    CohorteRequest,
+    CohorteResponse,
+    ConseilRequest,
+    ConseilResponse,
+    DomainesRequest,
+    DomainesResponse,
+    ExplicationRisqueRequest,
+    ExplicationRisqueResponse,
+    PlanRequest,
+    PlanResponse,
+)
 from app.modules.user.ml import entrainement
 from app.modules.user.schemas import (
     CoursRecommande,
@@ -117,3 +139,43 @@ async def entrainer(user: CurrentUser = Depends(get_current_user)) -> ApiRespons
     _exiger(user, ROLE_ADMIN)
     modeles = await run_in_threadpool(entrainement.reentrainer)
     return ApiResponse.ok(modeles.metriques, f"Modèles réentraînés en {modeles.metriques['dureeSecondes']} s")
+
+
+# ---------------------------------------------------------------- IA générative (LLM) : le ML décide, le LLM explique
+
+@router.post("/conseil", response_model=ApiResponse[ConseilResponse], response_model_exclude_none=True)
+async def conseil(body: ConseilRequest, user: CurrentUser = Depends(get_current_user),
+                  llm: LLMClient = Depends(get_llm_client),
+                  sanitizer: Sanitizer = Depends(get_sanitizer)) -> ApiResponse[ConseilResponse]:
+    return ApiResponse.ok(await generation.conseil(llm, sanitizer, body))
+
+
+@router.post("/explication-risque", response_model=ApiResponse[ExplicationRisqueResponse],
+             response_model_exclude_none=True)
+async def explication_risque(body: ExplicationRisqueRequest, user: CurrentUser = Depends(get_current_user),
+                             llm: LLMClient = Depends(get_llm_client),
+                             sanitizer: Sanitizer = Depends(get_sanitizer)) -> ApiResponse[ExplicationRisqueResponse]:
+    _exiger(user, *ROLES_RISQUE)
+    return ApiResponse.ok(await generation.explication_risque(llm, sanitizer, body))
+
+
+@router.post("/plan", response_model=ApiResponse[PlanResponse], response_model_exclude_none=True)
+async def plan(body: PlanRequest, user: CurrentUser = Depends(get_current_user),
+               llm: LLMClient = Depends(get_llm_client),
+               sanitizer: Sanitizer = Depends(get_sanitizer)) -> ApiResponse[PlanResponse]:
+    return ApiResponse.ok(await generation.plan(llm, sanitizer, body))
+
+
+@router.post("/rapport-cohorte", response_model=ApiResponse[CohorteResponse], response_model_exclude_none=True)
+async def rapport_cohorte(body: CohorteRequest, user: CurrentUser = Depends(get_current_user),
+                          llm: LLMClient = Depends(get_llm_client),
+                          sanitizer: Sanitizer = Depends(get_sanitizer)) -> ApiResponse[CohorteResponse]:
+    _exiger(user, *ROLES_RISQUE)
+    return ApiResponse.ok(await generation.rapport_cohorte(llm, sanitizer, body))
+
+
+@router.post("/domaines", response_model=ApiResponse[DomainesResponse], response_model_exclude_none=True)
+async def domaines(body: DomainesRequest, user: CurrentUser = Depends(get_current_user),
+                   llm: LLMClient = Depends(get_llm_client),
+                   sanitizer: Sanitizer = Depends(get_sanitizer)) -> ApiResponse[DomainesResponse]:
+    return ApiResponse.ok(await generation.domaines(llm, sanitizer, body))
