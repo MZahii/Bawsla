@@ -65,6 +65,24 @@ export const RANG_NIVEAU: Record<Niveau, 1 | 2 | 3> = { DEBUTANT: 1, INTERMEDIAI
 
 /** Image affichée tant qu'un cours n'a pas de couverture. */
 export const IMAGE_DEFAUT = 'assets/demo/cours/outils.jpg';
+
+/** Couvertures de remplacement : un petit lot d'images par sujet (mot-clé du titre), puis l'id choisit dans le lot. */
+const IMAGES_SUJET: [RegExp, string[]][] = [
+  [/sql|donn[ée]e|base|data|stat/i, ['donnees', 'backend']],
+  [/angular|react|front|html|css|web|interface/i, ['frontend', 'api']],
+  [/api|rest|http|micro/i, ['api', 'backend']],
+  [/spring|java|back|serveur|node/i, ['backend', 'api']],
+  [/docker|devops|cloud|linux|git\b|d[ée]ploi/i, ['devops', 'outils']],
+  [/\bc\b|algo|programm/i, ['c', 'outils', 'donnees']],
+];
+const IMAGES_ROTATION = ['outils', 'c', 'donnees', 'frontend', 'backend', 'api', 'devops'];
+
+/** Image d'un cours sans couverture : variée d'un cours à l'autre, mais toujours la même pour un cours donné. */
+export function imageParDefaut(cours?: { id?: number; titre?: string } | null): string {
+  const lot = (cours?.titre && IMAGES_SUJET.find(([motif]) => motif.test(cours.titre!))?.[1]) || IMAGES_ROTATION;
+  return `assets/demo/cours/${lot[(cours?.id ?? 0) % lot.length]}.jpg`;
+}
+
 export const FORMATEUR_DEFAUT = 'Formateur';
 /** Valeur d'une donnée absente : pas encore de note, aucun inscrit pour calculer un achèvement… */
 export const VIDE = '—';
