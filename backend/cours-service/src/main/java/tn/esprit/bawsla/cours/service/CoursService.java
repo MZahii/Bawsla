@@ -56,13 +56,15 @@ public class CoursService {
     private final ResumeLocalRepository resumeLocalRepository;
     private final InscriptionRepository inscriptionRepository;
     private final ChapitreTermineRepository chapitreTermineRepository;
+    private final FormateurVerifier formateurVerifier;
 
     public CoursService(CoursRepository coursRepository, ChapitreRepository chapitreRepository,
                         PageDocumentRepository pageRepository, StockageService stockage,
                         FicheRevisionRepository ficheRepository, AudioRevisionRepository audioRepository,
                         TraitementIARepository traitementRepository, ExplicationAudioRepository explicationRepository,
                         ResumeLocalRepository resumeLocalRepository, InscriptionRepository inscriptionRepository,
-                        ChapitreTermineRepository chapitreTermineRepository) {
+                        ChapitreTermineRepository chapitreTermineRepository, FormateurVerifier formateurVerifier) {
+        this.formateurVerifier = formateurVerifier;
         this.inscriptionRepository = inscriptionRepository;
         this.chapitreTermineRepository = chapitreTermineRepository;
         this.coursRepository = coursRepository;
@@ -136,12 +138,15 @@ public class CoursService {
         stockage.supprimerApresValidation(StockageService.Type.PDF, cours.getPdfStockage());
     }
 
-    /** Publier, dépublier ou archiver. Publier exige au moins un chapitre. */
+    /** Publier, dépublier ou archiver. Publier exige au moins un chapitre et un formateur validé (contrat 4). */
     @Transactional
     public CoursResponse changerStatut(Long id, StatutRequest request, CurrentUser user) {
         Cours cours = chargerPourEcriture(id, user);
-        if (request.statut() == StatutCours.PUBLIE && cours.getChapitres().isEmpty()) {
-            throw new BadRequestException("Impossible de publier ce cours : ajoute d'abord au moins un chapitre.");
+        if (request.statut() == StatutCours.PUBLIE) {
+            if (cours.getChapitres().isEmpty()) {
+                throw new BadRequestException("Impossible de publier ce cours : ajoute d'abord au moins un chapitre.");
+            }
+            formateurVerifier.verifierPeutPublier(user);
         }
         cours.setStatut(request.statut());
         return reponse(cours);
