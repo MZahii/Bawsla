@@ -18,9 +18,25 @@
   <bw-empty-state icon="quiz" title="Aucun quiz pour l’instant" message="Crée ton premier quiz à la main ou génère-le avec l’IA à partir d’un cours." />
 } @else {
   <section class="card mt">
-    <div class="card-head"><h2>Tous les quiz</h2><span class="sub">Clique sur une ligne pour l’analyser</span></div>
+    <div class="card-head">
+      <div class="toolbar" style="margin: 0; flex: 1">
+        <mat-button-toggle-group [value]="filtre()" (change)="filtre.set($event.value)" hideSingleSelectionIndicator aria-label="Filtrer par type">
+          <mat-button-toggle value="TOUS">Tous ({{ lignes().length }})</mat-button-toggle>
+          <mat-button-toggle value="QUIZ">Quiz de chapitre</mat-button-toggle>
+          <mat-button-toggle value="EXAMEN">Examens finaux</mat-button-toggle>
+        </mat-button-toggle-group>
+        <span class="grow"></span>
+        <label class="field-search">
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <input [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Quiz ou cours…" aria-label="Rechercher un quiz ou un cours" />
+        </label>
+      </div>
+    </div>
     <div class="table-wrap">
-      <table mat-table [dataSource]="lignes()" class="bw-table">
+      @if (lignesFiltrees().length === 0) {
+        <p class="muted small" style="padding: 16px 20px; margin: 0">Aucun quiz ne correspond à ce filtre.</p>
+      }
+      <table mat-table [dataSource]="lignesFiltrees()" class="bw-table" [hidden]="lignesFiltrees().length === 0">
         <ng-container matColumnDef="titre">
           <th mat-header-cell *matHeaderCellDef>Quiz</th>
           <td mat-cell *matCellDef="let l">
@@ -84,7 +100,7 @@
         <div class="card-head"><h2>Répartition des scores</h2><span class="sub">{{ sel.titre }}</span></div>
         <div class="card-body">
           @if (stats()?.nbTentatives) {
-            <bw-chart type="bar" [labels]="distribution().labels" [series]="distribution().series" [height]="240" ariaLabel="Nombre de tentatives par tranche de score" />
+            <bw-chart type="bar" [labels]="distribution().labels" [series]="distribution().series" [height]="240" [legend]="false" ariaLabel="Nombre de tentatives par tranche de score" />
           } @else {
             <p class="muted small">Pas encore de tentative sur ce quiz.</p>
           }
@@ -93,7 +109,7 @@
       <section class="card">
         <div class="card-head"><h2>Questions les plus ratées</h2><span class="sub">{{ sel.titre }}</span></div>
         <ul style="list-style: none; margin: 0; padding: 0">
-          @for (q of stats()?.questions ?? []; track q.questionId) {
+          @for (q of questionsRatees(); track q.questionId) {
             <li style="padding: 12px 20px; border-bottom: 1px solid var(--color-border)">
               <div style="display: flex; justify-content: space-between; gap: 12px">
                 <span class="small"><strong>Q{{ q.numero }}.</strong> {{ q.enonce }}</span>
@@ -101,8 +117,10 @@
                   <span [class]="'pill ' + ton(100 - q.tauxErreur)">{{ q.tauxErreur }} % d’erreurs</span>
                 }
               </div>
-              <span class="muted small">{{ q.competence ?? 'Compétence non précisée' }} · {{ q.nbReponses }} réponse(s)</span>
+              <span class="muted small">{{ q.competence ?? 'Compétence non précisée' }} · {{ q.nbReponses }} {{ q.nbReponses > 1 ? 'réponses' : 'réponse' }}</span>
             </li>
+          } @empty {
+            <li class="muted small" style="padding: 12px 20px">{{ stats()?.nbTentatives ? 'Aucune question ratée sur ce quiz pour l’instant.' : 'Pas encore de tentative sur ce quiz.' }}</li>
           }
         </ul>
       </section>

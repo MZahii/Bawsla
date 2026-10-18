@@ -1,5 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTableModule } from '@angular/material/table';
@@ -8,13 +10,14 @@ import { Router, RouterLink } from '@angular/router';
 import { BwButton, EmptyState } from '../../../../shared';
 import { BwChart, Kpi, PageHeader } from '../../../../shared/ui';
 import { StatistiquesQuiz, StudioLigne } from '../../models/quiz.model';
+import { tonScore } from '../../models/ton-score';
 import { CoursTitresService } from '../../services/cours-titres.service';
 import { QuizService } from '../../services/quiz.service';
 
 /** Studio : les quiz du formateur, leurs résultats, et l'analyse des questions les plus ratées. */
 @Component({
   selector: 'app-studio-quiz',
-  imports: [RouterLink, MatTableModule, MatMenuModule, MatIconModule, BwButton, EmptyState, PageHeader, Kpi, BwChart],
+  imports: [RouterLink, FormsModule, MatButtonToggleModule, MatTableModule, MatMenuModule, MatIconModule, BwButton, EmptyState, PageHeader, Kpi, BwChart],
   templateUrl: './studio-quiz.html',
 })
 export class StudioQuiz {
@@ -28,6 +31,19 @@ export class StudioQuiz {
   protected readonly erreur = signal<string | null>(null);
   protected readonly selection = signal<StudioLigne | null>(null);
   protected readonly stats = signal<StatistiquesQuiz | null>(null);
+  protected readonly filtre = signal<'TOUS' | 'QUIZ' | 'EXAMEN'>('TOUS');
+  protected readonly q = signal('');
+
+  /** Lignes affichées : filtre par type, puis recherche dans le titre du quiz et celui du cours. */
+  protected readonly lignesFiltrees = computed(() => {
+    const f = this.filtre();
+    const q = this.q().trim().toLowerCase();
+    return this.lignes().filter(
+      (l) =>
+        (f === 'TOUS' || l.type === f) &&
+        (!q || l.titre.toLowerCase().includes(q) || this.cours.titre(l.coursId).toLowerCase().includes(q)),
+    );
+  });
 
   protected readonly nbPublies = computed(() => this.lignes().filter((l) => l.statut === 'PUBLIE').length);
   protected readonly nbTentatives = computed(() => this.lignes().reduce((s, l) => s + l.nbTentatives, 0));
@@ -41,8 +57,14 @@ export class StudioQuiz {
 
   protected readonly distribution = computed(() => ({
     labels: ['0-19', '20-39', '40-59', '60-79', '80-100'],
-    series: [{ label: 'Tentatives', data: this.stats()?.distribution ?? [0, 0, 0, 0, 0] }],
+    // Couleur 2 (bordeaux) : celle de la marque, plutôt que le bleu par défaut de la première série.
+    series: [{ label: 'Tentatives', data: this.stats()?.distribution ?? [0, 0, 0, 0, 0], color: 2 as const }],
   }));
+
+  /** Seules les questions avec au moins une erreur, la plus ratée en premier. */
+  protected readonly questionsRatees = computed(() =>
+    (this.stats()?.questions ?? []).filter((q) => q.nbReponses > 0 && q.tauxErreur > 0).sort((a, b) => b.tauxErreur - a.tauxErreur),
+  );
 
   constructor() {
     this.cours.charger();
@@ -75,10 +97,7 @@ export class StudioQuiz {
     });
   }
 
-  protected ton(v: number | null | undefined): string {
-    if (v == null) return '';
-    return v >= 70 ? 'ok' : v >= 60 ? 'warn' : 'ko';
-  }
+  protected readonly ton = tonScore;
 
   private recharger(): void {
     this.erreur.set(null);

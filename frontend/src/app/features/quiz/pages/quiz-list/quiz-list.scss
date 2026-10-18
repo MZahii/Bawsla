@@ -22,4 +22,6 @@
 .hist li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border); }
 .hist li:last-child { border-bottom: 0; }
 .hist .t { min-width: 0; }
+.bas { align-items: start; }
+.plus { display: flex; justify-content: center; padding: var(--space-2); border-top: 1px solid var(--color-border); }
 @media (max-width: 599px) { .path-head img { display: none; } }

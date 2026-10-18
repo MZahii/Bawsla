@@ -20,8 +20,11 @@ legend { margin-bottom: var(--space-2); font-weight: 600; font-size: 14px; }
 .opts li.bonne { border-color: var(--color-success); }
 .opts mat-icon { margin-left: auto; color: var(--color-success); }
 .l { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: var(--color-neutral-soft); font-size: 13px; font-weight: 600; }
-.niveaux { display: flex; flex-wrap: wrap; width: 100%; }
+// Cinq niveaux : pastilles séparées qui remplissent chaque ligne (le groupe Material en un bloc se coupait mal).
+.niveaux { display: flex; flex-wrap: wrap; gap: var(--space-2); width: 100%; border: 0; border-radius: 0; }
 .niveaux mat-button-toggle { flex: 1 1 auto; }
+.niveaux mat-button-toggle, .niveaux mat-button-toggle + mat-button-toggle { border: 1px solid var(--color-border); border-radius: 8px; }
+.niveaux mat-button-toggle.mat-button-toggle-checked { border-color: var(--color-bordeaux-600); }
 .resume { margin: var(--space-2) 0 0; min-height: 40px; }
 .trop { color: var(--color-error); }
 .comp { margin: var(--space-2) 0 0; }

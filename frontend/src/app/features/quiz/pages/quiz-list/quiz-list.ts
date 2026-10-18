@@ -7,6 +7,7 @@ import { forkJoin } from 'rxjs';
 import { BwButton, EmptyState } from '../../../../shared';
 import { BwChart, Kpi, PageHeader } from '../../../../shared/ui';
 import { Certificat, HistoriqueLigne, Quiz } from '../../models/quiz.model';
+import { tonScore } from '../../models/ton-score';
 import { CoursTitresService } from '../../services/cours-titres.service';
 import { QuizService } from '../../services/quiz.service';
 
@@ -29,6 +30,11 @@ export class QuizList {
   private readonly quiz = signal<Quiz[]>([]);
   private readonly examens = signal<Quiz[]>([]);
   protected readonly historique = signal<HistoriqueLigne[]>([]);
+  protected readonly HISTORIQUE_COURT = 6;
+  protected readonly toutHistorique = signal(false);
+  protected readonly historiqueAffiche = computed(() =>
+    this.toutHistorique() ? this.historique() : this.historique().slice(0, this.HISTORIQUE_COURT),
+  );
   private readonly certificats = signal<Certificat[]>([]);
 
   /** Meilleur score de l'apprenant par quiz. */
@@ -56,6 +62,8 @@ export class QuizList {
     const h = this.historique();
     return h.length ? Math.round(h.reduce((t, x) => t + x.pourcentage, 0) / h.length) : null;
   });
+  /** Quiz de chapitre distincts tentés au moins une fois (sans les examens ni les tentatives répétées). */
+  protected readonly nbQuizPasses = computed(() => new Set(this.historique().filter((h) => h.type === 'QUIZ').map((h) => h.quizId)).size);
   protected readonly examensDispo = computed(() => this.parcours().filter((p) => p.examen && !p.certificat && p.restantes !== 0).length);
   protected readonly nbCertificats = computed(() => this.certificats().length);
   /** Dernières tentatives des quiz pour lesquels une moyenne des autres apprenants existe. */
@@ -64,8 +72,9 @@ export class QuizList {
     return {
       labels: lignes.map((h) => h.titre),
       series: [
-        { label: 'Toi', data: lignes.map((h) => h.pourcentage) },
-        { label: 'Autres apprenants du cours', data: lignes.map((h) => h.moyenneAutres as number) },
+        // « Toi » en bordeaux (couleur de la marque), les autres en bleu : la couleur suit la série.
+        { label: 'Toi', data: lignes.map((h) => h.pourcentage), color: 2 as const },
+        { label: 'Autres apprenants du cours', data: lignes.map((h) => h.moyenneAutres as number), color: 1 as const },
       ],
     };
   });
@@ -92,8 +101,10 @@ export class QuizList {
     });
   }
 
-  protected ton(score: number | null): string {
-    if (score === null) return '';
-    return score >= 70 ? 'ok' : score >= 50 ? 'warn' : 'ko';
+  /** Préfixe « Quiz : » sans le doubler quand le titre (souvent généré par l'IA) le contient déjà. */
+  protected libelle(titre: string): string {
+    return /^quiz\s*:/i.test(titre) ? titre : `Quiz : ${titre}`;
   }
+
+  protected readonly ton = tonScore;
 }

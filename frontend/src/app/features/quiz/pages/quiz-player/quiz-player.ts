@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, input, numberAttribute, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { AiBox, AiLoading, Badge, BwButton, EmptyState, Route } from '../../../../shared';
 import { Correction, Passage, RattrapageResultat, Remediation, TentativeResultat } from '../../models/quiz.model';
@@ -97,9 +98,23 @@ export class QuizPlayer {
   protected readonly erreurIa = signal('');
   protected readonly choixRattrapage = signal<number | null>(null);
   protected readonly verdict = signal<RattrapageResultat | null>(null);
+  /** Secondes écoulées depuis le lancement de la remédiation (diagnostic puis vérification : 20 à 60 s). */
+  protected readonly attente = signal(0);
+  protected readonly messageAttente = computed(() => {
+    const s = this.attente();
+    const etape = s < 15
+      ? 'Étape 1 sur 2 : l’IA analyse ta réponse pas à pas…'
+      : s < 60
+        ? 'Étape 2 sur 2 : une seconde lecture vérifie la question de rattrapage…'
+        : 'L’IA est très sollicitée, encore un instant…';
+    return `${etape} (${s} s)`;
+  });
+  private demande?: Subscription;
+  private chrono?: ReturnType<typeof setInterval>;
 
   constructor() {
     effect(() => this.charger(this.id()));
+    inject(DestroyRef).onDestroy(() => this.arreterAttente());
   }
 
   protected choisir(optionId: number): void {
@@ -125,6 +140,7 @@ export class QuizPlayer {
 
   /** Change l'erreur travaillée sans appeler l'IA : l'apprenant lance la remédiation lui-même. */
   protected selectionner(e: Erreur): void {
+    this.arreterAttente();
     this.selection.set(e);
     this.etatRemediation.set('inactif');
     this.remediation.set(null);
@@ -135,22 +151,39 @@ export class QuizPlayer {
 
   protected remedier(e: Erreur): void {
     if (this.etatRemediation() === 'chargement') return;
+    this.arreterAttente();
     this.selection.set(e);
     this.etatRemediation.set('chargement');
     this.remediation.set(null);
     this.erreurIa.set('');
     this.choixRattrapage.set(null);
     this.verdict.set(null);
-    this.quizService.remedier(e.correction.reponseId).subscribe({
+    this.attente.set(0);
+    this.chrono = setInterval(() => this.attente.update((s) => s + 1), 1000);
+    this.demande = this.quizService.remedier(e.correction.reponseId).subscribe({
       next: (r) => {
+        this.arreterAttente();
         this.remediation.set(r);
         this.etatRemediation.set('pret');
       },
       error: (err: HttpErrorResponse) => {
+        this.arreterAttente();
         this.erreurIa.set(err.error?.message ?? 'L’assistant IA est indisponible pour le moment.');
         this.etatRemediation.set('erreur');
       },
     });
+  }
+
+  /** Bouton Annuler de bw-ai-loading : on abandonne la requête et on revient à la correction. */
+  protected annulerRemediation(): void {
+    this.arreterAttente();
+    this.etatRemediation.set('inactif');
+  }
+
+  private arreterAttente(): void {
+    this.demande?.unsubscribe();
+    this.demande = undefined;
+    clearInterval(this.chrono);
   }
 
   protected choisirRattrapage(i: number): void {
@@ -199,6 +232,7 @@ export class QuizPlayer {
   }
 
   private charger(id: number): void {
+    this.arreterAttente();
     this.phase.set('chargement');
     this.resultat.set(null);
     this.index.set(0);

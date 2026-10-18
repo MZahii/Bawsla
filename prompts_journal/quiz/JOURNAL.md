@@ -7,6 +7,53 @@ Modèle d'entrée et règles : voir [../README.md](../README.md). Les entrées l
 
 ---
 
+### 14 — 2026-10-18 — prompts v3 (génération, vérification, remédiation) et démo du rejet par Self-Consistency
+
+- **Outil / modèle** : Claude Code (Claude Opus 5.5) ; tests réels avec Gemini (`gemini-3.8-flash`)
+- **Objectif** : combler les deux manques relevés en comparant le module au cahier des charges (PDF) :
+  1. montrer l'évolution des prompts dans le code, pas seulement dans le journal ;
+  2. pouvoir démontrer de façon reproductible qu'une question fausse est rejetée par la Self-Consistency.
+- **Contexte fourni** : les prompts v1 et v2 de `app/modules/quiz/prompts/`, les défauts relevés dans les sorties v2 (entrées précédentes), `coherence.verifier`.
+- **Prompt** :
+  > Trous du Quiz : prompts generation, remediation et verification en v3, plus une démo reproductible d'une question rejetée par la Self-Consistency, avec la capture 03.
+- **Résultat** :
+  - **`generation_v3`** : v2 plus des règles anti-ambiguïté. Défauts de v2 qui les motivent :
+    - distracteurs à moitié vrais ;
+    - énoncés avec des négations (« sauf », « laquelle est fausse ») ;
+    - bonne réponse devinable (la plus longue, toujours en A) ;
+    - valeurs numériques mal calculées.
+    Le modèle doit aussi résoudre chaque question avant de l'écrire, sans mettre ce contrôle dans le JSON.
+  - **`verification_v3`** : le vérificateur trouve d'abord la réponse à partir de l'énoncé seul, puis choisit la lettre. Sa justification donne son propre résultat au lieu de paraphraser un choix. Une divergence est donc plus facile à lire pour le formateur.
+  - **`remediation_v3`** : v1 avec ces exigences en plus :
+    - le raisonnement se termine par « Confusion retenue : … » ;
+    - l'explication ne révèle pas la réponse du rattrapage ;
+    - le conseil se fait en moins de 10 minutes, jamais « relis le cours » ;
+    - un distracteur du rattrapage reproduit exactement la confusion retenue.
+  - **Configuration** :
+    - `VERSION_PAR_DEFAUT = "v3"` et `PROMPT_QUIZ_VERSION=v3` par défaut ;
+    - v1 et v2 restent sélectionnables pour comparer les versions.
+  - **`tests/quiz/boite_noire/demo_rejet.py`** : lot SQL de 4 questions écrites à la main, sans aucune donnée d'utilisateur :
+    - 2 questions correctes ;
+    - 2 questions dont la « bonne réponse » est volontairement fausse : COUNT(*) donne « 9 » au lieu de 12, et « UNIQUE » est donné au lieu de DISTINCT.
+    Le script les passe dans `coherence.verifier` avec le vrai LLM et produit `resultats/demo_rejet.html` (capture `demo/captures/03_…`).
+- **Vérification** :
+  - `pytest tests/quiz` : 142 réussis. Un nouveau test vérifie que la v3 garde la défense anti-injection et le format JSON, et que v1 et v2 restent inchangées.
+  - `demo_rejet` avec Gemini : 2 questions validées, les 2 pièges rejetés. Les justifications citent le vrai résultat (12 lignes, DISTINCT).
+  - Génération v3 réelle (jointures SQL, 4 questions) : 4 validées, la bonne réponse change de position (B, B, C, D).
+  - Remédiation v3 réelle :
+    - le raisonnement se termine par « Confusion retenue : INNER JOIN vs LEFT JOIN » ;
+    - le conseil est concret : dessiner deux cercles et hachurer les zones ;
+    - dans le rattrapage, le distracteur « INNER JOIN » porte exactement cette confusion.
+- **Gardé / modifié / rejeté** :
+  - gardé ;
+  - la vérification v2 reste celle de v1 : v2 ne changeait que la génération, l'historique reste donc fidèle ;
+  - les tests de routes restent forcés en v2 par `conftest.py`, pour ne pas dépendre de la version par défaut.
+- **Leçon** :
+  - un prompt plus strict rend les rejets rares en direct, ce qui empêche de montrer la Self-Consistency pendant une démo. Il faut donc un lot piégé, écrit à la main, pour la démontrer de façon reproductible ;
+  - demander au vérificateur sa réponse avant la lettre rend ses justifications vérifiables.
+
+---
+
 ### 13 — 2026-10-14 — PR #3 fusionnée, tests boîte noire et boîte blanche, deux défauts corrigés
 
 - **Outil / modèle** : Claude Code (Claude Opus 5.5)

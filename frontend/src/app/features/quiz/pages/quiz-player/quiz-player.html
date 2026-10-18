@@ -100,7 +100,7 @@
                   <p class="remed-notion">Question {{ e.numero }} · notion à revoir : <strong>{{ e.correction.competence ?? 'non précisée' }}</strong></p>
                   @switch (etatRemediation()) {
                     @case ('chargement') {
-                      <bw-ai-loading message="L’IA analyse ta réponse et prépare une question…" />
+                      <bw-ai-loading [message]="messageAttente()" (cancel)="annulerRemediation()" />
                     }
                     @case ('pret') {
                       @if (remediation(); as rem) {

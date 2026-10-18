@@ -58,7 +58,8 @@ export class Verifier {
   private readonly quizService = inject(QuizService);
   protected readonly cours = inject(CoursTitresService);
 
-  readonly numero = input('');
+  /** Absent sur /verifier : le routeur lie alors undefined, d'où le repli sur ''. */
+  readonly numero = input<string | undefined>('');
   protected saisie = '';
   protected readonly etat = signal<Etat>('vide');
   protected readonly certificat = signal<Certificat | null>(null);
@@ -66,7 +67,7 @@ export class Verifier {
   constructor() {
     if (inject(AuthService).isAuthenticated()) this.cours.charger();
     effect(() => {
-      const n = this.numero().trim();
+      const n = (this.numero() ?? '').trim();
       this.saisie = n;
       this.certificat.set(null);
       if (!n) {

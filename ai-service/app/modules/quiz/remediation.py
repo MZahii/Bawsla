@@ -22,7 +22,7 @@ from app.core.llm_client import LLMClient, LLMMessage, estimer_tokens
 from app.core.sanitizer import Sanitizer
 from app.modules.quiz import coherence
 from app.modules.quiz.config import QuizAiSettings
-from app.modules.quiz.generation import Objectifs, _cle, _noter, max_tokens_generation, valider
+from app.modules.quiz.generation import Objectifs, _doublon, _mots, _noter, max_tokens_generation, valider
 from app.modules.quiz.prompts import Prompt, prompt_remediation, prompt_verification
 from app.modules.quiz.schemas import (
     NiveauBloom,
@@ -86,7 +86,7 @@ def valider_rattrapage(reponse: RemediationLlm, demande: RemedierRequest, enonce
     question = valider(brute, objectifs)
     if question.statut is StatutQuestion.REJETEE:
         return question.raison_rejet or "format invalide"
-    if _cle(question.enonce) == _cle(enonce):
+    if _doublon(_mots(question.enonce), [_mots(enonce)]):
         return "elle reprend la question d'origine"
     return question
 

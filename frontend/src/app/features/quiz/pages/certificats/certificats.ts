@@ -24,14 +24,21 @@ import { QuizService } from '../../services/quiz.service';
       @if (certificats().length) {
         <div class="grid">
           @for (c of certificats(); track c.numero) {
-            <a class="card cert" [routerLink]="['/app/certificats', c.numero]">
+            <article class="card cert">
               <div class="b">
                 <span class="k"><mat-icon aria-hidden="true">workspace_premium</mat-icon> Certificat</span>
-                <h2>{{ c.titreCours ?? cours.titre(c.coursId) }}</h2>
+                <h2><a [routerLink]="['/app/certificats', c.numero]">{{ c.titreCours ?? cours.titre(c.coursId) }}</a></h2>
                 <p class="muted small">Obtenu le {{ c.dateEmission | date: 'dd/MM/yyyy' }}, score {{ c.score }} %</p>
                 <p class="muted small num">N° {{ c.numero }}</p>
               </div>
-            </a>
+              <div class="acts">
+                <a bwButton="fantome" [routerLink]="['/app/certificats', c.numero]">Voir</a>
+                <button type="button" bwButton="fantome" (click)="copier(c.numero)" [attr.aria-label]="'Copier le lien de vérification du certificat ' + c.numero">
+                  <mat-icon aria-hidden="true">{{ copie() === c.numero ? 'check' : 'link' }}</mat-icon>
+                  {{ copie() === c.numero ? 'Lien copié' : 'Copier le lien' }}
+                </button>
+              </div>
+            </article>
           }
         </div>
       } @else {
@@ -55,9 +62,11 @@ import { QuizService } from '../../services/quiz.service';
   `,
   styles: `
     .grid { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-    .cert { display: flex; flex-direction: column; overflow: hidden; color: inherit; text-decoration: none; border-top: 3px solid var(--color-gold-500); }
-    .cert:hover h2 { text-decoration: underline; }
-    .b { padding: var(--space-4); }
+    .cert { display: flex; flex-direction: column; overflow: hidden; border-top: 3px solid var(--color-gold-500); }
+    .cert h2 a { color: inherit; text-decoration: none; }
+    .cert h2 a:hover { text-decoration: underline; }
+    .b { flex: 1; padding: var(--space-4); }
+    .acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--color-border); }
     .b p { margin: 2px 0 0; }
     .k { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--color-gold-700); }
     .k mat-icon { font-size: 18px; width: 18px; height: 18px; }
@@ -77,6 +86,8 @@ export class Certificats {
   private readonly historique = signal<HistoriqueLigne[]>([]);
   protected readonly chargement = signal(true);
   protected readonly erreur = signal(false);
+  /** Numéro du certificat dont le lien vient d'être copié (retour visuel pendant 2 s). */
+  protected readonly copie = signal<string | null>(null);
 
   /** Examens tentés sans certificat : meilleur score par cours. */
   protected readonly enCours = computed(() => {
@@ -103,5 +114,13 @@ export class Certificats {
       },
     });
     this.quizService.historique().subscribe({ next: (h) => this.historique.set(h), error: () => this.historique.set([]) });
+  }
+
+  /** Copie le lien public de vérification (/verifier/<numéro>), à coller dans un CV ou un profil. */
+  protected copier(numero: string): void {
+    navigator.clipboard?.writeText(`${location.origin}/verifier/${numero}`).then(() => {
+      this.copie.set(numero);
+      setTimeout(() => this.copie.set(null), 2000);
+    });
   }
 }

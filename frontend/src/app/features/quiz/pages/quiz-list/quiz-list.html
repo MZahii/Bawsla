@@ -7,7 +7,7 @@
   <bw-empty-state icon="error" title="Évaluations indisponibles" message="Réessaie dans un instant." />
 } @else {
   <div class="grid-4">
-    <bw-kpi label="Quiz passés" [value]="historique().length" icon="task_alt" />
+    <bw-kpi label="Quiz passés" [value]="nbQuizPasses()" icon="task_alt" />
     <bw-kpi label="Ta moyenne aux quiz" [value]="moyenne() == null ? '—' : moyenne() + ' %'" icon="percent" />
     <bw-kpi label="Examens disponibles" [value]="examensDispo()" icon="assignment" />
     <bw-kpi label="Certificats obtenus" [value]="nbCertificats()" icon="workspace_premium" />
@@ -30,7 +30,7 @@
           @for (q of p.quiz; track q.id) {
             <li>
               <mat-icon class="ic" aria-hidden="true">quiz</mat-icon>
-              <span class="t"><strong>Quiz : {{ q.titre }}</strong><span class="muted small">{{ q.nbQuestions }} questions, {{ q.dureeMinutes }} min{{ q.tentativesMax > 0 ? ', ' + q.tentativesMax + ' tentative(s)' : ', sans limite de tentatives' }}</span></span>
+              <span class="t"><strong>{{ libelle(q.titre) }}</strong><span class="muted small">{{ q.nbQuestions }} questions, {{ q.dureeMinutes }} min{{ q.tentativesMax > 0 ? ', ' + q.tentativesMax + ' tentative(s)' : ', sans limite de tentatives' }}</span></span>
               @if (q.score !== null) {
                 <span [class]="'pill ' + ton(q.score)">{{ q.score }} %</span>
               } @else {
@@ -70,29 +70,36 @@
     }
   </div>
 
-  <div class="grid-main mt">
+  <div class="grid-main mt bas">
     <section class="card">
       <div class="card-head"><h2>Toi et les autres apprenants</h2><span class="sub">Score par quiz, en %</span></div>
       <div class="card-body">
         @if (comparaison().labels.length) {
           <bw-chart type="bar" [labels]="comparaison().labels" [series]="comparaison().series" unit="%" [max]="100" [height]="260" ariaLabel="Ton score comparé à la moyenne des autres apprenants du même cours" />
         } @else {
-          <p class="muted small">Passe un quiz pour te comparer aux autres apprenants du cours.</p>
+          <p class="muted small">{{ historique().length ? 'Aucun autre apprenant n’a encore passé ces quiz : la comparaison apparaîtra dès qu’il y en aura.' : 'Passe un quiz pour te comparer aux autres apprenants du cours.' }}</p>
         }
       </div>
     </section>
     <section class="card">
       <div class="card-head"><h2>Historique</h2></div>
       <ul class="hist">
-        @for (h of historique(); track h.tentativeId) {
+        @for (h of historiqueAffiche(); track h.tentativeId) {
           <li>
-            <span class="t"><strong>{{ h.titre }}</strong><span class="muted small">{{ h.dateTentative | date: 'dd/MM/yyyy' }}</span></span>
+            <span class="t"><strong>{{ h.titre }}</strong><span class="muted small">{{ catalogue.titre(h.coursId) }}, {{ h.dateTentative | date: 'dd/MM/yyyy' }}</span></span>
             <span [class]="'pill ' + ton(h.pourcentage)">{{ h.pourcentage }} %</span>
           </li>
         } @empty {
           <li class="muted small">Aucune tentative pour l’instant.</li>
         }
       </ul>
+      @if (historique().length > HISTORIQUE_COURT) {
+        <div class="plus">
+          <button type="button" bwButton="fantome" (click)="toutHistorique.set(!toutHistorique())" [attr.aria-expanded]="toutHistorique()">
+            {{ toutHistorique() ? 'Voir moins' : 'Voir tout (' + historique().length + ')' }}
+          </button>
+        </div>
+      }
     </section>
   </div>
 }

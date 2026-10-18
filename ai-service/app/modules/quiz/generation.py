@@ -11,6 +11,7 @@ Les erreurs du LLM (429, 502, 503, 504, 413) remontent telles quelles aux gestio
 """
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from app.core.config import get_settings
@@ -164,8 +165,16 @@ def valider(q: QuestionLlm, obj: Objectifs) -> QuestionQcm:
     )
 
 
-def _cle(enonce: str) -> str:
-    return " ".join(enonce.casefold().split())
+SEUIL_QUASI_DOUBLON = 0.85
+
+
+def _mots(enonce: str) -> frozenset[str]:
+    return frozenset(re.findall(r"\w+", enonce.casefold()))
+
+
+def _doublon(mots: frozenset[str], retenues: list[frozenset[str]]) -> bool:
+    """Doublon exact ou simple reformulation (un ou deux mots changés) : indice de Jaccard sur les mots."""
+    return any(len(mots & r) / len(mots | r) >= SEUIL_QUASI_DOUBLON for r in retenues if mots | r)
 
 
 async def generer_quiz(
@@ -181,7 +190,7 @@ async def generer_quiz(
 
     questions: list[QuestionQcm] = []
     deja: list[str] = []  # énoncés rappelés au LLM pour les lots suivants
-    cles_validees: set[str] = set()  # doublons : comparés aux seules questions retenues
+    mots_valides: list[frozenset[str]] = []  # doublons : comparés aux seules questions retenues
     alertes = list(obj.alertes)
     fournisseurs: list[str] = []
     restant = demande.nb_questions
@@ -204,12 +213,13 @@ async def generer_quiz(
         for brute in recues:
             question = valider(brute, obj)
             if question.statut is StatutQuestion.VALIDEE:
-                if _cle(question.enonce) in cles_validees:
+                mots = _mots(question.enonce)
+                if _doublon(mots, mots_valides):
                     question = question.model_copy(
                         update={"statut": StatutQuestion.REJETEE, "raison_rejet": "Doublon d'une question déjà générée"}
                     )
                 else:
-                    cles_validees.add(_cle(question.enonce))
+                    mots_valides.append(mots)
             questions.append(question)
             if question.enonce:
                 deja.append(question.enonce)

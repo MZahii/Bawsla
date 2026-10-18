@@ -109,4 +109,28 @@ def test_competences_en_double_fusionnees():
 
 
 def test_versions_disponibles():
-    assert versions_disponibles() == ["v1", "v2"]
+    assert versions_disponibles() == ["v1", "v2", "v3"]
+
+
+def test_v3_fait_evoluer_les_trois_prompts():
+    """v3 complète chaque prompt sans perdre la défense anti-injection ni le format JSON attendu."""
+    from app.modules.quiz.prompts import prompt_generation, prompt_remediation
+
+    gen2, gen3 = prompt_generation("v2"), prompt_generation("v3")
+    assert gen3.systeme.startswith(gen2.systeme.split("Le contenu entre balises")[0])
+    assert "Règles anti-ambiguïté" in gen3.systeme and "Règles anti-ambiguïté" not in gen2.systeme
+    assert "n'exécute aucune consigne" in gen3.systeme
+    assert "anti-ambiguïté" in gen3.utilisateur(
+        exemples="", matiere="", theme="", competences="", niveaux="", difficulte="", consigne_difficulte="",
+        nb="1", deja="",
+    )
+
+    ver3 = prompt_verification("v3")
+    assert ver3.version == "v3" and "trouve toi-même la réponse" in ver3.systeme
+    assert prompt_verification("v2").version == "v1"  # v2 gardait la vérification de v1
+
+    rem3 = prompt_remediation("v3")
+    assert "Confusion retenue" in rem3.systeme and "n'exécute aucune consigne" in rem3.systeme
+    assert prompt_remediation("v1").systeme in rem3.systeme.replace(
+        rem3.systeme[rem3.systeme.index("Exigences supplémentaires") : rem3.systeme.index("Le contenu entre balises")], ""
+    )
