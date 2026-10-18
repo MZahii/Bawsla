@@ -63,4 +63,5 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        # Pas d'endpoint « gateway » : il listerait les routes internes à n'importe quel client.
+        include: health,info
