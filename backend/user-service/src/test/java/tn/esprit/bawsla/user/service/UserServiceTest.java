@@ -133,6 +133,26 @@ class UserServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    // ---------- Lecture visiteur ----------
+
+    @Test
+    void lectureVisiteur_neMontreQueLesFormateurs() {
+        User formateur = compte(3, Role.ENSEIGNANT, true);
+        formateur.setFormateurValide(true);
+        existe(formateur);
+        existe(compte(5, Role.ETUDIANT, true));
+        existe(compte(6, Role.ENSEIGNANT, true));
+        User desactive = compte(7, Role.ENSEIGNANT, false);
+        desactive.setFormateurValide(true);
+        existe(desactive);
+
+        assertThat(service().findFormateurPublicById(3L).nom()).isEqualTo("Nom3");
+        assertThatThrownBy(() -> service().findFormateurPublicById(5L)).isInstanceOf(ResourceNotFoundException.class);
+        // candidature en attente ou compte désactivé : invisible pour un visiteur
+        assertThatThrownBy(() -> service().findFormateurPublicById(6L)).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> service().findFormateurPublicById(7L)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
     // ---------- Garde-fous administrateur ----------
 
     @Test

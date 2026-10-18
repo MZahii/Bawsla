@@ -125,10 +125,14 @@ public class UserController {
         return ApiResponse.ok(userService.findAll(user));
     }
 
-    /** Contrat inter-modules : infos publiques d'un utilisateur. */
+    /**
+     * Contrat inter-modules : infos publiques d'un utilisateur. Un visiteur (lecture publique du catalogue,
+     * sans en-têtes d'identité) ne voit que les formateurs : jamais le nom d'un apprenant.
+     */
     @GetMapping("/{id}")
-    public ApiResponse<UserPublicDto> findById(@PathVariable Long id, CurrentUser user) {
-        return ApiResponse.ok(userService.findPublicById(id));
+    public ApiResponse<UserPublicDto> findById(@PathVariable Long id,
+                                               @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        return ApiResponse.ok(userId == null ? userService.findFormateurPublicById(id) : userService.findPublicById(id));
     }
 
     /** ADMIN uniquement. */

@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 /**
  * Ajoute "Authorization: Bearer <jwt>" aux appels vers la gateway uniquement,
  * et déconnecte l'utilisateur si la gateway répond 401 (token expiré/invalide).
+ * Un visiteur sans token (catalogue public) n'est pas renvoyé vers /login : la page gère l'erreur.
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -21,7 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(request).pipe(
     catchError((err: unknown) => {
-      if (err instanceof HttpErrorResponse && err.status === 401 && isApi && !isAuthCall) {
+      if (err instanceof HttpErrorResponse && err.status === 401 && isApi && !isAuthCall && token) {
         auth.logout('/login');
       }
       return throwError(() => err);

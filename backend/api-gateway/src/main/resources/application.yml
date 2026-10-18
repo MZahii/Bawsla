@@ -46,6 +46,9 @@ bawsla:
   # Listes séparées par des virgules (lues via @Value -> List<String>)
   security:
     public-paths: /api/auth/**,/api/*/health,/api/quiz/certificats/verification/*
+    # GET sans token : catalogue public (cours publiés, programme, image). Avec un token, règle normale.
+    # /api/users/{id} : nom du formateur sur une fiche de cours (le user-service ne renvoie alors que les formateurs).
+    visitor-get-paths: /api/cours,/api/cours/{id:\d+},/api/cours/{id:\d+}/chapitres,/api/cours/{id:\d+}/image,/api/users/{id:\d+}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 

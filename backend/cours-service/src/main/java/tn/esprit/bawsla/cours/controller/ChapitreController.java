@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,9 +33,12 @@ public class ChapitreController {
         this.chapitreService = chapitreService;
     }
 
+    /** Programme du cours : lisible par un visiteur du catalogue public si le cours est publié. */
     @GetMapping
-    public ApiResponse<List<ChapitreResponse>> lister(@PathVariable Long coursId, CurrentUser user) {
-        return ApiResponse.ok(chapitreService.lister(coursId, user));
+    public ApiResponse<List<ChapitreResponse>> lister(@PathVariable Long coursId,
+                                                      @RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                                      @RequestHeader(value = "X-User-Role", required = false) String role) {
+        return ApiResponse.ok(chapitreService.lister(coursId, CoursController.appelant(userId, role)));
     }
 
     @PostMapping

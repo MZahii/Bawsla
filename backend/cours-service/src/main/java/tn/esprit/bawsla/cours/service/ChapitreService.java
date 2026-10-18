@@ -39,7 +39,8 @@ public class ChapitreService {
     }
 
     public List<ChapitreResponse> lister(Long coursId, CurrentUser user) {
-        return coursService.chargerVisible(coursId, user).getChapitres().stream().map(ChapitreResponse::from).toList();
+        return coursService.chargerVisible(coursId, user).getChapitres().stream()
+                .map(user == null ? ChapitreResponse::programme : ChapitreResponse::from).toList();
     }
 
     @Transactional

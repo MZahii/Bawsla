@@ -76,10 +76,12 @@ public class CoursService {
         this.resumeLocalRepository = resumeLocalRepository;
     }
 
+    /** {@code user} peut être null : visiteur du catalogue public, qui ne voit que les cours publiés. */
     public List<CoursResponse> findAll(String categorie, Niveau niveau, CurrentUser user) {
-        // Sans correspondance possible pour un apprenant : seuls les cours publiés ressortent.
-        Long moi = user.hasAnyRole(CurrentUser.ENSEIGNANT) ? user.id() : -1L;
-        List<Cours> cours = coursRepository.search(Matieres.nettoyer(categorie), niveau, user.isAdmin(), StatutCours.PUBLIE, moi);
+        // Sans correspondance possible pour un apprenant ou un visiteur : seuls les cours publiés ressortent.
+        Long moi = user != null && user.hasAnyRole(CurrentUser.ENSEIGNANT) ? user.id() : -1L;
+        boolean admin = user != null && user.isAdmin();
+        List<Cours> cours = coursRepository.search(Matieres.nettoyer(categorie), niveau, admin, StatutCours.PUBLIE, moi);
         Map<Long, int[]> stats = statistiques(cours.stream().map(Cours::getId).toList());
         return cours.stream().map(c -> reponse(c, stats)).toList();
     }

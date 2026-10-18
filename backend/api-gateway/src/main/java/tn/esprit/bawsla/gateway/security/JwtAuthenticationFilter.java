@@ -28,6 +28,8 @@ import reactor.core.publisher.Mono;
  * <ol>
  *   <li>Supprime toujours les en-têtes X-User-* envoyés par le client (anti-usurpation).</li>
  *   <li>Laisse passer les chemins publics (/api/auth/**, /api/{module}/health, vérification publique d'un certificat).</li>
+ *   <li>Laisse un visiteur sans token lire le catalogue public (GET sur visitor-get-paths, sans identité).
+ *       Avec un token, ces chemins suivent la règle normale.</li>
  *   <li>Sinon exige "Authorization: Bearer &lt;jwt&gt;" valide, puis transmet
  *       X-User-Id et X-User-Role au service cible.</li>
  * </ol>
@@ -40,12 +42,15 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private final JwtUtil jwtUtil;
     private final List<String> publicPaths;
+    private final List<String> visitorGetPaths;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil,
-                                   @Value("${bawsla.security.public-paths}") List<String> publicPaths) {
+                                   @Value("${bawsla.security.public-paths}") List<String> publicPaths,
+                                   @Value("${bawsla.security.visitor-get-paths:}") List<String> visitorGetPaths) {
         this.jwtUtil = jwtUtil;
         this.publicPaths = publicPaths;
+        this.visitorGetPaths = visitorGetPaths.stream().filter(p -> !p.isBlank()).toList();
     }
 
     @Override
@@ -63,6 +68,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null && request.getMethod() == HttpMethod.GET && isVisitorReadable(path)) {
+            // Visiteur du catalogue public : lecture seule, sans identité (le service ne montre que les cours publiés).
+            return chain.filter(exchange.mutate().request(request).build());
+        }
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return unauthorized(exchange, path, "Token d'authentification manquant");
         }
@@ -89,6 +98,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isPublic(String path) {
         return publicPaths.stream().anyMatch(p -> matcher.match(p, path));
+    }
+
+    private boolean isVisitorReadable(String path) {
+        return visitorGetPaths.stream().anyMatch(p -> matcher.match(p, path));
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String path, String message) {

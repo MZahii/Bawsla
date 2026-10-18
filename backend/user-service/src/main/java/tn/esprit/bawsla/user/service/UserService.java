@@ -101,6 +101,15 @@ public class UserService {
         return UserPublicDto.from(getOrThrow(id));
     }
 
+    /** Lecture visiteur : seul un formateur est visible ; tout autre compte est traité comme inexistant. */
+    public UserPublicDto findFormateurPublicById(Long id) {
+        User user = getOrThrow(id);
+        if (user.getRole() != Role.ENSEIGNANT || !user.isFormateurValide() || !user.isActif()) {
+            throw new ResourceNotFoundException("Utilisateur", id);
+        }
+        return UserPublicDto.from(user);
+    }
+
     /** ADMIN : tous les comptes, les plus récents d'abord. */
     public List<UserDto> findAll(CurrentUser current) {
         current.requireAnyRole(CurrentUser.ADMIN);
