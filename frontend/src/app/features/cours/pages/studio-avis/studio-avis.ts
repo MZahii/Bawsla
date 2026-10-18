@@ -1,73 +1,55 @@
-import { Component, computed, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
+import { AsyncPipe } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { RouterLink } from '@angular/router';
 
-import { coursParId } from '../../../../core/demo/demo-data';
-import { AVIS, AvisCours, REPARTITION_NOTES, coursDuFormateur } from '../../../../core/demo/demo-plus';
-import { AiBox, BwButton, EmptyState } from '../../../../shared';
-import { Avatar, Kpi, PageHeader, Rating } from '../../../../shared/ui';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { errorMessage } from '../../../../shared/models/api-response.model';
+import { BwButton, EmptyState } from '../../../../shared';
+import { PageHeader, Skeleton } from '../../../../shared/ui';
+import { LIBELLE_STATUT } from '../../models/cours.constantes';
+import { Cours, StatutCours } from '../../models/cours.model';
+import { CoursImage } from '../../pipes/cours-image';
+import { CoursService } from '../../services/cours.service';
 
-type Filtre = 'tous' | 'sansReponse' | 'negatifs';
+type Etat = 'chargement' | 'ok' | 'erreur';
 
 /**
- * Studio : les avis des apprenants sur les cours du formateur, avec réponse publique.
- * Une réponse s'affiche sous l'avis sur la fiche du cours.
+ * Studio : les avis des apprenants sur les cours du formateur.
+ * cours-service ne stocke pas encore d'avis : la page liste les vrais cours du formateur, chacun « Pas encore d'avis ».
  * À brancher : CoursService.avis(coursId) et POST /api/cours/avis/{id}/reponse (à décrire dans CONTRATS_API.md).
  */
 @Component({
   selector: 'app-studio-avis',
-  imports: [FormsModule, MatButtonToggleModule, MatIconModule, MatSelectModule, AiBox, BwButton, EmptyState, Avatar, Kpi, PageHeader, Rating],
+  imports: [AsyncPipe, RouterLink, MatSnackBarModule, BwButton, EmptyState, PageHeader, Skeleton, CoursImage],
   templateUrl: './studio-avis.html',
   styleUrl: './studio-avis.scss',
 })
 export class StudioAvis {
-  protected readonly cours = coursDuFormateur().filter((c) => AVIS.some((a) => a.coursId === c.id));
-  protected readonly coursChoisi = signal<number | null>(null);
-  protected readonly filtre = signal<Filtre>('tous');
-  protected readonly avis = signal<AvisCours[]>(AVIS.map((a) => ({ ...a })));
-  protected readonly enEdition = signal<number | null>(null);
-  protected readonly brouillon = signal('');
-  protected readonly repartition = REPARTITION_NOTES;
-  protected readonly Math = Math;
+  private readonly service = inject(CoursService);
+  private readonly auth = inject(AuthService);
+  private readonly snack = inject(MatSnackBar);
 
-  protected readonly visibles = computed(() =>
-    this.avis().filter((a) => {
-      if (this.coursChoisi() && a.coursId !== this.coursChoisi()) return false;
-      if (this.filtre() === 'sansReponse') return !a.reponse;
-      if (this.filtre() === 'negatifs') return a.note <= 3;
-      return true;
-    }),
-  );
-  protected readonly sansReponse = computed(() => this.avis().filter((a) => !a.reponse).length);
-  protected readonly moyenne = computed(() => {
-    const l = this.avis();
-    return (l.reduce((t, a) => t + a.note, 0) / l.length).toFixed(1).replace('.', ',');
-  });
+  protected readonly etat = signal<Etat>('chargement');
+  protected readonly cours = signal<Cours[]>([]);
+  protected readonly libelle = (s: StatutCours): string => LIBELLE_STATUT[s];
 
-  protected titre(id: number): string {
-    return coursParId(id)?.titre ?? '';
+  constructor() {
+    this.charger();
   }
 
-  protected repondre(a: AvisCours): void {
-    this.enEdition.set(a.id);
-    this.brouillon.set(a.reponse ?? '');
-  }
-
-  /** Brouillon de réponse proposé par l'IA, à relire avant publication. */
-  protected suggerer(a: AvisCours): void {
-    this.brouillon.set(
-      a.note <= 3
-        ? `Merci pour ce retour honnête. Tu as raison, ce passage mérite plus d’exemples : je l’enrichis cette semaine et je te préviens dès que c’est en ligne.`
-        : `Merci beaucoup pour ton avis ! Ravie que le cours t’aide. N’hésite pas à poser tes questions sur le forum du cours.`,
-    );
-  }
-
-  protected publier(id: number): void {
-    const texte = this.brouillon().trim();
-    if (!texte) return;
-    this.avis.update((l) => l.map((a) => (a.id === id ? { ...a, reponse: texte } : a)));
-    this.enEdition.set(null);
+  protected charger(): void {
+    this.etat.set('chargement');
+    this.service.findAll().subscribe({
+      next: (liste) => {
+        const moi = this.auth.currentUser();
+        this.cours.set(this.auth.role() === 'ENSEIGNANT' ? liste.filter((c) => c.enseignantId === moi?.id) : liste);
+        this.etat.set('ok');
+      },
+      error: (err) => {
+        this.snack.open(errorMessage(err, 'Impossible de charger tes cours'), 'OK', { duration: 5000 });
+        this.etat.set('erreur');
+      },
+    });
   }
 }

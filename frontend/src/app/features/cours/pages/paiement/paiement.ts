@@ -1,74 +1,76 @@
-import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { AsyncPipe } from '@angular/common';
+import { Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatRadioModule } from '@angular/material/radio';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 
-import { AuthService } from '../../../../core/auth/auth.service';
-import { coursParId, libellePrix } from '../../../../core/demo/demo-data';
-import { dureeTotale, formatDuree, meta } from '../../../../core/demo/demo-plus';
+import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
-import { PageHeader } from '../../../../shared/ui';
+import { PageHeader, Skeleton } from '../../../../shared/ui';
+import { FORMATEUR_DEFAUT, formatDuree, libellePrix } from '../../models/cours.constantes';
+import { Cours } from '../../models/cours.model';
+import { CoursImage } from '../../pipes/cours-image';
+import { CoursService } from '../../services/cours.service';
+import { FormateurService } from '../../services/formateur.service';
 
-type Etape = 'formulaire' | 'traitement' | 'confirme';
+type Etat = 'chargement' | 'ok' | 'introuvable' | 'inscrit';
 
 /**
- * Paiement d'un cours payant. SIMULÉ : aucun prestataire n'est appelé et aucune carte n'est débitée.
- * À brancher : POST /api/cours/{id}/commandes (crée la commande et l'inscription), puis, plus tard,
- * un vrai prestataire de paiement côté backend. Le front ne voit jamais les données de carte en clair.
+ * Accès à un cours depuis le catalogue. Le cours vient de cours-service (findById).
+ * Cours gratuit : inscription réelle (sInscrire). Cours payant : cours-service n'a pas encore de paiement en ligne,
+ * la page le dit clairement et ne simule aucun paiement.
+ * À brancher plus tard : POST /api/cours/{id}/commandes et un prestataire de paiement côté backend.
  */
 @Component({
   selector: 'app-paiement',
-  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatRadioModule, MatIconModule, BwButton, EmptyState, PageHeader],
+  imports: [AsyncPipe, RouterLink, MatIconModule, MatSnackBarModule, BwButton, EmptyState, PageHeader, Skeleton, CoursImage],
   templateUrl: './paiement.html',
   styleUrl: './paiement.scss',
 })
-export class Paiement {
+export class Paiement implements OnInit {
+  private readonly service = inject(CoursService);
+  private readonly formateurs = inject(FormateurService);
+  private readonly snack = inject(MatSnackBar);
   readonly id = input(0, { transform: numberAttribute });
-  protected readonly user = inject(AuthService).currentUser;
 
-  protected readonly cours = computed(() => coursParId(this.id()));
-  protected readonly image = computed(() => meta(this.id()).image);
-  protected readonly duree = computed(() => (this.cours() ? formatDuree(dureeTotale(this.cours()!)) : ''));
-  protected readonly etape = signal<Etape>('formulaire');
-  protected readonly code = signal('');
-  protected readonly remise = signal(0);
-  protected readonly codeMessage = signal<string | null>(null);
-  protected readonly total = computed(() => Math.max(0, (this.cours()?.prix ?? 0) - this.remise()));
-  protected readonly libelle = libellePrix;
-  protected readonly reference = 'CMD-' + (10483 + Math.floor(Math.random() * 50));
+  protected readonly etat = signal<Etat>('chargement');
+  protected readonly cours = signal<Cours | null>(null);
+  protected readonly formateur = signal(FORMATEUR_DEFAUT);
+  protected readonly action = signal(false);
+  protected readonly payant = computed(() => (this.cours()?.prix ?? 0) > 0);
+  protected readonly prix = computed(() => libellePrix(this.cours()?.prix));
+  protected readonly duree = computed(() => formatDuree(this.cours()?.dureeTotaleMinutes));
 
-  protected readonly form = inject(FormBuilder).nonNullable.group({
-    moyen: ['carte'],
-    titulaire: ['', Validators.required],
-    numero: ['', [Validators.required, Validators.pattern(/^[\d ]{16,19}$/)]],
-    expiration: ['', [Validators.required, Validators.pattern(/^(0[1-9]|1[0-2])\/\d{2}$/)]],
-    cvc: ['', [Validators.required, Validators.pattern(/^\d{3}$/)]],
-  });
-
-  protected appliquerCode(): void {
-    const c = this.code().trim().toUpperCase();
-    if (c === 'BIENVENUE10') {
-      this.remise.set(Math.round((this.cours()?.prix ?? 0) * 0.1));
-      this.codeMessage.set('Code appliqué : 10 % de réduction.');
-    } else {
-      this.remise.set(0);
-      this.codeMessage.set(c ? 'Ce code n’est pas valide.' : null);
-    }
+  ngOnInit(): void {
+    this.service.findById(this.id()).subscribe({
+      next: (c) => {
+        this.cours.set(c);
+        this.etat.set('ok');
+        this.formateurs.nom(c.enseignantId).subscribe((nom) => this.formateur.set(nom));
+      },
+      error: (err) => {
+        this.etat.set('introuvable');
+        if ((err as { status?: number })?.status !== 404) {
+          this.snack.open(errorMessage(err, 'Impossible de charger le cours'), 'OK', { duration: 5000 });
+        }
+      },
+    });
   }
 
-  protected payer(): void {
-    if (this.form.controls.moyen.value === 'carte' && this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    this.etape.set('traitement');
-    setTimeout(() => {
-      const c = this.cours();
-      if (c) c.inscrit = true; // aperçu : l'inscription est créée par cours-service après le paiement
-      this.etape.set('confirme');
-    }, 1200);
+  /** Cours gratuit uniquement : inscription réelle (sans doublon côté serveur). */
+  protected sInscrire(): void {
+    const c = this.cours();
+    if (!c || this.payant() || this.action()) return;
+    this.action.set(true);
+    this.service.sInscrire(c.id).subscribe({
+      next: () => {
+        this.action.set(false);
+        this.etat.set('inscrit');
+      },
+      error: (err) => {
+        this.action.set(false);
+        this.snack.open(errorMessage(err, 'Inscription impossible'), 'OK', { duration: 6000 });
+      },
+    });
   }
 }
