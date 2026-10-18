@@ -52,7 +52,7 @@
         @if (guidee()) {
           <ol class="indices" aria-live="polite">
             @for (x of r().indices.slice(0, indicesVus()); track $index) {
-              <li><strong>Indice {{ $index + 1 }}</strong> <span dir="auto">{{ x }}</span></li>
+              <li><strong>Indice {{ $index + 1 }} :</strong>&nbsp;<span dir="auto">{{ x }}</span></li>
             }
           </ol>
           <div class="ligne">

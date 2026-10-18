@@ -23,7 +23,7 @@ import { TempsRelatifPipe } from './outils';
             @if (d.statut === 'RESOLUE') { <mat-icon aria-hidden="true">check</mat-icon> }
             <strong class="num">{{ d.nbReponses }}</strong> {{ d.nbReponses > 1 ? 'réponses' : 'réponse' }}
           </span>
-          <span class="muted">{{ d.nbVues }} vues</span>
+          <span class="muted">{{ d.nbVues }} {{ d.nbVues > 1 ? 'vues' : 'vue' }}</span>
         </div>
       }
       <div class="contenu">

@@ -51,7 +51,7 @@
           @for (x of s.similaires; track x.discussionId) {
             <article class="proche">
               <div class="p-haut">
-                <span class="pill" [class.ok]="x.statut === 'RESOLUE'">{{ x.statut === 'RESOLUE' ? 'Résolue' : x.nbReponses + ' réponse(s)' }}</span>
+                <span class="pill" [class.ok]="x.statut === 'RESOLUE'">{{ x.statut === 'RESOLUE' ? 'Résolue' : x.nbReponses + (x.nbReponses > 1 ? ' réponses' : ' réponse') }}</span>
                 <span class="pill plain">{{ x.proximite === 'TRES_PROCHE' ? 'Très proche' : 'Proche' }}</span>
                 <a [routerLink]="[base, x.discussionId]" target="_blank" class="p-titre" dir="auto">{{ x.titre }}</a>
               </div>

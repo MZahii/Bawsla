@@ -93,7 +93,7 @@
       @if (resume(); as r) {
         <bw-ai-box heading="En bref" class="bloc">
           <ul class="puces">@for (p of r.puces; track $index) { <li dir="auto">{{ p }}</li> }</ul>
-          <span bwAiSource>Résumé du fil ({{ r.nbMessages }} messages), sans autre source.</span>
+          <span bwAiSource>Résumé du fil ({{ r.nbMessages }} {{ r.nbMessages > 1 ? 'messages' : 'message' }}), sans autre source.</span>
         </bw-ai-box>
       }
 
@@ -204,8 +204,8 @@
     <!-- Colonne -->
     <aside class="stack colonne">
       <section class="card card-pad stats">
-        <p><mat-icon aria-hidden="true">visibility</mat-icon> {{ d.nbVues }} vues</p>
-        <p><mat-icon aria-hidden="true">notifications</mat-icon> {{ d.nbAbonnes }} abonnés</p>
+        <p><mat-icon aria-hidden="true">visibility</mat-icon> {{ d.nbVues }} {{ d.nbVues > 1 ? 'vues' : 'vue' }}</p>
+        <p><mat-icon aria-hidden="true">notifications</mat-icon> {{ d.nbAbonnes }} {{ d.nbAbonnes > 1 ? 'abonnés' : 'abonné' }}</p>
         <p><mat-icon aria-hidden="true">schedule</mat-icon> Activité {{ d.derniereActiviteLe | tempsRelatif }}</p>
         <button type="button" [bwButton]="d.suivie ? 'fantome' : 'secondaire'" bwBlock (click)="suivre()">{{ d.suivie ? 'Ne plus suivre' : 'Suivre la discussion' }}</button>
       </section>
