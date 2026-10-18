@@ -115,13 +115,20 @@ export class BwChart {
       } as ChartConfiguration['options'];
     }
     const axis = { ticks: { color: text, font }, grid: { color: grid, drawTicks: false }, border: { display: false } };
+    // Des comptes (tentatives, inscrits…) : pas de graduation 0,5 sur l'axe des valeurs.
+    const entiers = this.series().every((s) => s.data.every((v) => v == null || Number.isInteger(v)));
+    const valeurs = { ...axis, ticks: { ...axis.ticks, precision: entiers ? 0 : undefined } };
     return {
       ...common,
       indexAxis: t === 'hbar' ? 'y' : 'x',
       interaction: { mode: 'index', intersect: false },
       scales: {
-        x: { ...axis, stacked: t === 'stacked', grid: { display: t === 'hbar', color: grid } },
-        y: { ...axis, stacked: t === 'stacked', beginAtZero: true, max: this.max(), grid: { display: t !== 'hbar', color: grid } },
+        x: t === 'hbar'
+          ? { ...valeurs, beginAtZero: true, max: this.max(), grid: { display: true, color: grid } }
+          : { ...axis, stacked: t === 'stacked', grid: { display: false, color: grid } },
+        y: t === 'hbar'
+          ? { ...axis, grid: { display: false, color: grid } }
+          : { ...valeurs, stacked: t === 'stacked', beginAtZero: true, max: this.max(), grid: { display: true, color: grid } },
       },
     } as ChartConfiguration['options'];
   });

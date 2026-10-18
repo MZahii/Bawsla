@@ -1,7 +1,7 @@
 <header class="hello">
   <div>
-    <p class="muted" style="margin: 0">Studio formateur</p>
-    <h1>Bonjour {{ nom() }}</h1>
+    <p class="muted sur">Studio formateur</p>
+    <h1>Bonjour{{ nom() ? ' ' + nom() : '' }}</h1>
   </div>
   <div class="acts">
     <a bwButton="secondaire" routerLink="/studio/quiz/generer"><mat-icon>auto_awesome</mat-icon> Générer un quiz</a>
@@ -20,92 +20,129 @@
   </section>
 }
 
-<div class="grid-4">
-  <bw-kpi label="Inscriptions" value="271" icon="group_add" [delta]="15" deltaLabel="en un mois" [trend]="[198, 213, 228, 241, 257, 271]" />
-  <bw-kpi label="Taux d’achèvement" value="41 %" icon="task_alt" [delta]="2" deltaLabel="vs septembre" [trend]="[35, 36, 38, 38, 39, 41]" />
-  <bw-kpi label="Note moyenne (121 avis)" value="4,7" icon="star" />
-  <bw-kpi label="Certificats délivrés" value="71" icon="workspace_premium" [delta]="14" deltaLabel="en un mois" />
-</div>
+@switch (etat()) {
+  @case ('chargement') {
+    <div class="grid-4" aria-busy="true">
+      @for (i of [1, 2, 3, 4]; track i) { <bw-skeleton height="104px" /> }
+    </div>
+    <bw-skeleton class="mt-b" height="280px" />
+  }
+  @case ('erreur') {
+    <section class="card">
+      <bw-empty-state icon="error" title="Impossible d’afficher ton tableau de bord" [message]="erreur()" actionLabel="Réessayer" (action)="charger()" />
+    </section>
+  }
+  @default {
+    <div class="grid-4">
+      <bw-kpi label="Inscriptions" [value]="totalInscriptions()" icon="group_add" />
+      <bw-kpi label="Taux d’achèvement" [value]="etatApprenants() === 'ok' ? tauxAchevement() : '–'" icon="task_alt" />
+      <bw-kpi label="Cours publiés" [value]="nbPublies() + ' / ' + mesCours().length" icon="menu_book" />
+      <bw-kpi label="Risque d’abandon élevé" [value]="etatApprenants() === 'ok' ? nbRisqueEleve() : '–'" icon="warning" />
+    </div>
 
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head"><div><h2>Nouvelles inscriptions</h2><span class="sub">Par semaine, tous tes cours</span></div><a routerLink="/studio/apprenants" class="lnk small">Apprenants</a></div>
-    <div class="card-body"><bw-chart type="line" [labels]="inscriptions.labels" [series]="inscriptions.series" [height]="240" ariaLabel="Nouvelles inscriptions par semaine" /></div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>À valider</h2><span class="pill ia">{{ brouillons.length }} générés par l’IA</span></div>
-    <ul class="drafts">
-      @for (b of brouillons; track b.titre) {
-        <li>
-          <span class="ic"><mat-icon>{{ b.type === 'Quiz' ? 'quiz' : 'summarize' }}</mat-icon></span>
-          <span class="t"><strong class="small">{{ b.titre }}</strong><span class="muted small">{{ b.type }}, {{ b.cours }}, {{ b.quand }}</span></span>
-          <a bwButton="fantome" [routerLink]="b.type === 'Quiz' ? '/studio/quiz/generer' : '/studio/cours/1'">Relire</a>
-        </li>
-      }
-    </ul>
-  </section>
-</div>
-
-<section class="card mt">
-  <div class="card-head"><h2>Mes cours</h2><a routerLink="/studio/cours" class="lnk small">Gérer</a></div>
-  <div class="table-wrap">
-    <table class="simple">
-      <thead><tr><th>Cours</th><th>Inscriptions</th><th>Achèvement</th><th>Note</th><th>Certificats</th></tr></thead>
-      <tbody>
-        @for (s of stats; track s.coursId) {
-          <tr>
-            <td><span class="cell-main"><img [src]="s.image" alt="" /><span class="t"><strong>{{ s.titre }}</strong><span>{{ s.statut === 'PUBLIE' ? 'Publié, gratuit' : 'Brouillon' }}</span></span></span></td>
-            <td class="num">{{ s.inscriptions }} @if (s.nouvelles) { <span class="muted small">(+{{ s.nouvelles }})</span> }</td>
-            <td><span class="bar-cell"><span class="bar"><span [style.width.%]="s.achevement"></span></span><span class="num small">{{ s.achevement }} %</span></span></td>
-            <td>@if (s.note) { <bw-rating [value]="s.note" [count]="s.avis" /> } @else { <span class="muted small">Pas encore d’avis</span> }</td>
-            <td class="num">{{ s.certificats }}</td>
-          </tr>
+    <div class="grid-main mt">
+      <section class="card">
+        <div class="card-head"><div><h2>Nouvelles inscriptions</h2><span class="sub">Par semaine, tous tes cours</span></div><a routerLink="/studio/apprenants" class="lnk small">Apprenants</a></div>
+        @if (etatApprenants() === 'chargement') {
+          <div class="card-body"><bw-skeleton height="240px" /></div>
+        } @else if (etatApprenants() === 'erreur') {
+          <bw-empty-state icon="error" title="Données indisponibles" [message]="erreurApprenants()" actionLabel="Réessayer" (action)="chargerApprenants()" />
+        } @else if (inscriptionsParSemaine().total) {
+          <div class="card-body"><bw-chart type="line" [labels]="inscriptionsParSemaine().labels" [series]="inscriptionsParSemaine().series" [height]="240" ariaLabel="Nouvelles inscriptions par semaine" /></div>
+        } @else {
+          <bw-empty-state title="Aucune inscription ces 8 dernières semaines" />
         }
-      </tbody>
-    </table>
-  </div>
-</section>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Quiz en brouillon</h2><a routerLink="/studio/quiz" class="lnk small">Tous mes quiz</a></div>
+        @if (brouillons().length) {
+          <ul>
+            @for (b of brouillons(); track b.id) {
+              <li>
+                <span class="ic"><mat-icon>{{ b.type === 'EXAMEN' ? 'workspace_premium' : 'quiz' }}</mat-icon></span>
+                <span class="t"><strong class="small">{{ b.titre }}</strong><span class="muted small">{{ b.type === 'EXAMEN' ? 'Examen final' : 'Quiz' }}, {{ b.nbQuestions }} questions, créé {{ tempsRelatif(b.dateCreation) }}</span></span>
+                <a bwButton="fantome" [routerLink]="['/studio/quiz', b.id]">Relire</a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <bw-empty-state title="Aucun quiz en brouillon" />
+        }
+      </section>
+    </div>
+
+    <section class="card mt">
+      <div class="card-head"><h2>Mes cours</h2><a routerLink="/studio/cours" class="lnk small">Gérer</a></div>
+      @if (mesCours().length) {
+        <div class="table-wrap">
+          <table class="simple">
+            <thead><tr><th>Cours</th><th>Inscriptions</th><th>Achèvement</th><th>Chapitres</th></tr></thead>
+            <tbody>
+              @for (c of mesCours(); track c.id) {
+                <tr>
+                  <td><span class="cell-main"><img [src]="image(c)" alt="" /><span class="t"><strong>{{ c.titre }}</strong><span>{{ libelleStatut[c.statut] }}, {{ libellePrix(c.prix) }}</span></span></span></td>
+                  <td class="num">{{ c.nbInscrits ?? 0 }}</td>
+                  <td>
+                    @if (achevement()[c.id] !== undefined) {
+                      <span class="bar-cell"><span class="bar"><span [style.width.%]="achevement()[c.id]"></span></span><span class="num small">{{ achevement()[c.id] }} %</span></span>
+                    } @else {
+                      <span class="muted small">–</span>
+                    }
+                  </td>
+                  <td class="num">{{ c.nbChapitres }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <bw-empty-state title="Tu n’as pas encore de cours" message="Crée ton premier cours pour le retrouver ici." />
+      }
+    </section>
+  }
+}
 
 <div class="grid-main mt">
   <div class="stack">
     <section class="card">
       <div class="card-head"><div><h2>Nouveaux avis</h2><span class="sub">Sans réponse de ta part</span></div><a routerLink="/studio/avis" class="lnk small">Tous les avis</a></div>
-      <ul>
-        @for (a of nouveauxAvis; track a.id) {
-          <li class="rev">
-            <bw-avatar [nom]="a.nom" />
-            <span class="t"><span class="rh"><strong>{{ a.nom }}</strong><bw-rating [value]="a.note" /></span><span class="small">{{ a.texte }}</span><span class="muted small">{{ a.cours }}, {{ a.quand }}</span></span>
-          </li>
-        }
-      </ul>
+      <bw-empty-state title="Pas encore d’avis" />
     </section>
     <section class="card">
       <div class="card-head"><div><h2>Risque d’abandon</h2><span class="sub">Repérés par le modèle, par inscription</span></div><a routerLink="/studio/apprenants" class="lnk small">Tous les apprenants</a></div>
-      <ul class="risk">
-        @for (e of aSuivre; track e.id) {
-          <li>
-            <bw-avatar [nom]="e.nom" />
-            <span class="t"><strong>{{ e.nom }}</strong><span class="muted small">{{ e.cours }}, actif {{ e.derniereActivite }}</span></span>
-            <span class="num small">{{ e.progression }} %</span>
-            <span class="pill ko">{{ libelle[e.risque] }}</span>
-          </li>
-        }
-      </ul>
+      @if (etatApprenants() === 'chargement') {
+        <div class="card-body"><bw-skeleton height="160px" /></div>
+      } @else if (aSuivre().length) {
+        <ul>
+          @for (e of aSuivre(); track e.etudiantId + '-' + e.coursId) {
+            <li>
+              <bw-avatar [nom]="e.prenom + ' ' + e.nom" />
+              <span class="t"><strong>{{ e.prenom }} {{ e.nom }}</strong><span class="muted small">{{ e.coursTitre }}@if (e.dateDerniereActivite) {, actif {{ tempsRelatif(e.dateDerniereActivite) }}}</span></span>
+              <span class="num small">{{ pct(e.progression) }}</span>
+              <span class="pill ko">Élevé</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <bw-empty-state title="Aucun apprenant à risque élevé" />
+      }
     </section>
   </div>
   <div class="stack">
     <section class="card">
       <div class="card-head"><h2>Cette semaine</h2><a routerLink="/studio/calendrier" class="lnk small">Calendrier</a></div>
-      <ul class="ev">
-        @for (e of evenements; track e.titre) {
-          <li><span class="d">{{ e.jour }} oct.</span><span [class]="'dot ' + e.type"></span><span class="small">{{ e.titre }}</span></li>
-        }
-      </ul>
+      <bw-empty-state title="Aucun événement prévu" />
     </section>
     <app-forum-apercu espace="studio" />
     <section class="card">
       <div class="card-head"><h2>Activité récente</h2></div>
-      <div class="card-body"><bw-timeline [items]="activite" /></div>
+      @if (etatApprenants() === 'chargement') {
+        <div class="card-body"><bw-skeleton height="160px" /></div>
+      } @else if (activite().length) {
+        <div class="card-body"><bw-timeline [items]="activite()" /></div>
+      } @else {
+        <bw-empty-state title="Aucune activité récente" />
+      }
     </section>
   </div>
 </div>

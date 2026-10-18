@@ -82,3 +82,28 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
 .cert-txt { margin: 0; color: var(--color-text-muted); }
 .cert-course { margin: var(--space-2) 0 var(--space-5); font: 600 20px var(--font-heading); color: var(--color-bordeaux-600); }
 .cert-foot { display: flex; justify-content: space-between; gap: var(--space-3); margin: 0; padding-top: var(--space-4); border-top: 1px solid var(--color-border); font-size: 13px; color: var(--color-text-muted); }
+
+// Note de la boussole (accroche)
+.boussole { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--color-gold-100); }
+
+// L'IA, module par module
+.tete { max-width: 720px; margin-bottom: var(--space-6); }
+.tete p.muted { margin: 0; font-size: 17px; line-height: 28px; }
+.capacites { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.capacites li { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); transition: border-color 0.2s, transform 0.2s; }
+.capacites li:hover { border-color: var(--color-gold-500); transform: translateY(-2px); }
+.capacites .ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; background: var(--color-navy-100); color: var(--color-navy-700); }
+.capacites .mod { font: 700 12px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-gold-700); }
+.capacites h3 { margin: 0; font: 600 18px/26px var(--font-heading); }
+.capacites p { margin: 0; line-height: 24px; }
+.mock figcaption { margin-bottom: var(--space-3); }
+
+// Animations : entrée de l'accroche, puis apparition des sections au défilement (classe « vu » posée par home.ts)
+.entree, .collage { animation: monte 0.6s ease-out both; animation-delay: calc(var(--d, 0) * 90ms); }
+@keyframes monte { from { opacity: 0; transform: translateY(18px); } }
+[data-reveal] { opacity: 0; transform: translateY(20px); transition: 0.6s ease-out calc(var(--d, 0) * 80ms); transition-property: opacity, transform; }
+[data-reveal].vu { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .entree, .collage { animation: none; }
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}

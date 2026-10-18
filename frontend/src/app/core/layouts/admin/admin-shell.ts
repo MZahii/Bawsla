@@ -13,13 +13,13 @@ export class AdminShell {
     { titre: 'Vue d’ensemble', items: [{ label: 'Tableau de bord', link: '/admin', icone: 'monitoring', exact: true }] },
     { titre: 'Gestion', items: [
       { label: 'Utilisateurs', link: '/admin/utilisateurs', icone: 'manage_accounts' },
-      { label: 'Formateurs', link: '/admin/formateurs', icone: 'how_to_reg', compteur: 3 },
+      { label: 'Formateurs', link: '/admin/formateurs', icone: 'how_to_reg' },
       { label: 'Catalogue', link: '/admin/catalogue', icone: 'category' },
       { label: 'Certificats', link: '/admin/certificats', icone: 'workspace_premium' },
       { label: 'Ventes', link: '/admin/ventes', icone: 'payments' },
       { label: 'Forum', link: '/admin/forum', icone: 'forum' },
     ] },
-    { titre: 'Intelligence artificielle', items: [{ label: 'Supervision IA', link: '/admin/ia', icone: 'psychology', compteur: 4 }] },
+    { titre: 'Intelligence artificielle', items: [{ label: 'Supervision IA', link: '/admin/ia', icone: 'psychology' }] },
     { titre: 'Système', items: [
       { label: 'Journal d’audit', link: '/admin/audit', icone: 'history' },
       { label: 'Paramètres', link: '/admin/parametres', icone: 'tune' },

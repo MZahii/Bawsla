@@ -1,60 +1,136 @@
-import { Component, computed, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatChipsModule } from '@angular/material/chips';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 
-import { AUDIT } from '../../core/demo/demo-plus';
-import { BwButton } from '../../shared';
-import { PageHeader, Timeline, TimelineItem } from '../../shared/ui';
+import { BwButton, EmptyState } from '../../shared';
+import { errorMessage } from '../../shared/models/api-response.model';
+import { PageHeader, Skeleton, Timeline, TimelineItem } from '../../shared/ui';
+import { PageResponse } from '../../features/forum/models/forum.model';
+import { ActionModeration, JournalModeration } from '../../features/forum/models/moderation.model';
+import { LIBELLES_ACTION, LIBELLES_CIBLE, dateHeure, motifLisible } from '../../features/forum/components/outils';
+import { FiltresJournal, ModerationForumService } from '../../features/forum/services/moderation.service';
 
-const TYPES: Record<string, { libelle: string; icone: string; ton: TimelineItem['ton'] }> = {
-  utilisateur: { libelle: 'Utilisateurs', icone: 'person', ton: 'neutre' },
-  cours: { libelle: 'Cours', icone: 'video_library', ton: 'accent' },
-  catalogue: { libelle: 'Catalogue', icone: 'category', ton: 'accent' },
-  ia: { libelle: 'IA', icone: 'auto_awesome', ton: 'ia' },
-  forum: { libelle: 'Forum', icone: 'forum', ton: 'alerte' },
-  certificat: { libelle: 'Certificats', icone: 'workspace_premium', ton: 'alerte' },
-  parametres: { libelle: 'Paramètres', icone: 'tune', ton: 'neutre' },
-};
+/** Ton de la frise selon la famille d'action. */
+function ton(action: ActionModeration): TimelineItem['ton'] {
+  if (action.endsWith('VIGIE') || action === 'MASQUAGE_AUTO') return 'ia';
+  if (action === 'SANCTIONNER' || action === 'SUPPRIMER' || action === 'MASQUER' || action === 'ESCALADER') return 'alerte';
+  if (action === 'MODIFIER_PARAMETRES') return 'neutre';
+  return 'accent';
+}
 
 /**
- * Back-office : journal d'audit (qui a fait quoi, quand), filtrable par type d'action.
- * À brancher : GET /api/users/audit (à décrire dans CONTRATS_API.md).
+ * Back-office : journal des actions de modération du forum (qui a fait quoi, quand), filtrable par action
+ * et exportable en CSV. Données : forum-service (GET /api/forum/admin/journal et /admin/journal/export).
+ * Il n'existe pas encore de journal d'audit global à la plateforme : seule la modération du forum est journalisée.
  */
 @Component({
   selector: 'app-audit',
-  imports: [FormsModule, MatChipsModule, MatIconModule, BwButton, PageHeader, Timeline],
+  imports: [MatIconModule, MatSelectModule, BwButton, EmptyState, PageHeader, Skeleton, Timeline],
   template: `
-    <bw-page-header title="Journal d’audit" subtitle="Toutes les actions sensibles, conservées 12 mois." [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Audit' }]">
-      <button type="button" bwButton="secondaire"><mat-icon>download</mat-icon> Exporter (CSV)</button>
+    <bw-page-header
+      title="Journal d’audit"
+      subtitle="Actions de modération du forum. Les autres modules ne sont pas encore journalisés."
+      [crumbs]="[{ label: 'Admin', link: '/admin' }, { label: 'Audit' }]"
+    >
+      <button type="button" bwButton="secondaire" (click)="exporter()" [disabled]="exportEnCours()"><mat-icon>download</mat-icon> Exporter (CSV)</button>
     </bw-page-header>
     <section class="card">
-      <div class="card-head" style="flex-wrap: wrap">
-        <mat-chip-listbox [value]="type()" (change)="type.set($event.value ?? null)" aria-label="Filtrer par type">
-          @for (t of types; track t.id) { <mat-chip-option [value]="t.id">{{ t.libelle }}</mat-chip-option> }
-        </mat-chip-listbox>
-        <label class="field-search">
-          <mat-icon aria-hidden="true">search</mat-icon>
-          <input [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="Personne ou élément" aria-label="Rechercher dans le journal" />
-        </label>
+      <div class="card-head filtres">
+        <mat-select class="sel" [value]="filtres().action ?? null" (valueChange)="filtrer($event ?? undefined)" placeholder="Toutes les actions" aria-label="Filtrer par action">
+          <mat-option [value]="null">Toutes les actions</mat-option>
+          @for (a of actions; track a) { <mat-option [value]="a">{{ libellesAction[a] }}</mat-option> }
+        </mat-select>
+        @if (erreurExport()) { <span class="small erreur" role="alert">{{ erreurExport() }}</span> }
       </div>
-      <div class="card-body"><bw-timeline [items]="items()" /></div>
-      @if (items().length === 0) { <p class="card-body muted">Aucune action ne correspond.</p> }
+      @if (chargement()) {
+        <div class="card-body" aria-busy="true"><bw-skeleton height="320px" /></div>
+      } @else if (erreur()) {
+        <bw-empty-state icon="error" title="Journal indisponible" [message]="erreur()" actionLabel="Réessayer" (action)="charger(page()?.page ?? 0)" />
+      } @else if (items().length) {
+        <div class="card-body"><bw-timeline [items]="items()" /></div>
+        @if (page(); as p) {
+          <div class="pager">
+            <button type="button" bwButton="fantome" [disabled]="p.page === 0" (click)="charger(p.page - 1)">Précédent</button>
+            <span class="small muted">Page {{ p.page + 1 }}</span>
+            <button type="button" bwButton="fantome" [disabled]="!p.suivante" (click)="charger(p.page + 1)">Suivant</button>
+          </div>
+        }
+      } @else {
+        <bw-empty-state title="Aucune action enregistrée" [message]="filtres().action ? 'Aucune action de ce type dans le journal.' : ''" />
+      }
     </section>
   `,
+  styles: `
+    .filtres { flex-wrap: wrap; gap: var(--space-3); }
+    .sel { min-width: 240px; max-width: 100%; }
+    .erreur { color: var(--color-error); }
+    .pager { display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-top: 1px solid var(--color-border); }
+  `,
 })
-export class Audit {
-  protected readonly types = Object.entries(TYPES).map(([id, t]) => ({ id, libelle: t.libelle }));
-  protected readonly type = signal<string | null>(null);
-  protected readonly q = signal('');
-  protected readonly items = computed<TimelineItem[]>(() => {
-    const q = this.q().toLowerCase();
-    return AUDIT.filter((a) => (!this.type() || a.type === this.type()) && `${a.qui} ${a.cible}`.toLowerCase().includes(q)).map((a) => ({
-      quand: a.quand,
-      titre: `${a.qui} ${a.action} ${a.cible}`,
-      detail: TYPES[a.type].libelle,
-      icone: TYPES[a.type].icone,
-      ton: TYPES[a.type].ton,
-    }));
-  });
+export class Audit implements OnInit {
+  private readonly moderation = inject(ModerationForumService);
+
+  protected readonly actions = Object.keys(LIBELLES_ACTION) as ActionModeration[];
+  protected readonly libellesAction = LIBELLES_ACTION;
+
+  protected readonly filtres = signal<FiltresJournal>({});
+  protected readonly page = signal<PageResponse<JournalModeration> | null>(null);
+  protected readonly chargement = signal(true);
+  protected readonly erreur = signal('');
+  protected readonly exportEnCours = signal(false);
+  protected readonly erreurExport = signal('');
+
+  protected readonly items = computed<TimelineItem[]>(() =>
+    (this.page()?.contenu ?? []).map((a) => ({
+      quand: dateHeure(a.creeLe),
+      titre: `${a.acteurNom || 'Modération automatique'} : ${LIBELLES_ACTION[a.action]}`,
+      detail: [LIBELLES_CIBLE[a.cibleType] || a.cibleType, a.motif ? motifLisible(a.motif) : ''].filter(Boolean).join(', '),
+      icone: a.acteurNom ? 'gavel' : 'auto_awesome',
+      ton: ton(a.action),
+    })),
+  );
+
+  ngOnInit(): void {
+    this.charger(0);
+  }
+
+  protected filtrer(action: ActionModeration | undefined): void {
+    this.filtres.set({ ...this.filtres(), action });
+    this.charger(0);
+  }
+
+  protected charger(page: number): void {
+    this.chargement.set(true);
+    this.erreur.set('');
+    this.moderation.journal({ ...this.filtres(), page }).subscribe({
+      next: (p) => {
+        this.page.set(p);
+        this.chargement.set(false);
+      },
+      error: (err) => {
+        this.erreur.set(errorMessage(err, 'Impossible de charger le journal'));
+        this.chargement.set(false);
+      },
+    });
+  }
+
+  protected exporter(): void {
+    this.exportEnCours.set(true);
+    this.erreurExport.set('');
+    this.moderation.journalCsv(this.filtres()).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'journal-moderation.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        this.exportEnCours.set(false);
+      },
+      error: (err) => {
+        this.erreurExport.set(errorMessage(err, 'L’export a échoué'));
+        this.exportEnCours.set(false);
+      },
+    });
+  }
 }

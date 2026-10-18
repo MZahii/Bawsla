@@ -20,9 +20,9 @@ export class TeacherShell {
       { label: 'Générer un quiz', link: '/studio/quiz/generer', icone: 'auto_awesome' },
     ] },
     { titre: 'Apprenants', items: [
-      { label: 'Apprenants', link: '/studio/apprenants', icone: 'groups', compteur: 3 },
-      { label: 'Avis', link: '/studio/avis', icone: 'reviews', compteur: 2 },
-      { label: 'Forum', link: '/studio/forum', icone: 'forum', compteur: 2 },
+      { label: 'Apprenants', link: '/studio/apprenants', icone: 'groups' },
+      { label: 'Avis', link: '/studio/avis', icone: 'reviews' },
+      { label: 'Forum', link: '/studio/forum', icone: 'forum' },
     ] },
     { titre: 'Compte', items: [{ label: 'Profil', link: '/studio/profil', icone: 'person' }] },
   ];

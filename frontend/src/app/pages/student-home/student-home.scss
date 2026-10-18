@@ -25,9 +25,7 @@
 .due { list-style: none; margin: 0; padding: 0; }
 .due li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--color-border); }
 .due li:last-child { border-bottom: 0; }
-.d { display: flex; flex-direction: column; align-items: center; width: 44px; padding: 4px 0; border-radius: 6px; background: var(--color-bg); line-height: 1.1; }
-.d strong { font: 600 18px var(--font-heading); }
-.d small { font-size: 12px; color: var(--color-text-muted); }
+.mt-s { display: block; margin-top: var(--space-3); }
 .t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 
 .exam-ready, .onb { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); padding: var(--space-4) var(--space-5); }

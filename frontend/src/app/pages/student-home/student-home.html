@@ -3,41 +3,70 @@
     <p class="muted date">{{ date }}</p>
     <h1>Bonjour {{ prenom() }}</h1>
   </div>
-  <span class="streak"><mat-icon>local_fire_department</mat-icon> 6 jours d’affilée</span>
+  @if (joursActifs(); as j) {
+    <span class="streak"><mat-icon>local_fire_department</mat-icon> {{ j }} {{ j > 1 ? 'jours actifs' : 'jour actif' }} sur 30</span>
+  }
 </header>
 
-<div class="top">
-  <section class="card resume">
-    <img [src]="image" alt="" />
-    <div class="rb">
-      <p class="eyebrow">Reprendre</p>
-      <h2>{{ reprendre.titre }}</h2>
-      @if (prochain) { <p class="muted">Chapitre suivant : <strong>{{ prochain.titre }}</strong>, {{ prochain.duree }} min</p> }
-      <div class="bar-cell prog"><span class="bar"><span [style.width.%]="reprendre.progression"></span></span><span class="num small">{{ faits }}/{{ reprendre.chapitres.length }} chapitres</span></div>
-      <div class="acts">
-        <a bwButton="principal" [routerLink]="['/app/cours', reprendre.id, 'lecture']"><mat-icon>play_arrow</mat-icon> Continuer</a>
-        <a bwButton="fantome" routerLink="/app/cours">Tous mes cours</a>
+@switch (etat()) {
+  @case ('chargement') {
+    <div class="top" aria-busy="true">
+      <section class="card card-pad"><bw-skeleton height="24px" width="60%" /><bw-skeleton class="mt-s" height="16px" width="80%" /><bw-skeleton class="mt-s" height="44px" width="40%" /></section>
+      <section class="card card-pad"><bw-skeleton height="140px" /></section>
+    </div>
+  }
+  @case ('erreur') {
+    <section class="card">
+      <bw-empty-state icon="error" title="Impossible d’afficher tes cours" [message]="erreur()" actionLabel="Réessayer" (action)="charger()" />
+    </section>
+  }
+  @default {
+    @if (nbSuivis() === 0) {
+      <section class="card">
+        <bw-empty-state title="Tu n’as pas encore commencé de cours" message="Choisis un premier cours dans le catalogue : tu le retrouveras ici." actionLabel="Explorer le catalogue" (action)="explorer()" />
+      </section>
+    } @else {
+      <div class="top">
+        @if (reprendre(); as r) {
+          <section class="card resume">
+            <img [src]="imageReprendre()" alt="" />
+            <div class="rb">
+              <p class="eyebrow">{{ r.pourcentage > 0 ? 'Reprendre' : 'Commencer' }}</p>
+              <h2>{{ r.cours.titre }}</h2>
+              @if (prochain(); as p) { <p class="muted">Chapitre suivant : <strong>{{ p.titre }}</strong>@if (p.dureeMinutes) {, {{ p.dureeMinutes }} min}</p> }
+              <div class="bar-cell prog"><span class="bar"><span [style.width.%]="r.pourcentage"></span></span><span class="num small">{{ faits() }}/{{ r.cours.nbChapitres }} chapitres</span></div>
+              <div class="acts">
+                <a bwButton="principal" [routerLink]="['/app/cours', r.cours.id, 'lecture']"><mat-icon>play_arrow</mat-icon> Continuer</a>
+                <a bwButton="fantome" routerLink="/app/cours">Tous mes cours</a>
+              </div>
+            </div>
+          </section>
+        } @else {
+          <section class="card">
+            <bw-empty-state title="Tous tes cours sont terminés" message="Bravo ! Trouve ton prochain cours dans le catalogue." actionLabel="Explorer le catalogue" (action)="explorer()" />
+          </section>
+        }
+
+        <section class="card card-pad goal">
+          <h2>Ma progression</h2>
+          <bw-progress-ring [value]="progressionMoyenne()" [size]="112" label="Progression moyenne dans tes cours" />
+          <p class="small"><strong>{{ nbSuivis() }} {{ nbSuivis() > 1 ? 'cours suivis' : 'cours suivi' }}</strong>, {{ nbTermines() }} {{ nbTermines() > 1 ? 'terminés' : 'terminé' }}</p>
+          <a routerLink="/app/progres" class="lnk">Voir ma progression</a>
+        </section>
       </div>
-    </div>
-  </section>
 
-  <section class="card card-pad goal">
-    <h2>Objectif de la semaine</h2>
-    <bw-progress-ring [value]="objectifPct" [size]="112" label="Objectif hebdomadaire" />
-    <p class="small"><strong>{{ objectif.fait }} min</strong> sur {{ objectif.cible }} min</p>
-    <a routerLink="/app/progres" class="lnk">Voir ma progression</a>
-  </section>
-</div>
-
-@if (examenPret; as ex) {
-  <section class="card exam-ready mt">
-    <mat-icon aria-hidden="true">workspace_premium</mat-icon>
-    <div class="t">
-      <strong>Ton examen final est débloqué : {{ ex.titre }}</strong>
-      <span class="muted small">{{ ex.examen.questions }} questions, {{ ex.examen.duree }} min. Réussis-le avec {{ ex.examen.seuil }} % pour obtenir ton certificat.</span>
-    </div>
-    <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', ex.id]">Passer l’examen</a>
-  </section>
+      @if (examenPret(); as ex) {
+        <section class="card exam-ready mt">
+          <mat-icon aria-hidden="true">workspace_premium</mat-icon>
+          <div class="t">
+            <strong>Ton examen final est débloqué : {{ ex.titre }}</strong>
+            <span class="muted small">Tu as terminé tous les chapitres. Réussis l’examen final pour obtenir ton certificat.</span>
+          </div>
+          <a bwButton="secondaire" [routerLink]="['/app/evaluations/examen', ex.id]">Passer l’examen</a>
+        </section>
+      }
+    }
+  }
 }
 
 @if (!onboarding || onboarding.passe) {
@@ -52,39 +81,55 @@
 }
 
 <bw-section-head class="mt" title="Recommandé pour toi" [subtitle]="sousTitreReco" link="/app/explorer" linkLabel="Explorer le catalogue" />
-<div class="grid-3">
-  @for (r of recommandations; track r.coursId) {
-    <div class="reco">
-      <p class="why"><mat-icon>auto_awesome</mat-icon>{{ r.raison }}</p>
-      <bw-course-tile [cours]="r.tuile" [link]="r.lien" />
+@if (etatReco() === 'chargement' || etat() === 'chargement') {
+  <div class="grid-3" aria-busy="true">
+    @for (i of [1, 2, 3]; track i) { <bw-skeleton height="260px" /> }
+  </div>
+} @else if (recommandations().length) {
+  <div class="grid-3">
+    @for (r of recommandations(); track r.coursId) {
+      <div class="reco">
+        <p class="why"><mat-icon>auto_awesome</mat-icon>{{ r.raison }}</p>
+        <bw-course-tile [cours]="r.tuile" [link]="r.lien" />
+      </div>
+    }
+  </div>
+} @else {
+  <section class="card">
+    <bw-empty-state title="Pas encore de recommandation" [message]="motifSansReco() || 'Suis un cours et passe quelques quiz : l’IA pourra alors te conseiller.'" />
+  </section>
+}
+
+@if (etat() === 'ok' && nbSuivis() > 0) {
+  <div class="grid-main mt">
+    <section class="card">
+      <div class="card-head"><h2>Mes certificats</h2><a routerLink="/app/certificats" class="lnk small">Tous</a></div>
+      @if (derniersCertificats().length) {
+        <ul class="due">
+          @for (c of derniersCertificats(); track c.numero) {
+            <li>
+              <mat-icon class="muted" aria-hidden="true">workspace_premium</mat-icon>
+              <span class="t"><a class="lnk small" [routerLink]="['/app/certificats', c.numero]">{{ c.titreCours || c.titreExamen }}</a><span class="muted small">Obtenu le {{ c.dateEmission | date: 'd MMM y' }}</span></span>
+              <span class="num small">{{ c.score }} %</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <bw-empty-state title="Pas encore de certificat" message="Termine un cours et réussis son examen final pour obtenir ton premier certificat." />
+      }
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Mes rappels</h2><a routerLink="/app/agenda" class="lnk small">Agenda</a></div>
+      <bw-empty-state title="Aucun rappel pour l’instant" />
+    </section>
+  </div>
+
+  @if (tuilesEnCours().length) {
+    <bw-section-head class="mt" title="Tes autres cours en cours" link="/app/cours" />
+    <div class="grid-3">
+      @for (c of tuilesEnCours(); track c.id) { <bw-course-tile [cours]="c" [link]="['/app/cours', c.id, 'lecture']" /> }
     </div>
   }
-</div>
-
-<div class="grid-main mt">
-  <section class="card">
-    <div class="card-head"><h2>Ton activité</h2><a routerLink="/app/progres" class="lnk small">Détails</a></div>
-    <div class="card-body"><bw-heatmap [values]="jours" /></div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>Mes rappels</h2><a routerLink="/app/agenda" class="lnk small">Agenda</a></div>
-    <ul class="due">
-      @for (e of echeances; track e.titre) {
-        <li>
-          <span class="d"><strong>{{ e.date.slice(0, 2) }}</strong><small>{{ e.jour }}</small></span>
-          <span class="t"><strong class="small">{{ e.titre }}</strong><span class="muted small">{{ e.cours }}</span></span>
-          <mat-icon class="muted" [attr.aria-label]="e.type">{{ icones[e.type] }}</mat-icon>
-        </li>
-      }
-    </ul>
-  </section>
-</div>
-
-@if (tuilesEnCours.length) {
-  <bw-section-head class="mt" title="Tes autres cours en cours" link="/app/cours" />
-  <div class="grid-3">
-    @for (c of tuilesEnCours; track c.id) { <bw-course-tile [cours]="c" [link]="['/app/cours', c.id, 'lecture']" /> }
-  </div>
 }
 
 <app-forum-apercu class="mt" espace="app" />
