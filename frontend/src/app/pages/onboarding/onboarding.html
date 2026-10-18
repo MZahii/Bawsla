@@ -38,7 +38,7 @@
         <div class="tiles">
           @for (c of categories; track c.nom) {
             <button type="button" class="tile" [class.on]="domaines().includes(c.nom)" [attr.aria-pressed]="domaines().includes(c.nom)" (click)="basculerDomaine(c.nom)">
-              <mat-icon aria-hidden="true">{{ c.icone }}</mat-icon><strong>{{ c.nom }}</strong><span>{{ c.description }}</span>
+              <mat-icon aria-hidden="true">{{ c.icone }}</mat-icon><strong>{{ c.nom }}</strong>
             </button>
           }
         </div>

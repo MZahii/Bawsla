@@ -9,7 +9,7 @@ import { filter, map } from 'rxjs';
 import { ThemeService } from '../../theme/theme.service';
 import { Logo } from '../../../shared/components/logo/logo';
 import { BwButton } from '../../../shared/directives/bw-button';
-import { CATEGORIES } from '../../demo/demo-plus';
+import { CATEGORIES, MATIERE_AUTRE } from '../../../features/cours/models/cours.constantes';
 import { ExplorerMenu } from '../parts/explorer-menu';
 import { PaginatorFr } from '../../i18n/paginator-fr';
 
@@ -24,7 +24,7 @@ import { PaginatorFr } from '../../i18n/paginator-fr';
 })
 export class PublicShell {
   protected readonly theme = inject(ThemeService);
-  protected readonly categories = CATEGORIES;
+  protected readonly categories = CATEGORIES.filter((c) => c.nom !== MATIERE_AUTRE);
   private readonly router = inject(Router);
   /** L'accueil occupe toute la largeur ; les autres pages ont une colonne centrée. */
   protected readonly pleinePage = toSignal(

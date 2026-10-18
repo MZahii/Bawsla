@@ -3,9 +3,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
-import { CATEGORIES, ONBOARDING } from '../../core/demo/demo-plus';
 import { enregistrerOnboarding } from '../../core/profil/onboarding';
 import { BwButton, Logo } from '../../shared';
+import { CATEGORIES } from '../../features/cours/models/cours.constantes';
+import { DOMAINES_PARCOURS, OBJECTIFS_PARCOURS, PROFILS_PARCOURS, TEMPS_PARCOURS } from '../../features/user/models/parcours.constantes';
 import { UserService } from '../../features/user/services/user.service';
 
 /**
@@ -28,8 +29,9 @@ export class Onboarding {
 
   protected readonly etapes = ['Qui es-tu ?', 'Ton objectif', 'Ce qui t’intéresse', 'Ton rythme'];
   protected readonly etape = signal(0);
-  protected readonly o = ONBOARDING;
-  protected readonly categories = CATEGORIES;
+  protected readonly o = { profils: PROFILS_PARCOURS, objectifs: OBJECTIFS_PARCOURS, temps: TEMPS_PARCOURS };
+  /** Les domaines acceptés par user-service, avec l'icône de la matière correspondante du catalogue. */
+  protected readonly categories = DOMAINES_PARCOURS.map((nom) => ({ nom, icone: CATEGORIES.find((c) => c.nom === nom)?.icone ?? 'school' }));
 
   protected readonly profil = signal<string | null>(null);
   protected readonly objectif = signal<string | null>(null);

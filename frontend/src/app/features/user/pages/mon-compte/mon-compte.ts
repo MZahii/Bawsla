@@ -12,14 +12,13 @@ import { RouterLink } from '@angular/router';
 import { of, switchMap } from 'rxjs';
 
 import { AuthService } from '../../../../core/auth/auth.service';
-import { ONBOARDING } from '../../../../core/demo/demo-plus';
 import { ThemeService } from '../../../../core/theme/theme.service';
 import { errorMessage } from '../../../../shared/models/api-response.model';
 import { ROLE_LABELS } from '../../../../shared/models/user.model';
 import { AiBox, BwButton, EmptyState } from '../../../../shared';
 import { Avatar, Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
 import { SuggestionParcoursIa } from '../../models/ia-generative.model';
-import { DOMAINES_PARCOURS } from '../../models/parcours.constantes';
+import { DOMAINES_PARCOURS, OBJECTIFS_PARCOURS, PROFILS_PARCOURS, TEMPS_PARCOURS } from '../../models/parcours.constantes';
 import { DemandeFormateur, Parcours, Utilisateur } from '../../models/utilisateur.model';
 import { AvatarService } from '../../services/avatar.service';
 import { IaGenerativeService } from '../../services/ia-generative.service';
@@ -91,9 +90,9 @@ export class MonCompte implements OnInit {
   // ---------- Parcours (apprenant) ----------
   protected parcours: Parcours = { profil: null, objectif: null, domaines: [], temps: null };
   protected readonly enregistrementParcours = signal(false);
-  protected readonly profils = ONBOARDING.profils;
-  protected readonly objectifs = ONBOARDING.objectifs;
-  protected readonly tempsListe = ONBOARDING.temps;
+  protected readonly profils = PROFILS_PARCOURS;
+  protected readonly objectifs = OBJECTIFS_PARCOURS;
+  protected readonly tempsListe = TEMPS_PARCOURS;
   /** Les matières des cours, plus un ancien domaine encore enregistré (pour pouvoir le retirer). */
   protected domainesListe: string[] = DOMAINES_PARCOURS;
 
@@ -262,7 +261,7 @@ export class MonCompte implements OnInit {
   private appliquerParcours(p: Parcours): void {
     this.parcours = { ...p, domaines: [...(p.domaines ?? [])] };
     this.domainesListe = [...new Set([...DOMAINES_PARCOURS, ...(p.domaines ?? [])])];
-    this.profilLibelle.set(ONBOARDING.profils.find((x) => x.code === p.profil)?.titre ?? 'Non renseigné');
+    this.profilLibelle.set(PROFILS_PARCOURS.find((x) => x.code === p.profil)?.titre ?? 'Non renseigné');
   }
 
   // ---------- Demande formateur ----------

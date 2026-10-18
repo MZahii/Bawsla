@@ -4,11 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
-import { COURS } from '../../demo/demo-data';
-import { CATEGORIES, NIVEAUX, meta } from '../../demo/demo-plus';
+import { CATEGORIES, MATIERE_AUTRE, NIVEAUX } from '../../../features/cours/models/cours.constantes';
 
 /**
- * Bouton « Explorer » et son grand menu (domaines, niveaux, cours populaires), inspiré de Coursera.
+ * Bouton « Explorer » et son grand menu (domaines et niveaux du catalogue), inspiré de Coursera.
  * base : '/catalogue' (visiteur) ou '/app/explorer' (étudiant connecté).
  */
 @Component({
@@ -25,7 +24,7 @@ import { CATEGORIES, NIVEAUX, meta } from '../../demo/demo-plus';
           @for (c of categories; track c.nom) {
             <a mat-menu-item [routerLink]="base()" [queryParams]="{ domaine: c.nom }">
               <mat-icon>{{ c.icone }}</mat-icon>
-              <span class="lbl"><strong>{{ c.nom }}</strong><small>{{ c.description }}</small></span>
+              <span class="lbl"><strong>{{ c.nom }}</strong></span>
             </a>
           }
         </section>
@@ -33,19 +32,10 @@ import { CATEGORIES, NIVEAUX, meta } from '../../demo/demo-plus';
           <h3>Niveaux</h3>
           @for (n of niveaux; track n.code) {
             <a mat-menu-item [routerLink]="base()" [queryParams]="{ niveau: n.code }">
-              <span class="lbl"><strong>{{ n.libelle }}</strong><small>{{ n.description }}</small></span>
+              <span class="lbl"><strong>{{ n.libelle }}</strong></span>
             </a>
           }
           <a mat-menu-item [routerLink]="base()" class="all">Tout le catalogue <mat-icon iconPositionEnd>arrow_forward</mat-icon></a>
-        </section>
-        <section class="pop">
-          <h3>Les plus suivis</h3>
-          @for (c of populaires; track c.id) {
-            <a mat-menu-item [routerLink]="[base(), c.id]">
-              <img [src]="img(c.id)" alt="" />
-              <span class="lbl"><strong>{{ c.titre }}</strong><small>{{ c.enseignant }}</small></span>
-            </a>
-          }
         </section>
       </div>
     </mat-menu>
@@ -58,10 +48,6 @@ import { CATEGORIES, NIVEAUX, meta } from '../../demo/demo-plus';
 })
 export class ExplorerMenu {
   readonly base = input('/catalogue');
-  protected readonly categories = CATEGORIES;
+  protected readonly categories = CATEGORIES.filter((c) => c.nom !== MATIERE_AUTRE);
   protected readonly niveaux = NIVEAUX;
-  protected readonly populaires = [...COURS].sort((a, b) => meta(b.id).inscrits - meta(a.id).inscrits).slice(0, 3);
-  protected img(id: number): string {
-    return meta(id).image;
-  }
 }
