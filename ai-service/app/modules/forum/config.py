@@ -17,6 +17,9 @@ class ForumAiSettings(BaseSettings):
     forum_dimension_embedding: int = 768
     # Vérification des citations (rapidfuzz, sans LLM) : score minimal pour qu'une citation compte.
     forum_seuil_citation: int = 90
+    # Appels IA par apprenant et par minute sur les routes du forum (0 = sans limite). Un message publié en
+    # déclenche 4 ou 5 (modération, reformulation, vectorisation, réponse) : 40 laisse un usage normal passer.
+    forum_appels_ia_par_minute: int = 40
 
 
 @lru_cache

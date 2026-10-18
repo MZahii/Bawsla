@@ -7,6 +7,7 @@ from app.core.errors import LLMError
 from app.core.llm_client import LLMMessage, StubLLMClient
 from app.core.sanitizer import BasicSanitizer, get_sanitizer
 from app.main import app
+from app.modules.forum.limiteur import limiteur
 from app.core.llm_client import get_llm_client
 
 ENTETES = {"X-User-Id": "30", "X-User-Role": "ETUDIANT"}
@@ -32,6 +33,14 @@ class FauxLLM(StubLLMClient):
     async def embed(self, textes, *, module, tache="DOCUMENT"):
         self.textes_vectorises.extend(textes)
         return await super().embed(textes, module=module, tache=tache)
+
+
+@pytest.fixture(autouse=True)
+def limiteur_vide():
+    """La limite d'appels IA est globale au processus : chaque test repart d'une fenêtre vide."""
+    limiteur.vider()
+    yield
+    limiteur.vider()
 
 
 @pytest.fixture

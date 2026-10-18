@@ -12,6 +12,7 @@ from app.core.schemas import ApiResponse
 from app.core.security import CurrentUser, get_current_user
 from app.modules.forum import aides, moderation, nlp, rag
 from app.modules.forum.config import ForumAiSettings, get_forum_ai_settings
+from app.modules.forum.limiteur import limiter_appels_ia
 from app.modules.forum.schemas import (
     AmeliorerRequest,
     AmeliorerResponse,
@@ -37,9 +38,11 @@ from app.modules.forum.schemas import (
 
 MODULE = "forum"
 router = APIRouter(prefix="/api/ai/forum", tags=["forum"])
+# Routes qui consomment le LLM : limitées par apprenant (voir limiteur.py).
+LIMITE_IA = [Depends(limiter_appels_ia)]
 
 
-@router.post("/vectoriser", response_model=ApiResponse[VectoriserResponse])
+@router.post("/vectoriser", response_model=ApiResponse[VectoriserResponse], dependencies=LIMITE_IA)
 async def vectoriser(
     body: VectoriserRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -50,7 +53,7 @@ async def vectoriser(
     return ApiResponse.ok(await nlp.vectoriser(body, llm, sanitizer))
 
 
-@router.post("/indexer", response_model=ApiResponse[IndexerResponse])
+@router.post("/indexer", response_model=ApiResponse[IndexerResponse], dependencies=LIMITE_IA)
 async def indexer(
     body: IndexerRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -62,7 +65,7 @@ async def indexer(
     return ApiResponse.ok(await nlp.indexer(body, llm, sanitizer, reglages))
 
 
-@router.post("/reformuler", response_model=ApiResponse[ReformulerResponse])
+@router.post("/reformuler", response_model=ApiResponse[ReformulerResponse], dependencies=LIMITE_IA)
 async def reformuler(
     body: ReformulerRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -74,7 +77,7 @@ async def reformuler(
     return ApiResponse.ok(await nlp.reformuler(body, llm, sanitizer, reglages))
 
 
-@router.post("/repondre", response_model=ApiResponse[RepondreResponse])
+@router.post("/repondre", response_model=ApiResponse[RepondreResponse], dependencies=LIMITE_IA)
 async def repondre(
     body: RepondreRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -86,7 +89,7 @@ async def repondre(
     return ApiResponse.ok(await rag.repondre(body, llm, sanitizer, reglages))
 
 
-@router.post("/repondre-general", response_model=ApiResponse[RepondreGeneralResponse])
+@router.post("/repondre-general", response_model=ApiResponse[RepondreGeneralResponse], dependencies=LIMITE_IA)
 async def repondre_general(
     body: RepondreGeneralRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -98,7 +101,7 @@ async def repondre_general(
     return ApiResponse.ok(await rag.repondre_general(body, llm, sanitizer, reglages))
 
 
-@router.post("/moderer", response_model=ApiResponse[ModererResponse])
+@router.post("/moderer", response_model=ApiResponse[ModererResponse], dependencies=LIMITE_IA)
 async def moderer(
     body: ModererRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -110,7 +113,7 @@ async def moderer(
     return ApiResponse.ok(await moderation.moderer(body, llm, sanitizer, reglages))
 
 
-@router.post("/resumer", response_model=ApiResponse[ResumerResponse])
+@router.post("/resumer", response_model=ApiResponse[ResumerResponse], dependencies=LIMITE_IA)
 async def resumer(
     body: ResumerRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -122,7 +125,7 @@ async def resumer(
     return ApiResponse.ok(await aides.resumer(body, llm, sanitizer, reglages))
 
 
-@router.post("/ameliorer", response_model=ApiResponse[AmeliorerResponse])
+@router.post("/ameliorer", response_model=ApiResponse[AmeliorerResponse], dependencies=LIMITE_IA)
 async def ameliorer(
     body: AmeliorerRequest,
     user: CurrentUser = Depends(get_current_user),
@@ -134,7 +137,7 @@ async def ameliorer(
     return ApiResponse.ok(await aides.ameliorer(body, llm, sanitizer, reglages))
 
 
-@router.post("/nommer-groupes", response_model=ApiResponse[NommerGroupesResponse])
+@router.post("/nommer-groupes", response_model=ApiResponse[NommerGroupesResponse], dependencies=LIMITE_IA)
 async def nommer_groupes(
     body: NommerGroupesRequest,
     user: CurrentUser = Depends(get_current_user),
