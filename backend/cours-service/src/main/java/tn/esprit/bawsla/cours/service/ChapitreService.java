@@ -38,9 +38,11 @@ public class ChapitreService {
         this.termineRepository = termineRepository;
     }
 
+    /** Programme seul (sans contenu ni vidéo) pour un visiteur et pour qui n'a pas acheté un cours payant. */
     public List<ChapitreResponse> lister(Long coursId, CurrentUser user) {
-        return coursService.chargerVisible(coursId, user).getChapitres().stream()
-                .map(user == null ? ChapitreResponse::programme : ChapitreResponse::from).toList();
+        Cours cours = coursService.chargerVisible(coursId, user);
+        boolean complet = user != null && coursService.accesContenu(cours, user);
+        return cours.getChapitres().stream().map(complet ? ChapitreResponse::from : ChapitreResponse::programme).toList();
     }
 
     @Transactional

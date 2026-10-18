@@ -172,7 +172,7 @@ L'analyse ci-dessous décrit l'état de `c94a225`. Le statut indique où en est 
 | I2 | IMPORTANT | **Corrigé** | `fix(cours)` et `fix(quiz)` : `FormateurVerifier` (Feign `GET /api/users/{id}`) refuse en 403 la publication d'un cours, d'un quiz ou d'un examen par un formateur non validé (ADMIN exempté) |
 | I3 | IMPORTANT | **Corrigé** | `fix(quiz)` : création et modification d'un quiz réservées au formateur du cours (ou à l'admin), test `unFormateurNeCreePasDeQuizSurLeCoursDUnAutre` |
 | I4 | IMPORTANT | **Corrigé** | `fix(front)` : onboarding et « Mon compte » sur `parcours.constantes.ts` (miroir de `ListesParcours`) |
-| I5 | IMPORTANT | **Partiellement corrigé** | `9d93786` : plus de faux chiffres dans achats et ventes. Reste la décision d'équipe sur le paiement simulé et le verrouillage du contenu payant |
+| I5 | IMPORTANT | **Corrigé** | `9d93786` : plus de faux chiffres. `feat(cours)` : paiement simulé (`POST /api/cours/{id}/commandes`, carte de test, aucune somme débitée), Mes achats et Ventes sur données réelles ; contenu d'un cours payant réservé aux acheteurs, inscription directe refusée (`403`). Limite : `/texte` (contrat 2) reste lisible pour le forum et le quiz |
 | I6 | IMPORTANT | **Corrigé** | `b5cb9e6`, `9d93786` (aucun écran hors vitrine n'importe plus `core/demo`) |
 | I7 | IMPORTANT | **Corrigé** | `fix(gateway)` : actuator limité à `health,info` |
 | I8 | IMPORTANT | Ouvert | |

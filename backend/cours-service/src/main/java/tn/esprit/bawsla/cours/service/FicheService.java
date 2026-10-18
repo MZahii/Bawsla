@@ -112,13 +112,13 @@ public class FicheService {
      * Renvoie null quand il n'y en a pas : ce n'est pas une erreur, le cours n'a simplement pas (encore) de fiche à montrer.
      */
     public FicheResponse fiche(Long coursId, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         boolean gestionnaire = estGestionnaire(user, cours);
         return trouver(coursId, gestionnaire).map(fiche -> reponse(fiche, gestionnaire)).orElse(null);
     }
 
     public Fichier audio(Long coursId, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         FicheRevision fiche = choisir(coursId, estGestionnaire(user, cours));
         AudioRevision audio = audioRepository.findFirstByFicheIdOrderByIdDesc(fiche.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Audio de la fiche", coursId));

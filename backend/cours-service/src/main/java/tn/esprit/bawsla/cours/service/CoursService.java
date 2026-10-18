@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import tn.esprit.bawsla.cours.common.exception.BadRequestException;
+import tn.esprit.bawsla.cours.common.exception.ForbiddenException;
 import tn.esprit.bawsla.cours.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.cours.common.security.CurrentUser;
 import tn.esprit.bawsla.cours.dto.CoursRequest;
@@ -178,6 +179,35 @@ public class CoursService {
             throw new ResourceNotFoundException("Cours", id);
         }
         return cours;
+    }
+
+    /**
+     * Cours visible ET dont l'appelant peut lire le contenu (chapitres, PDF, fiche, explications, résumé, audios), sinon 403.
+     * Voir {@link #accesContenu}.
+     */
+    public Cours chargerLisible(Long id, CurrentUser user) {
+        Cours cours = chargerVisible(id, user);
+        if (!accesContenu(cours, user)) {
+            throw new ForbiddenException("Ce cours est payant : achète-le pour accéder à son contenu.");
+        }
+        return cours;
+    }
+
+    /**
+     * Contenu d'un cours lisible par l'appelant : cours gratuit, propriétaire, ADMIN, ou apprenant inscrit. Pour un cours payant,
+     * l'inscription n'est créée que par le paiement simulé ({@link CommandeService}) ; un apprenant inscrit quand le cours était
+     * gratuit garde son accès si le prix change ensuite.
+     */
+    public boolean accesContenu(Cours cours, CurrentUser user) {
+        if (cours.getPrix() == null || cours.getPrix().signum() <= 0) {
+            return true;
+        }
+        if (user == null) {
+            return false;
+        }
+        return user.isAdmin()
+                || user.id().equals(cours.getEnseignantId())
+                || (user.hasAnyRole(CurrentUser.ETUDIANT) && inscriptionRepository.findByEtudiantIdAndCoursId(user.id(), cours.getId()).isPresent());
     }
 
     /** Cours que l'appelant a le droit de modifier : son propriétaire ou un ADMIN. */

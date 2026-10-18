@@ -75,7 +75,13 @@
             }
           </div>
         </div>
-        @if (estApprenant() && progressionConnue() && !progression()) {
+        @if (verrouille()) {
+          <p class="invitation" role="status">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            <span>Ce cours est payant : tu vois le programme, mais le contenu des chapitres, le PDF et les résumés sont réservés aux acheteurs.</span>
+            <a bwButton="principal" [routerLink]="['/app/paiement', id()]">Acheter le cours</a>
+          </p>
+        } @else if (estApprenant() && progressionConnue() && !progression()) {
           <p class="invitation" role="status">
             <mat-icon aria-hidden="true">info</mat-icon>
             <span>Inscris-toi à ce cours pour enregistrer ta progression : tes chapitres terminés seront sauvegardés.</span>
@@ -89,7 +95,7 @@
           <bw-empty-state icon="article" title="Ce chapitre n’a pas encore de contenu" />
         }
 
-        @if (c.aPdf) {
+        @if (c.aPdf && !verrouille()) {
           <section class="bloc card card-pad" aria-labelledby="support">
             <h3 id="support">Support du cours</h3>
             <div class="pdf">
@@ -104,7 +110,9 @@
           </section>
         }
 
-        <app-studio-ia-lecteur [coursId]="c.id" [titreCours]="c.titre" />
+        @if (!verrouille()) {
+          <app-studio-ia-lecteur [coursId]="c.id" [titreCours]="c.titre" />
+        }
 
         <p class="forum">Une question sur ce chapitre ? <a routerLink="/app/forum">Voir le forum du cours</a></p>
       </section>

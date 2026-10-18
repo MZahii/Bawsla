@@ -21,8 +21,9 @@ type Etat = 'chargement' | 'ok' | 'introuvable';
  * Fiche d'un cours (avant de le suivre) : présentation, programme, formateur et avis.
  * Les données viennent de cours-service (findById) et le nom du formateur de user-service.
  * Image, prix, chapitres, durée et nombre d'inscrits sont réels ; la note n'est pas encore fournie (pas d'étoiles).
- * Un apprenant connecté s'inscrit ici (gratuit ou payant : le paiement n'existe pas encore), puis commence, continue ou revoit le cours ;
- * un visiteur garde le lien vers l'inscription au site.
+ * Un apprenant connecté s'inscrit ici à un cours gratuit, ou passe par la page de paiement (simulé) pour un cours payant,
+ * puis commence, continue ou revoit le cours. Le programme reste visible (titres et durées) ; le contenu est réservé aux acheteurs.
+ * Un visiteur garde le lien vers l'inscription au site.
  */
 @Component({
   selector: 'app-cours-detail',
@@ -67,7 +68,8 @@ export class CoursDetail implements OnInit {
 
   protected readonly cta = computed(() => {
     if (this.espace !== 'etudiant') {
-      return { label: 'S’inscrire gratuitement', link: ['/register'] as unknown[], params: { cours: this.id() } };
+      const label = this.payant() ? 'Créer un compte pour acheter' : 'S’inscrire gratuitement';
+      return { label, link: ['/register'] as unknown[], params: { cours: this.id() } };
     }
     const i = this.inscription();
     const label = !i || (i.progression === 0 && !i.termine) ? 'Commencer le cours' : i.termine ? 'Revoir le cours' : 'Continuer le cours';

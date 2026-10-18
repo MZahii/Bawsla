@@ -1,0 +1,8 @@
+.scroll { overflow-x: auto; }
+.liste { width: 100%; border-collapse: collapse; font: 400 15px var(--font-body); }
+.liste th { padding: var(--space-3) var(--space-4); text-align: left; font: 600 13px var(--font-body); color: var(--color-text-muted); background: var(--color-bg); white-space: nowrap; }
+.liste td { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); color: var(--color-text); }
+.liste tfoot td { font-weight: 700; }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ref { font-variant-numeric: tabular-nums; white-space: nowrap; }
+a { color: var(--color-primary); }

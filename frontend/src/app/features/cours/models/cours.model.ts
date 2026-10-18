@@ -50,6 +50,29 @@ export interface Progression extends Inscription {
   chapitresTermines: number[];
 }
 
+/** Corps de POST /api/cours/{id}/commandes (paiement simulé : seuls les 4 derniers chiffres sont gardés). */
+export interface PaiementRequest {
+  numeroCarte: string;
+  /** MM/AA */
+  expiration: string;
+  cryptogramme: string;
+}
+
+/** Miroir de CommandeResponse. `simule` vaut toujours true : aucune somme n'est débitée. `coursTitre` absent si le cours a été supprimé. */
+export interface Commande {
+  id: number;
+  reference: string;
+  etudiantId: number;
+  coursId: number;
+  coursTitre?: string;
+  montant: number;
+  devise: string;
+  /** « Visa •••• 4242 » */
+  carte: string;
+  datePaiement: string;
+  simule: boolean;
+}
+
 /** Corps de POST et PUT /api/cours. `prix` absent : inchangé en modification, gratuit à la création. */
 export interface CoursRequest {
   titre: string;

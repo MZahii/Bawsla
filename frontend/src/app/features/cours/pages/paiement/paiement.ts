@@ -1,6 +1,9 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, numberAttribute, signal } from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 
@@ -8,7 +11,7 @@ import { errorMessage } from '../../../../shared/models/api-response.model';
 import { BwButton, EmptyState } from '../../../../shared';
 import { PageHeader, Skeleton } from '../../../../shared/ui';
 import { FORMATEUR_DEFAUT, formatDuree, libellePrix } from '../../models/cours.constantes';
-import { Cours } from '../../models/cours.model';
+import { Commande, Cours } from '../../models/cours.model';
 import { CoursImage } from '../../pipes/cours-image';
 import { CoursService } from '../../services/cours.service';
 import { FormateurService } from '../../services/formateur.service';
@@ -16,14 +19,16 @@ import { FormateurService } from '../../services/formateur.service';
 type Etat = 'chargement' | 'ok' | 'introuvable' | 'inscrit';
 
 /**
- * Accès à un cours depuis le catalogue. Le cours vient de cours-service (findById).
- * Cours gratuit : inscription réelle (sInscrire). Cours payant : cours-service n'a pas encore de paiement en ligne,
- * la page le dit clairement et ne simule aucun paiement.
- * À brancher plus tard : POST /api/cours/{id}/commandes et un prestataire de paiement côté backend.
+ * Accès à un cours depuis le catalogue. Cours gratuit : inscription directe (sInscrire).
+ * Cours payant : paiement <b>simulé</b> (POST /api/cours/{id}/commandes) avec une carte de test ; aucune somme n'est débitée,
+ * le serveur vérifie la carte (Luhn, expiration), garde les 4 derniers chiffres et inscrit l'apprenant.
  */
 @Component({
   selector: 'app-paiement',
-  imports: [AsyncPipe, RouterLink, MatIconModule, MatSnackBarModule, BwButton, EmptyState, PageHeader, Skeleton, CoursImage],
+  imports: [
+    AsyncPipe, RouterLink, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatIconModule, MatSnackBarModule,
+    BwButton, EmptyState, PageHeader, Skeleton, CoursImage,
+  ],
   templateUrl: './paiement.html',
   styleUrl: './paiement.scss',
 })
@@ -37,9 +42,16 @@ export class Paiement implements OnInit {
   protected readonly cours = signal<Cours | null>(null);
   protected readonly formateur = signal(FORMATEUR_DEFAUT);
   protected readonly action = signal(false);
+  protected readonly commande = signal<Commande | null>(null);
   protected readonly payant = computed(() => (this.cours()?.prix ?? 0) > 0);
   protected readonly prix = computed(() => libellePrix(this.cours()?.prix));
   protected readonly duree = computed(() => formatDuree(this.cours()?.dureeTotaleMinutes));
+
+  protected readonly form = inject(NonNullableFormBuilder).group({
+    numeroCarte: ['', [Validators.required, Validators.pattern(/^[0-9 ]{12,23}$/)]],
+    expiration: ['', [Validators.required, Validators.pattern(/^(0[1-9]|1[0-2])\/[0-9]{2}$/)]],
+    cryptogramme: ['', [Validators.required, Validators.pattern(/^[0-9]{3,4}$/)]],
+  });
 
   ngOnInit(): void {
     this.service.findById(this.id()).subscribe({
@@ -70,6 +82,50 @@ export class Paiement implements OnInit {
       error: (err) => {
         this.action.set(false);
         this.snack.open(errorMessage(err, 'Inscription impossible'), 'OK', { duration: 6000 });
+      },
+    });
+  }
+
+  /** Remplit le formulaire avec une carte de test (accordée ou refusée). */
+  protected carteTest(numero: string): void {
+    const an = (new Date().getFullYear() + 2) % 100;
+    this.form.setValue({ numeroCarte: numero, expiration: `12/${String(an).padStart(2, '0')}`, cryptogramme: '123' });
+  }
+
+  /** Groupe les chiffres par 4 pendant la saisie. */
+  protected formaterNumero(): void {
+    const ctrl = this.form.controls.numeroCarte;
+    const chiffres = ctrl.value.replace(/\D/g, '').slice(0, 19);
+    const groupe = chiffres.replace(/(.{4})(?=.)/g, '$1 ');
+    if (groupe !== ctrl.value) ctrl.setValue(groupe, { emitEvent: false });
+  }
+
+  /** Ajoute la barre de MM/AA pendant la saisie. */
+  protected formaterExpiration(): void {
+    const ctrl = this.form.controls.expiration;
+    const chiffres = ctrl.value.replace(/\D/g, '').slice(0, 4);
+    const valeur = chiffres.length > 2 ? `${chiffres.slice(0, 2)}/${chiffres.slice(2)}` : chiffres;
+    if (valeur !== ctrl.value) ctrl.setValue(valeur, { emitEvent: false });
+  }
+
+  protected payer(): void {
+    const c = this.cours();
+    if (!c || !this.payant() || this.action()) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.action.set(true);
+    this.service.payer(c.id, this.form.getRawValue()).subscribe({
+      next: (commande) => {
+        this.action.set(false);
+        this.commande.set(commande);
+        this.form.reset();
+        this.etat.set('inscrit');
+      },
+      error: (err) => {
+        this.action.set(false);
+        this.snack.open(errorMessage(err, 'Paiement refusé'), 'OK', { duration: 6000 });
       },
     });
   }

@@ -109,7 +109,7 @@ public class FichierService {
 
     /** Propriétaire, ADMIN, ou tout utilisateur si le cours est publié. */
     public Fichier pdf(Long coursId, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         if (cours.getPdfStockage() == null) {
             throw new ResourceNotFoundException("PDF du cours", coursId);
         }

@@ -15,10 +15,18 @@
     @if (cours(); as c) {
       <section class="card card-pad done">
         <mat-icon class="big" aria-hidden="true">check_circle</mat-icon>
-        <h1>Tu es inscrit</h1>
+        <h1>{{ commande() ? 'Paiement accepté' : 'Tu es inscrit' }}</h1>
         <p>Tu as maintenant accès à <strong>{{ c.titre }}</strong>.</p>
+        @if (commande(); as cmd) {
+          <dl class="lines recu">
+            <div><dt>Référence</dt><dd>{{ cmd.reference }}</dd></div>
+            <div><dt>Carte</dt><dd>{{ cmd.carte }}</dd></div>
+            <div class="tot"><dt>Montant</dt><dd>{{ cmd.montant }} {{ cmd.devise }}</dd></div>
+          </dl>
+          <p class="muted small">Paiement simulé : aucune somme n’a été débitée.</p>
+        }
         <div class="acts">
-          <a bwButton="secondaire" routerLink="/app/cours">Voir mes cours</a>
+          <a bwButton="secondaire" [routerLink]="commande() ? '/app/achats' : '/app/cours'">{{ commande() ? 'Voir mes achats' : 'Voir mes cours' }}</a>
           <a bwButton="principal" [routerLink]="['/app/cours', c.id, 'lecture']">Commencer le cours</a>
         </div>
       </section>
@@ -31,13 +39,39 @@
       <div class="layout">
         <section class="card">
           @if (payant()) {
-            <bw-empty-state
-              icon="credit_card_off"
-              title="Le paiement en ligne n’est pas encore disponible."
-              message="Ce cours est payant : tu pourras l’acheter ici dès que le paiement sera activé. Aucun montant ne t’est demandé pour l’instant."
-            >
-              <a bwButton="secondaire" [routerLink]="['/app/explorer', c.id]">Retour à la fiche du cours</a>
-            </bw-empty-state>
+            <div class="card-pad">
+              <h2>Paiement par carte</h2>
+              <p class="notice" role="note">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <span><strong>Paiement simulé</strong> : aucune somme n’est débitée et aucune donnée n’est envoyée à une banque. Utilise une carte de test.</span>
+              </p>
+              <div class="tests">
+                <button type="button" bwButton="fantome" (click)="carteTest('4242 4242 4242 4242')">4242 4242 4242 4242 · acceptée</button>
+                <button type="button" bwButton="fantome" (click)="carteTest('4000 0000 0000 0002')">4000 0000 0000 0002 · refusée</button>
+              </div>
+
+              <form [formGroup]="form" (ngSubmit)="payer()" novalidate>
+                <mat-form-field appearance="outline">
+                  <mat-label>Numéro de carte</mat-label>
+                  <input matInput formControlName="numeroCarte" inputmode="numeric" autocomplete="cc-number" maxlength="23" (input)="formaterNumero()" />
+                  <mat-icon matSuffix aria-hidden="true">credit_card</mat-icon>
+                  <mat-error>Saisis un numéro de carte de 12 à 19 chiffres.</mat-error>
+                </mat-form-field>
+                <div class="row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Expiration (MM/AA)</mat-label>
+                    <input matInput formControlName="expiration" inputmode="numeric" autocomplete="cc-exp" maxlength="5" (input)="formaterExpiration()" />
+                    <mat-error>Format MM/AA.</mat-error>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Cryptogramme</mat-label>
+                    <input matInput formControlName="cryptogramme" inputmode="numeric" autocomplete="cc-csc" maxlength="4" type="password" />
+                    <mat-error>3 ou 4 chiffres.</mat-error>
+                  </mat-form-field>
+                </div>
+                <button type="submit" bwButton="principal" bwBlock [bwLoading]="action()" [disabled]="action()">Payer {{ prix() }}</button>
+              </form>
+            </div>
           } @else {
             <div class="card-pad">
               <h2>Ce cours est gratuit</h2>

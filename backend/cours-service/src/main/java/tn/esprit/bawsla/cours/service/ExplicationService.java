@@ -160,7 +160,7 @@ public class ExplicationService {
 
     /** Formateur et ADMIN : la version la plus récente. Apprenant : la plus récente VALIDEE. Null s'il n'y en a pas. */
     public ExplicationResponse explication(Long coursId, LangueExplication langue, ModeExplication mode, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         boolean gestionnaire = estGestionnaire(user, cours);
         return choisir(coursId, langue, mode, gestionnaire).map(e -> reponse(e, gestionnaire)).orElse(null);
     }
@@ -183,7 +183,7 @@ public class ExplicationService {
      * s'il correspond au script validé (jamais un audio d'une ancienne version du texte).
      */
     public Fichier audio(Long coursId, LangueExplication langue, ModeExplication mode, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         boolean gestionnaire = estGestionnaire(user, cours);
         ExplicationAudio e = choisir(coursId, langue, mode, gestionnaire)
                 .filter(x -> gestionnaire ? x.aUnAudio() : x.audioAJour())

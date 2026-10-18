@@ -139,13 +139,15 @@ class InscriptionApiTest {
     }
 
     @Test
-    void inscriptionPermisePourUnCoursPayant() throws Exception {
-        // Le paiement n'existe pas dans le projet : tous les cours publiés, gratuits ou payants, acceptent l'inscription.
+    void inscriptionDirecteRefuseePourUnCoursPayantNonAchete() throws Exception {
+        // Paiement simulé : un cours payant s'achète d'abord (POST /commandes, voir CommandeApiTest), qui inscrit l'apprenant.
         long cours = coursPublie(FORMATEUR_A, 1);
         envoyer(put("/api/cours/" + cours), FORMATEUR_A, "ENSEIGNANT",
                 "{\"titre\":\"Payant\",\"description\":\"d\",\"categorie\":\"Informatique\",\"niveau\":\"DEBUTANT\",\"prix\":49.5}")
                 .andExpect(status().isOk());
-        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT").andExpect(status().isCreated());
+        envoyer(post(route(cours, "/inscriptions")), APPRENANT, "ETUDIANT")
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value(containsString("paiement")));
+        assertThat(inscriptionRepository.count()).isZero();
     }
 
     // ------------------------------------------------------------------ se désinscrire

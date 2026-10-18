@@ -22,13 +22,15 @@ import tn.esprit.bawsla.cours.entity.Cours;
 import tn.esprit.bawsla.cours.entity.Inscription;
 import tn.esprit.bawsla.cours.repository.ChapitreRepository;
 import tn.esprit.bawsla.cours.repository.ChapitreTermineRepository;
+import tn.esprit.bawsla.cours.repository.CommandeRepository;
 import tn.esprit.bawsla.cours.repository.InscriptionRepository;
 
 /**
  * Inscriptions des apprenants et progression par chapitre.
  *
- * <p><b>Paiement :</b> il n'existe pas dans le projet. L'inscription est donc permise pour TOUS les cours publiés, gratuits ou payants, et
- * le contenu d'un cours payant n'est pas verrouillé. Quand le paiement existera, c'est ici qu'il faudra le vérifier.</p>
+ * <p><b>Paiement (simulé) :</b> l'inscription directe n'est permise que pour un cours gratuit, ou payant déjà acheté. Sinon l'apprenant
+ * passe par {@link CommandeService#payer}, qui enregistre la commande puis l'inscrit. Le contenu d'un cours payant est réservé aux
+ * inscrits ({@link CoursService#accesContenu}).</p>
  *
  * <p>Aucune transaction n'est ouverte par cette classe (voir {@link InscriptionEnregistrement}) : chaque lecture voit l'état validé le plus
  * récent, y compris après une inscription concurrente.</p>
@@ -46,15 +48,17 @@ public class InscriptionService {
     private final ChapitreTermineRepository termineRepository;
     private final ChapitreRepository chapitreRepository;
     private final InscriptionEnregistrement enregistrement;
+    private final CommandeRepository commandeRepository;
 
     public InscriptionService(CoursService coursService, InscriptionRepository inscriptionRepository,
                               ChapitreTermineRepository termineRepository, ChapitreRepository chapitreRepository,
-                              InscriptionEnregistrement enregistrement) {
+                              InscriptionEnregistrement enregistrement, CommandeRepository commandeRepository) {
         this.coursService = coursService;
         this.inscriptionRepository = inscriptionRepository;
         this.termineRepository = termineRepository;
         this.chapitreRepository = chapitreRepository;
         this.enregistrement = enregistrement;
+        this.commandeRepository = commandeRepository;
     }
 
     // ------------------------------------------------------------------ apprenant
@@ -62,10 +66,13 @@ public class InscriptionService {
     /** Seul un apprenant s'inscrit, et seulement à un cours publié (un brouillon ou un cours archivé n'existe pas pour lui : 404). */
     public Inscrite inscrire(Long coursId, CurrentUser user) {
         exigerApprenant(user, "Seul un apprenant peut s'inscrire à un cours.");
-        coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerVisible(coursId, user);
         Optional<Inscription> existante = inscriptionRepository.findByEtudiantIdAndCoursId(user.id(), coursId);
         if (existante.isPresent()) {
             return new Inscrite(reponse(existante.get()), false);
+        }
+        if (cours.getPrix() != null && cours.getPrix().signum() > 0 && !commandeRepository.existsByEtudiantIdAndCoursId(user.id(), coursId)) {
+            throw new ForbiddenException("Ce cours est payant : passe par le paiement pour t'inscrire.");
         }
         try {
             return new Inscrite(reponse(enregistrement.creer(user.id(), coursId)), true);

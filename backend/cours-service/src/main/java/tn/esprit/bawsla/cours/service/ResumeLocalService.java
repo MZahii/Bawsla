@@ -103,13 +103,13 @@ public class ResumeLocalService {
 
     /** Formateur et ADMIN : la version la plus récente. Apprenant : la plus récente VALIDE. Null s'il n'y en a pas. */
     public ResumeLocalResponse resume(Long coursId, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         boolean gestionnaire = estGestionnaire(user, cours);
         return choisir(coursId, gestionnaire).map(r -> reponse(r, gestionnaire)).orElse(null);
     }
 
     public Fichier audio(Long coursId, CurrentUser user) {
-        Cours cours = coursService.chargerVisible(coursId, user);
+        Cours cours = coursService.chargerLisible(coursId, user);
         ResumeLocal r = choisir(coursId, estGestionnaire(user, cours)).filter(ResumeLocal::aUnAudio)
                 .orElseThrow(() -> new ResourceNotFoundException("Audio du résumé local", coursId));
         String mime = r.getMime() == null ? "audio/mpeg" : r.getMime();

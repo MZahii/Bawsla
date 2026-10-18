@@ -28,6 +28,9 @@ public interface CoursRepository extends JpaRepository<Cours, Long> {
     List<Cours> search(@Param("categorie") String categorie, @Param("niveau") Niveau niveau,
                        @Param("tout") boolean tout, @Param("publie") StatutCours publie, @Param("moi") Long moi);
 
+    /** Cours d'un formateur (ventes simulées : on ne lui montre que les commandes de ses cours). */
+    List<Cours> findByEnseignantId(Long enseignantId);
+
     /** Cours dont la matière n'est pas exactement un libellé de la liste (migration au démarrage). */
     List<Cours> findByCategorieIsNotNullAndCategorieNotIn(Collection<String> matieres);
 

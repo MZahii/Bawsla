@@ -20,7 +20,7 @@ type Etat = 'chargement' | 'ok' | 'introuvable';
  * Lecteur de cours : plan des chapitres à gauche ; à droite, pour le chapitre choisi, la vidéo (YouTube ou .mp4,
  * si elle existe), le texte du chapitre, le support PDF du cours et l'emplacement du résumé IA.
  * Les chapitres viennent de cours-service. Un apprenant inscrit marque chaque chapitre comme terminé (ou annule) et voit sa progression ;
- * non inscrit, il est invité à s'inscrire (rien n'est enregistré ni simulé). Un formateur ou un ADMIN qui visite le cours n'a pas de progression.
+ * non inscrit, il est invité à s'inscrire, ou à acheter le cours s'il est payant (le contenu est alors masqué par le serveur). Un formateur ou un ADMIN qui visite le cours n'a pas de progression.
  */
 @Component({
   selector: 'app-lecteur',
@@ -48,6 +48,10 @@ export class Lecteur implements OnInit {
   /** Ma progression (apprenant inscrit) ; null si je ne suis pas inscrit ou pas apprenant. */
   protected readonly progression = signal<Progression | null>(null);
   protected readonly estApprenant = computed(() => this.auth.role() === 'ETUDIANT');
+  /** Cours payant : sans achat, le serveur ne renvoie que le programme (titres, durées). */
+  protected readonly payant = computed(() => (this.cours()?.prix ?? 0) > 0);
+  /** Apprenant non acheteur d'un cours payant : PDF et contenus IA masqués (le serveur les refuserait en 403). */
+  protected readonly verrouille = computed(() => this.payant() && this.estApprenant() && this.progressionConnue() && !this.progression());
   /** Vrai une fois la progression chargée : évite d'afficher « Inscris-toi » avant de savoir si l'apprenant l'est déjà. */
   protected readonly progressionConnue = signal(false);
   protected readonly action = signal(false);

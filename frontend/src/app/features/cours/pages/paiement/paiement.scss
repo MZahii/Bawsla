@@ -6,4 +6,9 @@ h2 { margin: 0 0 var(--space-4); font: 600 18px var(--font-heading); }
 .tot { padding-top: var(--space-3) !important; border-top: 1px solid var(--color-border); font: 700 18px var(--font-body); }
 .done { max-width: 620px; margin: var(--space-6) auto; text-align: center; h1 { margin: var(--space-2) 0; font: 600 26px var(--font-heading); } }
 .big { width: 56px; height: 56px; font-size: 56px; color: var(--color-success); }
+.notice { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0 0 var(--space-4); padding: var(--space-3); border-radius: 6px; background: var(--color-bg); color: var(--color-text); mat-icon { flex: none; color: var(--color-primary); } }
+.tests { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); button { font-variant-numeric: tabular-nums; } }
+form { display: flex; flex-direction: column; mat-form-field { width: 100%; } }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.recu { max-width: 360px; margin: var(--space-4) auto; text-align: left; }
 .acts { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-5); }

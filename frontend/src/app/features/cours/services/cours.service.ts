@@ -4,7 +4,7 @@ import { Observable, map } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/config/api.config';
 import { ApiResponse } from '../../../shared/models/api-response.model';
-import { Chapitre, ChapitreRequest, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, Inscription, LangueExplication,LongueurResume, ModeExplication, ModeResume, Niveau, PageLue, PagesLues, Progression, ResumeLocal, StatutCours, Traitement } from '../models/cours.model';
+import { Chapitre, ChapitreRequest, Commande, CorrectionExplicationRequest, Cours, CoursRequest, CoursTexte, DisponibiliteExplication, Explication, Fiche, FicheRequest, Inscription, LangueExplication,LongueurResume, ModeExplication, ModeResume, Niveau, PageLue, PagesLues, PaiementRequest, Progression, ResumeLocal, StatutCours, Traitement } from '../models/cours.model';
 
 /** Appels vers cours-service (via la gateway) : cours, chapitres, statut, fichiers et texte du PDF. */
 @Injectable({ providedIn: 'root' })
@@ -56,6 +56,22 @@ export class CoursService {
 
   mesInscriptions(): Observable<Inscription[]> {
     return this.http.get<ApiResponse<Inscription[]>>(`${this.url}/mes-inscriptions`).pipe(map((r) => r.data));
+  }
+
+  // ------------------------------------------------------------------ paiement simulé
+
+  /** Achète un cours payant (paiement simulé) : enregistre la commande puis inscrit l'apprenant. Idempotent. */
+  payer(coursId: number, paiement: PaiementRequest): Observable<Commande> {
+    return this.http.post<ApiResponse<Commande>>(`${this.url}/${coursId}/commandes`, paiement).pipe(map((r) => r.data));
+  }
+
+  mesCommandes(): Observable<Commande[]> {
+    return this.http.get<ApiResponse<Commande[]>>(`${this.url}/commandes/mes`).pipe(map((r) => r.data ?? []));
+  }
+
+  /** Toutes les ventes (ADMIN) ou celles des cours du formateur connecté. */
+  ventes(): Observable<Commande[]> {
+    return this.http.get<ApiResponse<Commande[]>>(`${this.url}/commandes/ventes`).pipe(map((r) => r.data ?? []));
   }
 
   /** Ma progression dans ce cours, avec les chapitres terminés ; `null` si je n'y suis pas inscrit. */

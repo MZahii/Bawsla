@@ -38,7 +38,9 @@
         <div class="buy-body">
           <p class="price" [class.free]="!payant()">{{ prix() }}</p>
           <p class="muted small price-sub">{{ payant() ? 'Paiement unique, accès sans limite de durée' : 'Examen final et certificat inclus' }}</p>
-          @if (peutSInscrire() && !inscription()) {
+          @if (peutSInscrire() && !inscription() && payant()) {
+            <a bwButton="principal" bwBlock [routerLink]="['/app/paiement', id()]">Acheter ce cours · {{ prix() }}</a>
+          } @else if (peutSInscrire() && !inscription()) {
             <button type="button" bwButton="principal" bwBlock [disabled]="action()" (click)="sInscrire()">
               {{ action() ? 'Inscription…' : 'S’inscrire' }}
             </button>
