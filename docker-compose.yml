@@ -23,6 +23,8 @@ x-docker-env: &docker-env
   MYSQL_HOST: mysql
   MYSQL_PORT: "3306"
   EUREKA_URL: http://eureka-server:8761/eureka/
+  # Les dates (LocalDateTime) sont envoyées sans fuseau et affichées telles quelles : même heure que MySQL et le poste.
+  TZ: Africa/Tunis
 
 x-spring-healthcheck: &spring-healthcheck
   interval: 10s
@@ -97,7 +99,12 @@ services:
     build: { context: ./backend, args: { SERVICE: cours-service } }
     image: bawsla/cours-service
     container_name: bawsla-cours
-    environment: *docker-env
+    environment:
+      <<: *docker-env
+      COURS_STOCKAGE_DOSSIER: /home/bawsla/cours
+    # Images, PDF et audios des cours : même principe que les pièces jointes du forum (/app n'est pas inscriptible).
+    volumes:
+      - cours_stockage:/home/bawsla
     healthcheck:
       <<: *spring-healthcheck
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health | grep -q UP"]
@@ -151,3 +158,4 @@ services:
 volumes:
   mysql_data:
   forum_pieces_jointes:
+  cours_stockage:

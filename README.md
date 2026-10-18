@@ -99,9 +99,9 @@ G=http://127.0.0.1:8080/api
 
 # 1. Inscription + connexion d'un enseignant
 curl -s -X POST $G/auth/register -H 'Content-Type: application/json' \
-  -d '{"nom":"Ben Ali","prenom":"Sami","email":"prof@esprit.tn","motDePasse":"Password1","role":"ENSEIGNANT"}'
+  -d '{"nom":"Formateur","prenom":"Test","email":"formateur@example.com","motDePasse":"Password1","role":"ENSEIGNANT"}'
 TOKEN=$(curl -s -X POST $G/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"prof@esprit.tn","motDePasse":"Password1"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
+  -d '{"email":"formateur@example.com","motDePasse":"Password1"}' | sed -E 's/.*"token":"([^"]+)".*/\1/')
 
 # 2. Profil (le JWT est validé par la gateway, user-service lit X-User-Id)
 curl -s $G/users/me -H "Authorization: Bearer $TOKEN"
@@ -121,7 +121,7 @@ curl -s -X POST $G/quiz -H "Authorization: Bearer $TOKEN" -H 'Content-Type: appl
 curl -s -X POST $G/forum/discussions -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"titre":"Question","contenu":"Comment configurer Eureka ?","coursId":1}'
 
-# 6. IA (stub) via la gateway
+# 6. IA via la gateway (LLM réel : Gemini, Groq ou OpenAI en secours selon .env)
 curl -s -X POST $G/ai/cours/resume -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"coursId":1,"texte":"Mon cours..."}'
 
@@ -133,18 +133,19 @@ curl -s $G/users/me
 
 Voir la section « Structure » de [CLAUDE.md](CLAUDE.md). En résumé : `backend/` (Maven multi-module), `ai-service/` (FastAPI), `frontend/` (Angular) et `prompts_journal/`.
 
-## État du socle
+## État du projet
 
 | Élément | État |
 |---|---|
-| Eureka, Gateway (routes, CORS, JWT, en-têtes X-User-*) | ✅ fonctionnel |
-| user-service : inscription, connexion JWT, BCrypt, rôles, `/me`, liste ADMIN, `/users/{id}` public, ADMIN au démarrage | ✅ fonctionnel |
-| Format de réponse et d'erreur commun, gestion globale des exceptions, health | ✅ fonctionnel (4 services + ai-service) |
-| CRUD minimal Cours / Quiz / Discussion + Feign quiz → cours | ✅ fonctionnel (preuve de chaîne) |
-| Front : login, register, intercepteur, guards, layout et menu par rôle, pages liste | ✅ fonctionnel |
-| `GET /api/cours/{id}/texte` | 🟡 stub |
-| `GET /api/quiz/notions-ratees` | 🟡 stub (liste vide) |
-| ai-service : 4 routers, interface `LLMClient` + `Sanitizer` | 🟡 stubs, aucun appel LLM réel |
+| Eureka, Gateway (routes, CORS, JWT, en-têtes X-User-*, catalogue public en lecture pour les visiteurs) | ✅ fonctionnel |
+| ai-service : `LLMClient` (Gemini, secours Groq ou OpenAI), `Sanitizer`, enveloppe commune | ✅ fonctionnel |
+| **User** : inscription, JWT, BCrypt, demandes formateur, indicateurs, profil (K-Means), risque d'échec, recommandations, conseil et plan de la semaine générés par l'IA | ✅ fonctionnel |
+| **Cours** : catalogue, chapitres, PDF, inscriptions, résumé, fiche, explication de page, vérification de fidélité, synthèse vocale | ✅ fonctionnel |
+| **Quiz** : quiz et examen final, génération par l'IA avec Self-Consistency, remédiation des notions ratées, certificats vérifiables | ✅ fonctionnel |
+| **Forum** : discussions, recherche de questions proches, La Vigie (réponses RAG sur le cours), modération, amélioration de question | ✅ fonctionnel |
+| Paiement en ligne, ventes et avis sur les cours | 🟡 pas de backend : les écrans affichent un état vide honnête |
+
+Les fournisseurs gratuits ont des quotas (Gemini par jour, Groq par minute) : si l'IA répond « indisponible », réessaie après une minute ou renseigne une autre clé dans `.env`.
 
 ## Branches
 
