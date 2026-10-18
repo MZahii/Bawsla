@@ -77,7 +77,7 @@ public class IndicateursService {
 
     /**
      * @param soiMeme true si l'apprenant consulte ses propres indicateurs : on peut alors se replier sur
-     *                {@code /api/quiz/tentatives/mes} tant que le contrat 6 n'existe pas.
+     *                {@code /api/quiz/tentatives/mes} (contrat 11) si le contrat 6 échoue.
      */
     IndicateursResponse calculer(Long etudiantId, boolean soiMeme) {
         User user = getUser(etudiantId);

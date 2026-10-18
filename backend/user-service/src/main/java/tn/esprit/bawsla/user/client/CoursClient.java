@@ -13,15 +13,15 @@ import tn.esprit.bawsla.user.common.ApiResponse;
 @FeignClient(name = "cours-service")
 public interface CoursClient {
 
-    /** Contrat 7 (proposé) : inscriptions d'un apprenant. 404 tant que la route n'existe pas. */
+    /** Contrat 7 : inscriptions d'un apprenant. */
     @GetMapping("/api/cours/inscriptions")
     ApiResponse<List<InscriptionDto>> inscriptions(@RequestParam("etudiantId") Long etudiantId);
 
-    /** Contrat 7 (proposé) : inscrits d'un cours (formateur propriétaire ou admin). 404 tant que la route n'existe pas. */
+    /** Contrat 7 : inscrits d'un cours (formateur propriétaire ou admin). */
     @GetMapping("/api/cours/{id}/inscriptions")
     ApiResponse<List<InscriptionDto>> inscriptionsDuCours(@PathVariable("id") Long coursId);
 
-    /** Catalogue visible par l'utilisateur courant (un apprenant ne voit que les cours publiés). */
+    /** Contrat 9 : catalogue visible par l'utilisateur courant (un apprenant ne voit que les cours publiés). */
     @GetMapping("/api/cours")
     ApiResponse<List<CoursDto>> catalogue();
 }

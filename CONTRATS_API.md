@@ -58,7 +58,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | | |
 |---|---|
 | Fournisseur | cours-service |
-| Consommateurs | ai-service (résumé, fiche de révision), forum-service |
+| Consommateurs | forum-service (index RAG de La Vigie). Les IA du cours ne l'appellent pas : cours-service leur transmet lui-même les pages extraites |
 | Rôles | tout utilisateur authentifié |
 | Statut | **implémenté** : texte extrait du PDF (vision si scanné), emails et téléphones masqués, `stub: false` ; `pages` et `estScanne` facultatifs |
 
@@ -74,7 +74,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | | |
 |---|---|
 | Fournisseur | quiz-service |
-| Consommateurs | user-service / ai-service (recommandations), cours-service, front (tableau de bord) |
+| Consommateurs | user-service (indicateurs du ML, recommandations), forum-service (discussions « Pour toi » liées à ses notions ratées), front (tableau de bord) |
 | Rôles | l'étudiant lui-même (`X-User-Id == etudiantId`), `ENSEIGNANT`, `ADMIN` |
 | Statut | **en place** : agrégé à partir des tentatives (une ligne par apprenant, cours et notion) |
 
@@ -96,7 +96,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | | |
 |---|---|
 | Fournisseur | user-service |
-| Consommateurs | forum-service (auteur d'une discussion), cours-service (enseignant), quiz-service, front |
+| Consommateurs | forum-service (auteur d'une discussion), cours-service et quiz-service (formateur validé), front |
 | Rôles | tout utilisateur authentifié |
 | Statut | **implémenté** |
 
@@ -104,7 +104,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 ```json
 { "success": true, "data": { "id": 2, "nom": "Ben Ali", "prenom": "Sami", "role": "ENSEIGNANT", "formateurValide": true } }
 ```
-- `formateurValide` : `true` seulement pour un `ENSEIGNANT` validé par l'admin (Admin → Demandes formateurs) ; `false` pour un formateur en attente ou refusé et pour les autres rôles. **cours-service doit refuser la publication d'un cours (`403`) si `formateurValide` est `false`.**
+- `formateurValide` : `true` seulement pour un `ENSEIGNANT` validé par l'admin (Admin → Demandes formateurs) ; `false` pour un formateur en attente ou refusé et pour les autres rôles. **cours-service refuse la publication d'un cours (`403`) si `formateurValide` est `false` ; quiz-service refuse de même la publication d'un quiz, et n'accepte un quiz que sur un cours du formateur.** Les deux services appliquent cette règle depuis l'intégration.
 - Erreur : `404` si l'utilisateur n'existe pas.
 - **Jamais** d'email, de hash, de statut `actif` ni de date dans ce contrat. Les données complètes ne sont visibles que par l'intéressé (`/api/users/me`) ou un ADMIN (`/api/users`).
 - Ces données ne doivent **jamais** être transmises au LLM.
@@ -115,7 +115,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 |---|---|
 | Fournisseur | ai-service, joint via la gateway (`/api/ai/**`, URL statique `AI_SERVICE_URL`) |
 | Consommateurs | front, services Java |
-| Rôles | tout utilisateur authentifié (la gateway exige le JWT) |
+| Rôles | tout utilisateur authentifié (la gateway exige le JWT) ; routes `/api/ai/cours/**` : `ENSEIGNANT` et `ADMIN` seulement (`403` sinon) ; restrictions propres à certaines routes ci-dessous |
 | Statut | **implémenté** pour les 4 modules ; seul `POST /api/ai/forum/questions-similaires` reste un stub (la recherche est faite par forum-service, `POST /api/forum/discussions/similaires`) |
 
 | Endpoint | Corps de la requête | `data` de la réponse |
@@ -130,7 +130,16 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | `POST /api/ai/user/plan` | **LLM.** `{ "tempsDisponible": "1 à 3 h", "objectif": "…", "profil": "…", "coursEnCours": [{ "titre": "…", "progression": 0.33 }], "notionsARevoir": ["…"], "coursRecommandes": ["…"] }` : tout est facultatif. | `{ "resume": "…", "seances": [{ "jour": "Lundi", "activite": "…", "dureeMinutes": 30 }], "totalMinutes": 90, "budgetMinutes": 180, "fournisseur": "gemini", "versionPrompt": "v1" }` : 1 à 6 séances triées, une par jour, de 10 à 120 min ; total dans le temps disponible (`Moins de 1 h` = 60, `1 à 3 h` = 180, `3 à 5 h` = 300, `Plus de 5 h` = 420, sinon 180). |
 | `POST /api/ai/user/rapport-cohorte` | **LLM, `ENSEIGNANT` et `ADMIN`.** Statistiques agrégées : `{ "nbApprenants": 12, "nbCours": 2, "risques": { "faible": 5, "moyen": 4, "eleve": 2, "inconnu": 1 }, "progressionMoyenne": 0.6, "noteMoyenne": 0.7, "profils": [{ "nom": "Régulier", "nombre": 6 }], "notions": [{ "nom": "Jointures", "nombre": 4 }], "cours": [{ "titre": "…", "nbInscrits": 8, "progressionMoyenne": 0.5 }] }`. | `{ "synthese": "…", "pointsCles": ["…"], "recommandations": ["…"], "fournisseur": "gemini", "versionPrompt": "v1" }` (au plus 4 constats et 4 recommandations). |
 | `POST /api/ai/user/domaines` | **LLM.** `{ "texte": "je veux devenir data analyst", "domainesDisponibles": ["Informatique", …], "objectifsDisponibles": ["Trouver un premier emploi", …] }` : `texte` de 3 à 500 caractères, nettoyé par le Sanitizer. | `{ "domaines": ["Informatique"], "objectif": "Trouver un premier emploi", "explication": "…", "fournisseur": "gemini", "versionPrompt": "v1" }` : seulement des valeurs exactes des listes (au plus 3 domaines) ; `objectif` omis si aucun ne convient. |
-| `POST /api/ai/cours/resume` | `{ "coursId": 1, "texte": "optionnel" }` | `{ "coursId": 1, "resume": "…", "stub": true }` |
+| `POST /api/ai/cours/resume` | `{ "coursId": 1, "texte": "optionnel" }` | `{ "coursId": 1, "resume": "…", "stub": true }` (stub d'origine, remplacé par `fiche`) |
+| `POST /api/ai/cours/fiche` | **LLM.** `{ "coursId": 1, "texte": "…", "niveau": "INTERMEDIAIRE" }` : texte de 20 à 300 000 caractères, déjà masqué par cours-service. | `{ "resume": "…", "motsCles": ["…"], "notions": [{ "titre": "…", "definition": "…", "extraitSource": "…", "justifiee": true }], "niveau": "…", "scoreFidelite": 87, "alertes": [], "versionPrompt": "…", "modele": "…", "fournisseur": "gemini" }`. Chaque notion est revérifiée contre le texte, sans LLM. |
+| `POST /api/ai/cours/fidelite` | `{ "fiche": { "resume", "motsCles", "notions" }, "texte": "…" }` (fiche corrigée par le formateur) | `{ "scoreFidelite": 0-100, "alertes": [], "notions": [{ "titre": "…", "justifiee": true }] }` (sans LLM) |
+| `POST /api/ai/cours/audio` | `{ "texte": "…", "langue": "FR" }` (20 000 caractères au plus) | Fichier `audio/mpeg` ou `audio/wav`, chaîne `TTS_FOURNISSEURS` |
+| `POST /api/ai/cours/explication` | **LLM.** `{ "coursId": 1, "pages": [{ "numero": 1, "texte": "…" }], "notions": ["…"], "niveau": "…", "mode": "MONOLOGUE", "langue": "FR", "dureeMinutes": 4 }` (`mode` : `MONOLOGUE` ou `DIALOGUE`, durée de 2 à 6 min, notions choisies par l'IA si la liste est vide) | `{ "langue", "mode", "segments": [{ "ordre", "type", "locuteur", "texte", "notion", "extraitSource", "page", "justifiee", "analogie" }], "scoreFidelite", "alertes", "versionPrompt", "modele", "fournisseur", "nbMots", "dureeEstimeeSecondes", "notionsChoisiesParIa" }` |
+| `POST /api/ai/cours/explication/traduire` | **LLM.** `{ "segments": [ … ], "pages": [ … ], "notions": [ … ], "langueSource": "FR", "langueCible": "EN", "mode": "…" }` | Même forme que `explication` |
+| `POST /api/ai/cours/explication/fidelite` | `{ "segments": [ … ], "pages": [ … ], "notions": [ … ] }` (segments corrigés par le formateur) | `{ "scoreFidelite", "alertes", "segments", "nbMots", "dureeEstimeeSecondes" }` (sans LLM) |
+| `POST /api/ai/cours/explication/audio` | `{ "segments": [ … ], "langue": "FR", "mode": "…" }` | `{ "fournisseur", "mime", "audioBase64", "dureeMs", "minutageEstime", "segments": [{ "ordre", "debutMs", "finMs" }] }` |
+| `POST /api/ai/cours/resume-local` | `{ "coursId": 1, "pages": [ … ], "longueur": "MOYENNE", "mode": "AUTO" }` | `{ "langue", "modele", "modeUtilise", "resume", "phrases": [{ "texte", "extraitSource", "page", "justifiee" }], "scoreFidelite", "scoreReformule", "alertes", "dureeMs" }` : modèle local, sans fournisseur LLM ni clé |
+| `POST /api/ai/cours/vision` | **LLM (vision).** `{ "coursId": 1, "numero": 3, "imageBase64": "<base64, 8 Mo au plus>", "mime": "image/png", "forcerLocal": false }` (une page de PDF scanné) | `{ "texte": "…", "vide": false, "modele", "fournisseur", "versionPrompt" }` ; OCR local si `forcerLocal` ou si le LLM est absent |
 | `POST /api/ai/quiz/generer` | `{ "coursId": 1, "matiere": "Mathématiques", "theme": "…", "competences": ["…"], "niveauxBloom": ["APPLIQUER"], "difficulte": "INTERMEDIAIRE", "nbQuestions": 5 }` : `matiere` facultative (80 caractères au plus, la précision saisie pour « Autre »), `nbQuestions` entre 1 et 10, `competences` de 1 à 8, `niveauxBloom` parmi `MEMORISER`, `COMPRENDRE`, `APPLIQUER`, `ANALYSER`, `EVALUER`, `CREER`, et `difficulte` parmi `FACILE`, `INTERMEDIAIRE`, `AVANCE`, `DIFFICILE`, `MASTER` (`MOYEN` reste accepté et vaut `INTERMEDIAIRE`). **Aucun texte de cours.** | `{ "coursId": 1, "questions": [{ "enonce": "…", "niveauBloom": "APPLIQUER", "competence": "…", "choix": [{ "texte": "…", "estCorrecte": true }, { "texte": "…", "estCorrecte": false, "erreurAssociee": "…" }], "explication": "…", "statut": "VALIDEE" }], "nbValidees": 4, "nbRejetees": 1, "versionPrompt": "v2", "difficulte": "INTERMEDIAIRE", "fournisseur": "gemini", "alertes": [] }`. Chaque question a exactement 4 choix, dont 1 seul correct, et chaque mauvais choix porte une `erreurAssociee`. `statut` vaut `VALIDEE` ou `REJETEE` ; dans le second cas, `raisonRejet` est renseigné. |
 | `POST /api/ai/quiz/remedier` | `{ "notion": "…", "niveauBloom": "APPLIQUER", "enonce": "…", "choixDonne": "…", "bonneReponse": "…", "erreurAssociee": "…", "explication": "…" }`. **Aucun identifiant ni aucune donnée de l'apprenant.** | `{ "notion": "…", "raisonnement": "…", "explication": "…", "conseil": "…", "questionRattrapage": { "enonce": "…", "choix": [ … ], "explication": "…" }, "versionPrompt": "v1", "fournisseur": "gemini" }`. `questionRattrapage` est optionnelle et suit le même format qu'une question générée. `raisonnement` est réservé au formateur et à l'admin : il est omis de la réponse quand `X-User-Role` vaut `ETUDIANT`. |
 | `POST /api/ai/forum/questions-similaires` | `{ "question": "…", "coursId": 1, "limite": 5 }` | `{ "question": "…", "similaires": [{ "discussionId": 7, "titre": "…", "score": 0.82 }], "stub": true }` |
@@ -144,7 +153,7 @@ Garanti stable : `id`, `titre`, `categorie`, `niveau`, `enseignantId`. Ce sont l
 | `POST /api/ai/forum/ameliorer` | `{ "titre": "…", "contenu": "…", "etiquettesExistantes": ["sql"] }` | `{ "titre": "…", "manques": ["…"], "etiquettes": ["sql"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (étiquettes prises dans la liste fournie) |
 | `POST /api/ai/forum/nommer-groupes` | `{ "groupes": [{ "titres": ["…"] }] }` (groupes calculés par forum-service) | `{ "noms": ["…"], "repli": false, "versionPrompt": "v2", "fournisseur": "gemini" }` (un nom par groupe, dans l'ordre) |
 
-**Indicateurs d'un apprenant (module User)** : uniquement des nombres, calculés par user-service. `noteMoyenne`, `tauxReussite`, `progressionMoyenne` entre 0 et 1 ; `nbQuiz`, `nbNotionsRatees`, `nbErreurs`, `tempsPasseMinutes`, `nbCoursSuivis`, `nbCoursTermines`, `joursDepuisDerniereConnexion` entiers positifs ; `joursActifs30j` entre 0 et 30. Les 11 champs sont obligatoires. **Aucun identifiant, nom ni email : tout champ inattendu est refusé (`400`).** `donneesSimulees` vaut `true` tant que les modèles sont entraînés sur le jeu simulé (quiz-service et cours-service ne fournissent pas encore toutes les données).
+**Indicateurs d'un apprenant (module User)** : uniquement des nombres, calculés par user-service. `noteMoyenne`, `tauxReussite`, `progressionMoyenne` entre 0 et 1 ; `nbQuiz`, `nbNotionsRatees`, `nbErreurs`, `tempsPasseMinutes`, `nbCoursSuivis`, `nbCoursTermines`, `joursDepuisDerniereConnexion` entiers positifs ; `joursActifs30j` entre 0 et 30. Les 11 champs sont obligatoires. **Aucun identifiant, nom ni email : tout champ inattendu est refusé (`400`).** `donneesSimulees` vaut `true` : **les trois modèles sont aujourd'hui entraînés sur un jeu de données simulé** (`app/modules/user/ml/donnees_simulees.py`). Les prédictions portent sur les vrais indicateurs de l'apprenant (contrats 3, 6 et 7), mais l'apprentissage, lui, n'utilise pas encore les données réelles (voir contrat 8). L'écran Admin → IA l'affiche.
 
 Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun :
 
@@ -160,7 +169,9 @@ Erreurs spécifiques à l'IA, levées par `app/core`, au format d'erreur commun 
 
 **IA générative du module User** : le Machine Learning décide, le LLM explique. Les routes marquées **LLM** passent par le client LLM du socle (prompts versionnés dans `app/modules/user/llm/prompts.py`) ; elles ne reçoivent que des nombres, des libellés, des noms de notions et des titres de cours (`extra="forbid"`), et tous les textes passent par le Sanitizer. Elles renvoient les erreurs LLM ci-dessous ; user-service les traduit en `503` avec un message clair, sans bloquer les résultats du Machine Learning.
 
-Le module Quiz ne lit jamais le PDF ni le texte d'un cours : `generer` part uniquement des objectifs pédagogiques. Ces deux routes sont appelées par quiz-service, qui génère en asynchrone.
+Le module Quiz ne lit jamais le PDF ni le texte d'un cours : `generer` part uniquement des objectifs pédagogiques. `generer` est appelée par le front (studio du formateur, qui relit les questions avant de les enregistrer) ; `remedier` par quiz-service, après la correction d'une tentative.
+
+Les routes `/api/ai/cours/**` sont appelées par cours-service (`IaClient`, via la gateway, avec le jeton du formateur) : il extrait et masque le texte du PDF puis transmet les pages. Le front ne les appelle pas directement.
 
 Les routes `/api/ai/forum/*` (hors `questions-similaires`, stub d'origine conservé) sont appelées par forum-service avec le jeton de l'utilisateur, via la gateway. Tous les corps refusent un champ inconnu (`extra="forbid"`) : aucun nom, email ni identifiant d'utilisateur n'y entre. Version des prompts : `PROMPT_FORUM_VERSION` (v3 par défaut).
 
@@ -168,7 +179,7 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 ---
 
-> **Contrats 6 à 8 : proposés par le module User** pour son Machine Learning (sujet : « regroupe les étudiants selon leurs notes, leur temps passé et les cours suivis », « prédit le risque d'échec à partir de ses résultats aux quiz », « les étudiants au profil proche du tien ont suivi tel cours »). user-service les appelle par Feign, calcule des **indicateurs chiffrés** et n'envoie à ai-service **que ces nombres** (contrat 5, module User) : jamais de nom, d'email ni d'identifiant. En attendant leur mise en place, les modèles sont entraînés sur un jeu de données simulé.
+> **Contrats 6 à 8 : proposés par le module User** pour son Machine Learning (sujet : « regroupe les étudiants selon leurs notes, leur temps passé et les cours suivis », « prédit le risque d'échec à partir de ses résultats aux quiz », « les étudiants au profil proche du tien ont suivi tel cours »). user-service les appelle par Feign, calcule des **indicateurs chiffrés** et n'envoie à ai-service **que ces nombres** (contrat 5, module User) : jamais de nom, d'email ni d'identifiant. Les contrats 6 et 7 alimentent les prédictions ; l'entraînement reste sur des **données simulées** (contrat 8).
 
 ## 6. `GET /api/quiz/tentatives?etudiantId={id}`
 
@@ -222,7 +233,7 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 | Fournisseur | cours-service |
 | Consommateurs | user-service (entraînement du filtrage collaboratif : matrice apprenants × cours suivis) |
 | Rôles | `ADMIN` uniquement |
-| Statut | **implémenté** (même entité `Inscription` que le contrat 7) |
+| Statut | **implémenté côté cours-service, pas encore consommé** : aucun appelant aujourd'hui. **Les modèles du module User restent entraînés sur des données simulées** (`donneesSimulees: true`, affiché dans Admin → IA) tant que user-service n'envoie pas cette matrice à l'entraînement. À brancher par le propriétaire du module User |
 
 `200` :
 ```json
@@ -234,12 +245,60 @@ Un nouvel endpoint IA s'ajoute dans `app/modules/<module>/router.py` (fichier du
 
 ---
 
+> **Contrats 9 à 12** : routes d'abord internes à un module, devenues des contrats parce qu'un autre module les appelle. Leur fournisseur ne peut plus en changer l'URL ni les champs listés sans PR.
+
+## 9. `GET /api/cours?categorie=&niveau=`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | user-service (catalogue réel pour les recommandations : `coursDisponibles` du contrat 5), front (catalogue, menu Explorer, parcours) |
+| Rôles | public : un visiteur et un apprenant voient les cours publiés ; un formateur, les publiés et les siens ; l'ADMIN, tout |
+| Statut | **implémenté** |
+
+`200` : tableau d'objets du contrat 1. Garanti stable : `id`, `titre`, `categorie`, `niveau`, `statut`, `prix`, `enseignantId`, `nbInscrits`.
+
+## 10. `GET /api/cours/{id}/chapitres`
+
+| | |
+|---|---|
+| Fournisseur | cours-service |
+| Consommateurs | forum-service (chapitres indexés par La Vigie), front (programme et lecteur) |
+| Rôles | public si le cours est publié ; sinon le formateur propriétaire ou l'ADMIN |
+| Statut | **implémenté** |
+
+`200` : `[{ "id": 3, "ordre": 1, "titre": "…", "contenu": "…", "dureeMinutes": 20, "videoUrl": "…" }]`, trié par `ordre`. Erreur : `404` si le cours n'existe pas ou n'est pas visible.
+
+## 11. `GET /api/quiz/tentatives/mes`
+
+| | |
+|---|---|
+| Fournisseur | quiz-service |
+| Consommateurs | user-service (repli des indicateurs de l'apprenant si le contrat 6 échoue), front (historique) |
+| Rôles | tout utilisateur authentifié : ses propres tentatives |
+| Statut | **implémenté** |
+
+`200` : `[{ "tentativeId": 9, "quizId": 4, "titre": "…", "coursId": 1, "type": "QUIZ", "pourcentage": 70, "reussie": true, "dateTentative": "…", "moyenneAutres": 62.5 }]`, la plus récente d'abord. Ni `nbCorrectes` ni `nbQuestions`.
+
+## 12. `GET /api/users`
+
+| | |
+|---|---|
+| Fournisseur | user-service |
+| Consommateurs | front du module Forum (recherche d'un membre dans la modération), front du module User (administration) |
+| Rôles | `ADMIN` uniquement (`403` sinon) |
+| Statut | **implémenté** |
+
+`200` : `[{ "id", "nom", "prenom", "email", "role", "bio", "actif", "formateurValide", "avatarVersion", "dateCreation", "derniereConnexion" }]`. Contient des données personnelles : **jamais transmis au LLM**, jamais appelé par un service Java.
+
+---
+
 ## Endpoints internes à chaque module (hors contrat)
 
 Ils peuvent évoluer librement par leur propriétaire :
 
 - **user** : `POST /api/auth/register` (avec `expertise`, `presentation`, `lien` facultatifs pour un formateur) et `POST /api/auth/login` (publics) ; `GET` et `PUT /api/users/me`, `PUT /me/mot-de-passe`, `POST /me/desactivation`, `GET` et `PUT /me/parcours`, `POST` et `DELETE /me/avatar`, `GET /{id}/avatar`, `GET` et `POST /me/demande-formateur`, `GET /me/indicateurs` et `GET /me/ia` (profil et recommandations ; jamais le risque) ; ENSEIGNANT ou ADMIN : `GET /{id}/indicateurs`, `GET /{id}/ia` (risque et profil d'un apprenant) et `GET /formateur/apprenants` (inscrits à ses cours et leur risque, via le contrat 7) ; IA générative (LLM), `GET` = dernier texte gardé, `POST` = générer (texte réutilisé tant que les données n'ont pas changé) : `/me/ia/conseil` et `/me/ia/plan` (ETUDIANT), `POST /me/parcours/suggestion` (ETUDIANT, `{ "texte": "…" }`), `/{id}/ia/explication` et `/formateur/apprenants/rapport` (ENSEIGNANT ou ADMIN) ; ADMIN : `GET` et `POST /api/users`, `PUT /{id}`, `PATCH /{id}/statut`, `PUT /{id}/mot-de-passe`, `GET /demandes-formateur`, `POST /demandes-formateur/{id}/accepter` et `/refuser`.
-- **cours** : `GET /api/cours?categorie=&niveau=`, `POST`, `PUT /{id}`, `DELETE /{id}` (ENSEIGNANT propriétaire ou ADMIN pour l'écriture).
+- **cours** : `POST /api/cours`, `PUT /{id}`, `PATCH /{id}/statut`, `DELETE /{id}` (ENSEIGNANT propriétaire ou ADMIN pour l'écriture) ; écriture des chapitres, PDF, fiche de révision, explication audio, inscriptions et progression du lecteur.
 - **quiz** : `GET /api/quiz?coursId=`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`.
 - **forum** : toutes les routes `/api/forum/**` (discussions, réponses, votes, La Vigie, assistant privé, modération, studio formateur, espace admin `/api/forum/admin/**`) sont décrites dans `prompts_journal/forum/PLAN_FORUM.md` §6.1.
 - **health** (publics) : `GET /api/{users|cours|quiz|forum|ai}/health`.
@@ -257,3 +316,4 @@ Ils peuvent évoluer librement par leur propriétaire :
 | 2026-10-15 | Contrats 6 (tentatives d'un apprenant, quiz-service), 7 et 8 (inscriptions, cours-service) proposés par le module User pour son Machine Learning | docs/contrat-user-ia |
 | 2026-10-16 | Contrat 5 : IA générative du module User (`conseil`, `explication-risque`, `plan`, `rapport-cohorte`, `domaines`) ; endpoints internes du module user correspondants | PR `feature/user-ia` |
 | 2026-10-18 | Statuts mis à jour à l'intégration des 4 modules : contrats 2, 5, 6, 7 et 8 implémentés (seul `forum/questions-similaires` reste un stub) | integration/finale |
+| 2026-10-18 | Contrat 5 : les 9 routes réelles de l'IA du cours, réservées à `ENSEIGNANT` et `ADMIN` ; appelant de `generer` corrigé (front). Contrats 2 et 3 : consommateurs réels. Contrat 4 : appliqué par cours-service et quiz-service. Contrat 8 : pas encore consommé, modèles du module User entraînés sur des données simulées. Nouveaux contrats 9 à 12 (routes déjà appelées par un autre module) | integration/finale |
