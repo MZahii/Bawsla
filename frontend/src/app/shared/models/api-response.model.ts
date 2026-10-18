@@ -24,7 +24,7 @@ export function errorMessage(err: unknown, fallback = 'Une erreur est survenue')
     return Object.values(body.details).join(' · ');
   }
   if ((err as { status?: number })?.status === 0) {
-    return 'Serveur injoignable (api-gateway démarrée ?)';
+    return 'Le serveur ne répond pas. Vérifie ta connexion puis réessaie.';
   }
   return body?.message ?? fallback;
 }

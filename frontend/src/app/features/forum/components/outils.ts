@@ -1,35 +1,24 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Pipe, PipeTransform } from '@angular/core';
 
+import { errorMessage } from '../../../shared/models/api-response.model';
 import { ActionModeration, MotifSignalement, StatutDiscussion, StatutSignalement, TypeNotification, TypeSanction } from '../models';
 
 /**
- * Message à montrer à l'utilisateur pour une erreur HTTP : celui du backend (ApiError.message, déjà rédigé pour
- * l'humain), sinon une phrase utile (DESIGN.md §7.6). Jamais de code technique.
+ * Message à montrer à l'utilisateur pour une erreur HTTP (DESIGN.md §7.6, jamais de code technique) : les deux cas
+ * propres au forum (publication trop rapide, IA lente), sinon `errorMessage` de shared (message du backend, détails
+ * de validation, serveur injoignable).
  */
 export function messageErreur(erreur: unknown, defaut = 'Une erreur est survenue. Réessaie dans un instant.'): string {
-  if (erreur instanceof HttpErrorResponse) {
-    const message = (erreur.error as { message?: string } | null)?.message;
-    if (erreur.status === 0) {
-      return 'Le serveur ne répond pas. Vérifie ta connexion puis réessaie.';
-    }
-    if (erreur.status === 429 && !message) {
+  if (erreur instanceof HttpErrorResponse && !(erreur.error as { message?: string } | null)?.message) {
+    if (erreur.status === 429) {
       return 'Tu as beaucoup publié en peu de temps. Réessaie un peu plus tard.';
     }
-    if ((erreur.status === 502 || erreur.status === 503 || erreur.status === 504) && !message) {
+    if (erreur.status === 502 || erreur.status === 503 || erreur.status === 504) {
       return 'L’IA met trop de temps à répondre. Réessaie dans un instant.';
     }
-    // Erreur de validation : le détail du premier champ est plus utile que « Données invalides ».
-    const details = (erreur.error as { details?: Record<string, string> } | null)?.details;
-    const detail = details ? Object.values(details)[0] : undefined;
-    if (erreur.status === 400 && detail) {
-      return detail;
-    }
-    if (message) {
-      return message;
-    }
   }
-  return defaut;
+  return errorMessage(erreur, defaut);
 }
 
 /** « il y a 5 min », « il y a 2 h », « hier », puis la date. */
