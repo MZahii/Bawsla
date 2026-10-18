@@ -68,11 +68,16 @@ export interface CourseTileData {
   `,
   styles: `
     :host { display: block; }
-    .tile { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: border-color 0.15s; }
-    .tile:hover { border-color: var(--color-text-muted); }
-    .tile:hover h3 { text-decoration: underline; }
+    .tile { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: border-color var(--duree-ui) ease, transform var(--duree-appui) var(--ease-out); }
+    .tile:active { transform: scale(0.985); }
     .media { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--color-navy-700); }
-    img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+    img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 400ms var(--ease-out); }
+    /* Survol réservé aux souris : sur écran tactile, il resterait collé après le toucher. */
+    @media (hover: hover) and (pointer: fine) {
+      .tile:hover { border-color: var(--color-text-muted); }
+      .tile:hover h3 { text-decoration: underline; }
+      .tile:hover img { transform: scale(1.04); }
+    }
     .cat { position: absolute; left: 10px; top: 10px; padding: 2px 8px; border-radius: 4px; background: var(--color-surface); font-size: 12px; font-weight: 600; color: var(--color-text); }
     .body { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-4) var(--space-4); }
     .by { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-muted); }

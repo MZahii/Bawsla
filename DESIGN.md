@@ -292,6 +292,13 @@ Ces règles traduisent directement les objectifs du cours : transparence, lutte 
 - Respect de `prefers-reduced-motion` : l'animation de la boussole est désactivée si l'utilisateur le demande.
 - Zones cliquables d'au moins 44 × 44 px.
 
+**Mouvement** (variables dans `_semantic.scss`) :
+- Courbes `--ease-out` (entrées, retours d'interaction) et `--ease-in-out` (déplacement à l'écran) ; jamais `ease-in`, jamais `transition: all`.
+- Durées : `--duree-appui` 160 ms, `--duree-ui` 200 ms, `--duree-entree` 500 ms (vitrine seulement). On n'anime que `transform` et `opacity`.
+- Appui : boutons et cartes cliquables s'enfoncent légèrement (`scale(0.97)` à `0.985`).
+- Survols qui déplacent ou zooment : sous `@media (hover: hover) and (pointer: fine)`, pour ne pas rester collés sur écran tactile.
+- Les écrans vus plusieurs fois par jour (tableaux de bord, listes) n'ont pas d'animation d'entrée.
+
 ---
 
 ## 11. Mise en œuvre dans Angular

@@ -79,7 +79,8 @@
 @media (max-width: 899px) { .bw-mega .mega { grid-template-columns: 1fr; } }
 
 // ---------- Boutons icône et menus
-.icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--color-text-muted); cursor: pointer; }
+.icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--color-text-muted); cursor: pointer; transition: background-color var(--duree-ui) ease, color var(--duree-ui) ease, transform var(--duree-appui) var(--ease-out); }
+.icon-btn:active { transform: scale(0.92); }
 .icon-btn:hover { background: var(--color-neutral-soft); color: var(--color-text); }
 .mat-mdc-menu-item.danger, .mat-mdc-menu-item.danger .mat-icon { color: var(--color-error); }
 .bw-table .mat-mdc-row.sel .mat-mdc-cell { background: var(--color-navy-100); }

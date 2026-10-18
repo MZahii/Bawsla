@@ -20,7 +20,16 @@
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition:
+    background-color var(--duree-ui) ease,
+    border-color var(--duree-ui) ease,
+    color var(--duree-ui) ease,
+    transform var(--duree-appui) var(--ease-out);
+
+  // Retour d'appui : le bouton s'enfonce légèrement, l'interface a « entendu » le clic.
+  &:active:not(:disabled):not([aria-disabled='true']) {
+    transform: scale(0.97);
+  }
 
   // Zone cliquable de 44 px minimum malgré une hauteur visuelle de 40 px.
   &::after {
