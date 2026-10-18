@@ -48,7 +48,7 @@ export interface CourseTileData {
         <span class="meta">
           <span>{{ cours().niveau }}</span>
           @if (cours().chapitres) {
-            <span>{{ cours().chapitres }} chapitres</span>
+            <span>{{ cours().chapitres }} chapitre{{ cours().chapitres! > 1 ? 's' : '' }}</span>
           }
           @if (cours().duree) {
             <span>{{ cours().duree }}</span>

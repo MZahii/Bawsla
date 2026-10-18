@@ -173,45 +173,22 @@
       <div class="foot"><button type="button" bwButton="fantome" matStepperPrevious>Retour</button><button type="button" bwButton="principal" matStepperNext>Continuer</button></div>
     </mat-step>
 
-    <!-- 4. Examen final (pas encore branché) -->
-    <mat-step>
-      <ng-template matStepLabel>Examen final <bw-badge variant="categorie" label="bientôt" /></ng-template>
+    <!-- 4. Examen final : créé et réglé dans le studio Quiz (questions, durée, seuil, tentatives). -->
+    <mat-step label="Examen final">
       <div class="step two">
         <div class="fields">
-          <p class="muted">L’examen final se débloque quand l’apprenant a terminé tous les chapitres. S’il atteint le seuil, son certificat est créé automatiquement. Ces réglages ne sont pas encore enregistrés.</p>
-          <div class="row2">
-            <mat-form-field appearance="outline">
-              <mat-label>Nombre de questions</mat-label>
-              <input matInput type="number" min="5" max="60" [ngModel]="examen().questions" (ngModelChange)="majExamen('questions', $event)" />
-              <mat-hint>Tirées de la banque de questions du cours</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Durée (minutes)</mat-label>
-              <input matInput type="number" min="5" max="180" [ngModel]="examen().duree" (ngModelChange)="majExamen('duree', $event)" />
-            </mat-form-field>
+          <p class="muted">L’examen final se crée dans le studio Quiz : l’IA propose les questions à partir du cours, tu les relis, puis tu règles la durée, le seuil de réussite et le nombre de tentatives avant de le publier.</p>
+          <div class="actions-examen">
+            <a bwButton="ia" routerLink="/studio/quiz/generer"><mat-icon>auto_awesome</mat-icon> Générer les questions de l’examen</a>
+            <a bwButton="secondaire" routerLink="/studio/quiz">Voir mes quiz et examens</a>
           </div>
-          <div class="row2">
-            <mat-form-field appearance="outline">
-              <mat-label>Seuil de réussite (%)</mat-label>
-              <input matInput type="number" min="50" max="100" [ngModel]="examen().seuil" (ngModelChange)="majExamen('seuil', $event)" />
-              <mat-hint>Score minimal pour le certificat</mat-hint>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Tentatives autorisées</mat-label>
-              <mat-select [ngModel]="examen().tentatives" (ngModelChange)="majExamen('tentatives', $event)">
-                @for (n of [1, 2, 3, 5]; track n) { <mat-option [value]="n">{{ n }}</mat-option> }
-              </mat-select>
-            </mat-form-field>
-          </div>
-          <mat-slide-toggle [checked]="examen().melange" (change)="examen.update((e) => ({ ...e, melange: $event.checked }))">Questions et réponses dans un ordre différent pour chaque apprenant</mat-slide-toggle>
-          <a bwButton="ia" routerLink="/studio/quiz/generer">Générer les questions de l’examen</a>
         </div>
         <div class="check card card-pad">
           <h3>Ce que voit l’apprenant</h3>
           <ul>
-            <li class="ok"><mat-icon>lock_open</mat-icon>Débloqué après les {{ chapitres().length }} chapitres</li>
-            <li class="ok"><mat-icon>help</mat-icon>{{ examen().questions }} questions en {{ examen().duree }} min</li>
-            <li class="ok"><mat-icon>flag</mat-icon>{{ examen().seuil }} % pour réussir, {{ examen().tentatives }} tentative{{ examen().tentatives > 1 ? 's' : '' }}</li>
+            <li class="ok"><mat-icon>menu_book</mat-icon>Un lien vers l’examen dans le lecteur, après {{ chapitres().length }} chapitre{{ chapitres().length > 1 ? 's' : '' }}</li>
+            <li class="ok"><mat-icon>help</mat-icon>Des questions sur tout le cours, en temps limité</li>
+            <li class="ok"><mat-icon>flag</mat-icon>Le seuil de réussite fixé dans le studio Quiz</li>
             <li class="ok"><mat-icon>workspace_premium</mat-icon>Certificat à son nom, vérifiable en ligne</li>
           </ul>
         </div>

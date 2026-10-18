@@ -52,7 +52,7 @@
           <div class="card-pad">
             <h2>Récapitulatif</h2>
             <p class="t">{{ c.titre }}</p>
-            <p class="muted small">Par {{ formateur() }}, {{ c.nbChapitres }} chapitres@if (duree()) {, {{ duree() }}}</p>
+            <p class="muted small">Par {{ formateur() }}, {{ c.nbChapitres }} chapitre{{ c.nbChapitres > 1 ? 's' : '' }}@if (duree()) {, {{ duree() }}}</p>
             <dl class="lines">
               <div class="tot"><dt>Prix</dt><dd>{{ prix() }}</dd></div>
             </dl>

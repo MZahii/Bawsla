@@ -34,7 +34,7 @@
               <p class="eyebrow">{{ r.pourcentage > 0 ? 'Reprendre' : 'Commencer' }}</p>
               <h2>{{ r.cours.titre }}</h2>
               @if (prochain(); as p) { <p class="muted">Chapitre suivant : <strong>{{ p.titre }}</strong>@if (p.dureeMinutes) {, {{ p.dureeMinutes }} min}</p> }
-              <div class="bar-cell prog"><span class="bar"><span [style.width.%]="r.pourcentage"></span></span><span class="num small">{{ faits() }}/{{ r.cours.nbChapitres }} chapitres</span></div>
+              <div class="bar-cell prog"><span class="bar"><span [style.width.%]="r.pourcentage"></span></span><span class="num small">{{ faits() }}/{{ r.cours.nbChapitres }} chapitre{{ r.cours.nbChapitres > 1 ? 's' : '' }}</span></div>
               <div class="acts">
                 <a bwButton="principal" [routerLink]="['/app/cours', r.cours.id, 'lecture']"><mat-icon>play_arrow</mat-icon> Continuer</a>
                 <a bwButton="fantome" routerLink="/app/cours">Tous mes cours</a>

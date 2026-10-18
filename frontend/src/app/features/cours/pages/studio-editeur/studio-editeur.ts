@@ -15,7 +15,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { Router, RouterLink } from '@angular/router';
 
 import { errorMessage } from '../../../../shared/models/api-response.model';
-import { Badge, BwButton, EmptyState } from '../../../../shared';
+import { BwButton, EmptyState } from '../../../../shared';
 import { Dropzone, PageHeader, Skeleton } from '../../../../shared/ui';
 import { CATEGORIES, MATIERE_AUTRE, NIVEAUX, PRECISION_MAX, PRECISION_MIN, formatDuree, formatTaille } from '../../models/cours.constantes';
 import { Chapitre, ChapitreRequest, Cours, CoursRequest, Niveau } from '../../models/cours.model';
@@ -43,14 +43,14 @@ const CHAPITRE_VIDE: FormChapitre = { id: null, titre: '', dureeMinutes: 20, con
  * Éditeur de cours en 5 étapes : informations (image comprise), chapitres, contenu (PDF) et résumé IA,
  * examen final, publication et prix. Sert à la création (/studio/cours/nouveau) et à la modification
  * (/studio/cours/:id). Branché sur cours-service : informations, image, chapitres (ajout, modification, suppression,
- * ordre), PDF, prix et statut. « Résumé IA » et « Examen final » restent à brancher (badge « bientôt »).
+ * ordre), PDF, prix et statut ; le Studio IA produit résumé, fiche et audio. L'examen final se crée dans le studio Quiz.
  * Les chapitres, le PDF et la publication ne sont disponibles qu'une fois le cours créé.
  */
 @Component({
   selector: 'app-studio-editeur',
   imports: [
     RouterLink, FormsModule, AsyncPipe, DragDropModule, MatStepperModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatRadioModule,
-    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, Badge, BwButton, PagesLuesStudio, StudioIa,
+    MatCheckboxModule, MatSlideToggleModule, MatDialogModule, MatIconModule, MatSnackBarModule, BwButton, PagesLuesStudio, StudioIa,
     Dropzone, EmptyState, PageHeader, Skeleton, CoursImage,
   ],
   templateUrl: './studio-editeur.html',
@@ -113,7 +113,6 @@ export class StudioEditeur implements OnInit {
   protected readonly pdfScanne = signal<boolean | null>(null);
   protected readonly pdfPages = signal(0);
 
-  protected readonly examen = signal({ questions: 20, duree: 30, seuil: 70, tentatives: 3, melange: true });
 
   // ---- Publication
   protected readonly payant = signal(false);
@@ -447,12 +446,6 @@ export class StudioEditeur implements OnInit {
       },
       error: (err) => this.snack.open(errorMessage(err, 'Impossible d’ouvrir le PDF'), 'OK', { duration: 5000 }),
     });
-  }
-
-  // ------------------------------------------------------------------ examen final (pas encore branché)
-
-  protected majExamen(champ: 'questions' | 'duree' | 'seuil' | 'tentatives', v: number): void {
-    this.examen.update((e) => ({ ...e, [champ]: Number(v) || 0 }));
   }
 
   // ------------------------------------------------------------------ publication
