@@ -88,6 +88,23 @@ class IaApprenantServiceTest {
     }
 
     @Test
+    void compteNeuf_pasDeProfilDecrocheur_etRecommandationsSansDoublon() {
+        Indicateurs unJour = new Indicateurs(0.75, 0.7, 4, 2, 5, 0.6, 400, 2, 1, 1, 0);
+        when(indicateursService.lesMiens(APPRENANT)).thenReturn(indicateurs(unJour, true));
+        when(coursClient.catalogue()).thenReturn(ApiResponse.ok(CATALOGUE));
+        RecommandationsIaDto.CoursRecommande react = new RecommandationsIaDto.CoursRecommande(12L, "React", 0.5, "Nouveau");
+        when(aiClient.recommandations(eq(JETON), any())).thenReturn(ApiResponse.ok(new RecommandationsIaDto(
+                List.of(react, new RecommandationsIaDto.CoursRecommande(12L, "React", 0.4, "Apprenants proches")), true)));
+
+        IaApprenantResponse r = service.pourMoi(APPRENANT, JETON);
+
+        assertThat(r.profil()).isNull();
+        assertThat(r.profilIndisponible()).isEqualTo(IaApprenantService.PROFIL_TROP_TOT);
+        assertThat(r.recommandations()).containsExactly(react);
+        verify(aiClient, never()).profil(anyString(), any());
+    }
+
+    @Test
     void donneesIncompletes_pasDeProfil_maisDesRecommandations() {
         when(indicateursService.lesMiens(APPRENANT)).thenReturn(indicateurs(PARTIELS, false));
         when(coursClient.catalogue()).thenReturn(ApiResponse.ok(CATALOGUE));

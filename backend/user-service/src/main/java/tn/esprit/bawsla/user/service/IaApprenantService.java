@@ -1,8 +1,12 @@
 package tn.esprit.bawsla.user.service;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +44,13 @@ public class IaApprenantService {
     static final String DONNEES_INCOMPLETES =
             "Pas encore assez de données : les résultats aux quiz et les inscriptions aux cours ne sont pas encore disponibles.";
     static final String AUCUNE_RECOMMANDATION = "Pas d'autre cours à te proposer pour l'instant.";
+    /**
+     * En dessous, le K-Means classe « Décrocheur » un compte simplement neuf (il compte les jours actifs sur 30) :
+     * on attend un peu d'historique avant de montrer un profil à l'apprenant.
+     */
+    static final int JOURS_ACTIFS_MIN_PROFIL = 3;
+    static final String PROFIL_TROP_TOT =
+            "Ton profil sera calculé après " + JOURS_ACTIFS_MIN_PROFIL + " jours d'activité : continue, on apprend à te connaître.";
     /** Données qui peuvent manquer, en mots simples (clés de IndicateursResponse.sources). */
     private static final Map<String, String> LIBELLES = new LinkedHashMap<>();
 
@@ -70,6 +81,8 @@ public class IaApprenantService {
         String profilIndisponible = null;
         if (!ind.complet()) {
             profilIndisponible = donneesIncompletes(ind.sources());
+        } else if (tropTot(ind.indicateurs())) {
+            profilIndisponible = PROFIL_TROP_TOT;
         } else {
             try {
                 ProfilIaDto p = aiClient.profil(authorization, lot(ind.indicateurs())).data();
@@ -89,7 +102,9 @@ public class IaApprenantService {
             } else {
                 RecommandationsIaDto r = aiClient.recommandations(authorization, new RecommandationsIaRequestDto(
                         ind.coursSuivis(), ind.domaines(), ind.coursEnDifficulte(), catalogue, NB_RECOMMANDATIONS)).data();
-                recos = r.recommandations();
+                // Un même cours peut ressortir par deux voies (domaine et apprenants proches) : une seule ligne.
+                recos = r.recommandations() == null ? null : r.recommandations().stream()
+                        .filter(distinctPar(RecommandationsIaDto.CoursRecommande::coursId)).toList();
                 if (recos == null || recos.isEmpty()) {
                     recosIndisponibles = AUCUNE_RECOMMANDATION;
                 }
@@ -144,6 +159,15 @@ public class IaApprenantService {
                 : String.join(", ", manquants.subList(0, manquants.size() - 1)) + " et " + manquants.get(manquants.size() - 1);
         return "Pas encore assez de données : " + liste + (manquants.size() == 1 ? " n'est" : " ne sont")
                 + " pas encore disponible" + (manquants.size() == 1 ? "." : "s.");
+    }
+
+    static boolean tropTot(Indicateurs i) {
+        return i != null && i.joursActifs30j() != null && i.joursActifs30j() < JOURS_ACTIFS_MIN_PROFIL;
+    }
+
+    private static <T> Predicate<T> distinctPar(Function<T, ?> cle) {
+        Set<Object> vus = new HashSet<>();
+        return x -> vus.add(cle.apply(x));
     }
 
     /** Indicateurs complets → vecteur pour l'IA (les 11 nombres, sans aucun identifiant). */

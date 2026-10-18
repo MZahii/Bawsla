@@ -35,10 +35,7 @@
       } @else {
         <p class="muted">{{ r.recommandationsIndisponibles ?? 'Aucune recommandation pour l’instant.' }}</p>
       }
-      <span bwAiSource>
-        Selon tes domaines d’intérêt, tes cours et les apprenants au profil proche du tien.
-        @if (r.donneesSimulees) { Modèle encore entraîné sur des données simulées. }
-      </span>
+      <span bwAiSource>Selon tes domaines d’intérêt, tes cours et les apprenants au profil proche du tien.</span>
     </bw-ai-box>
 
     <section class="card card-pad profil">

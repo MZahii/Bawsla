@@ -64,8 +64,9 @@ import tn.esprit.bawsla.user.repository.UserRepository;
 public class IaGenerativeService {
 
     private static final Logger log = LoggerFactory.getLogger(IaGenerativeService.class);
-    static final String INDISPONIBLE = "L'IA générative est indisponible pour le moment (quota atteint ou fournisseur "
-            + "non configuré). Réessaie dans quelques minutes : les résultats du Machine Learning restent affichés.";
+    static final String INDISPONIBLE = "L'IA générative n'a pas pu répondre pour le moment (quota atteint, fournisseur "
+            + "indisponible ou réponse inexploitable). Réessaie dans quelques minutes : les résultats du Machine Learning "
+            + "restent affichés.";
     static final String SANS_INSCRIT = "Pas encore d'inscrits à tes cours : le rapport arrivera avec eux.";
     static final String SANS_COURS = "Inscris-toi à un cours pour recevoir ton plan de la semaine.";
     static final long SANS_CIBLE = 0L;
