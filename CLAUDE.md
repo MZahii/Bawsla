@@ -64,7 +64,7 @@ Font partie du **socle** (PR obligatoire) :
 | frontend | 4200 | — | — |
 | MySQL | 3306 | — | — |
 
-Le front ne connaît **que** la gateway (`http://localhost:8080/api`).
+Le front ne connaît **que** la gateway, par l'URL relative `/api` : nginx (Docker) ou le proxy de `ng serve` (`proxy.conf.json`) la transmet à `http://localhost:8080/api`.
 
 ## Structure
 
