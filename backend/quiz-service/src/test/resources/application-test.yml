@@ -8,6 +8,11 @@ spring:
     hibernate:
       ddl-auto: create-drop
 
+quiz:
+  publication:
+    # Pas de user-service en test d'API : FormateurVerifierTest couvre la vérification du contrat 4.
+    verifier-formateur: false
+
 eureka:
   client:
     enabled: false

@@ -14,8 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import feign.FeignException;
 import tn.esprit.bawsla.quiz.client.CoursClient;
+import tn.esprit.bawsla.quiz.client.CoursDto;
+import tn.esprit.bawsla.quiz.common.ApiResponse;
 import tn.esprit.bawsla.quiz.common.exception.BadRequestException;
 import tn.esprit.bawsla.quiz.common.exception.ConflictException;
+import tn.esprit.bawsla.quiz.common.exception.ForbiddenException;
 import tn.esprit.bawsla.quiz.common.exception.ResourceNotFoundException;
 import tn.esprit.bawsla.quiz.common.exception.ServiceUnavailableException;
 import tn.esprit.bawsla.quiz.common.security.CurrentUser;
@@ -51,13 +54,16 @@ public class QuizService {
     private final CompetenceRepository competenceRepository;
     private final TentativeRepository tentativeRepository;
     private final CoursClient coursClient;
+    private final FormateurVerifier formateurVerifier;
 
     public QuizService(QuizRepository quizRepository, CompetenceRepository competenceRepository,
-                       TentativeRepository tentativeRepository, CoursClient coursClient) {
+                       TentativeRepository tentativeRepository, CoursClient coursClient,
+                       FormateurVerifier formateurVerifier) {
         this.quizRepository = quizRepository;
         this.competenceRepository = competenceRepository;
         this.tentativeRepository = tentativeRepository;
         this.coursClient = coursClient;
+        this.formateurVerifier = formateurVerifier;
     }
 
     /** Quiz visibles par l'utilisateur : les publiés, plus ses brouillons (tous pour l'admin). */
@@ -92,7 +98,7 @@ public class QuizService {
     @Transactional
     public QuizResponse create(QuizRequest request, CurrentUser user) {
         user.requireAnyRole(CurrentUser.ENSEIGNANT, CurrentUser.ADMIN);
-        verifierCoursExiste(request.coursId());
+        verifierCoursDuFormateur(request.coursId(), user);
         Quiz quiz = new Quiz();
         quiz.setEnseignantId(user.id());
         apply(quiz, request);
@@ -108,7 +114,7 @@ public class QuizService {
                     + "Crée un nouveau quiz.");
         }
         if (!quiz.getCoursId().equals(request.coursId())) {
-            verifierCoursExiste(request.coursId());
+            verifierCoursDuFormateur(request.coursId(), user);
         }
         apply(quiz, request);
         return QuizResponse.from(quizRepository.saveAndFlush(quiz));
@@ -122,6 +128,7 @@ public class QuizService {
         if (quiz.getQuestions().isEmpty()) {
             throw new BadRequestException("Ajoute au moins une question avant de publier");
         }
+        formateurVerifier.verifierPeutPublier(user);
         quiz.setStatut(StatutQuiz.PUBLIE);
         quiz.setDatePublication(LocalDateTime.now());
         return QuizResponse.from(quiz);
@@ -220,14 +227,22 @@ public class QuizService {
         return Math.round(v * 10) / 10.0;
     }
 
-    /** Appel inter-services via Feign : le lien Quiz -> Cours se fait par identifiant uniquement. */
-    private void verifierCoursExiste(Long coursId) {
+    /**
+     * Appel inter-services via Feign : le lien Quiz -> Cours se fait par identifiant uniquement.
+     * Le cours doit exister et, sauf pour l'ADMIN, appartenir au formateur (pas de quiz ni d'examen sur le cours d'un autre).
+     */
+    private void verifierCoursDuFormateur(Long coursId, CurrentUser user) {
+        CoursDto cours;
         try {
-            coursClient.getCours(coursId);
+            ApiResponse<CoursDto> reponse = coursClient.getCours(coursId);
+            cours = reponse == null ? null : reponse.data();
         } catch (FeignException.NotFound e) {
             throw new BadRequestException("Le cours " + coursId + " n'existe pas");
         } catch (FeignException e) {
             throw new ServiceUnavailableException("cours-service indisponible, réessayez plus tard");
+        }
+        if (cours != null && cours.enseignantId() != null && !user.isAdmin() && !cours.enseignantId().equals(user.id())) {
+            throw new ForbiddenException("Ce cours appartient à un autre formateur : tu ne peux pas y créer de quiz.");
         }
     }
 

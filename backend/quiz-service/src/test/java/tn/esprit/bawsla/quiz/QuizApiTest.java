@@ -103,6 +103,16 @@ class QuizApiTest {
     }
 
     @Test
+    void unFormateurNeCreePasDeQuizSurLeCoursDUnAutre() throws Exception {
+        when(coursClient.getCours(anyLong()))
+                .thenReturn(ApiResponse.ok(new CoursDto(COURS, "SQL", "INFORMATIQUE", "DEBUTANT", AUTRE_FORMATEUR)));
+        mvc.perform(en(post("/api/quiz"), FORMATEUR, "ENSEIGNANT").content(quizJson("EXAMEN", 1)))
+                .andExpect(status().isForbidden());
+        mvc.perform(en(post("/api/quiz"), ADMIN, "ADMIN").content(quizJson("EXAMEN", 1)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void unQuizSansQuestionNeSePubliePas() throws Exception {
         long id = creer("QUIZ", 0);
         mvc.perform(en(post("/api/quiz/" + id + "/publier"), FORMATEUR, "ENSEIGNANT"))
