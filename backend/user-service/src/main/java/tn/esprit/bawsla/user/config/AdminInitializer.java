@@ -17,6 +17,8 @@ import tn.esprit.bawsla.user.repository.UserRepository;
 public class AdminInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminInitializer.class);
+    /** Valeur par défaut d'application.yml, connue de tous. */
+    static final String MOT_DE_PASSE_PAR_DEFAUT = "Admin123!";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -34,6 +36,9 @@ public class AdminInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (MOT_DE_PASSE_PAR_DEFAUT.equals(adminPassword)) {
+            log.warn("ADMIN_PASSWORD absent : mot de passe ADMIN par défaut (public). Le changer dans .env avant toute démo hors de ce poste.");
+        }
         if (userRepository.existsByEmailIgnoreCase(adminEmail)) {
             return;
         }
