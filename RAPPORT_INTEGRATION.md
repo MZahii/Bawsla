@@ -175,10 +175,10 @@ L'analyse ci-dessous décrit l'état de `c94a225`. Le statut indique où en est 
 | I5 | IMPORTANT | **Corrigé** | `9d93786` : plus de faux chiffres. `feat(cours)` : paiement simulé (`POST /api/cours/{id}/commandes`, carte de test, aucune somme débitée), Mes achats et Ventes sur données réelles ; contenu d'un cours payant réservé aux acheteurs, inscription directe refusée (`403`). Limite : `/texte` (contrat 2) reste lisible pour le forum et le quiz |
 | I6 | IMPORTANT | **Corrigé** | `b5cb9e6`, `9d93786` (aucun écran hors vitrine n'importe plus `core/demo`) |
 | I7 | IMPORTANT | **Corrigé** | `fix(gateway)` : actuator limité à `health,info` |
-| I8 | IMPORTANT | Ouvert | |
+| I8 | IMPORTANT | **Corrigé (avertissement)** | `c48742f` : gateway et user-service journalisent un avertissement au démarrage si `JWT_SECRET` ou `ADMIN_PASSWORD` gardent leur valeur publique. Refuser le démarrage reste possible avant une mise en ligne |
 | I9 | IMPORTANT | **Corrigé** | `fix(ai)` : toutes les routes `/api/ai/cours/*` exigent `ENSEIGNANT` ou `ADMIN`. Forum : un filtre par rôle casserait forum-service, qui relaie le jeton de l'apprenant ; les routes qui appellent le LLM sont donc limitées à 40 appels par minute et par apprenant (`forum/limiteur.py`, `FORUM_APPELS_IA_PAR_MINUTE`, `429` au-delà), formateurs et admin exemptés |
 | I10 | IMPORTANT | **Corrigé (documenté)** | `e0f868c` : contrats 5 et 8 indiquent l'entraînement sur données simulées, affiché dans Admin → IA. Brancher les vraies inscriptions reste à faire (module User) |
-| I11 | IMPORTANT | Ouvert | |
+| I11 | IMPORTANT | **Corrigé** | `e0f868c` : contrats 9 à 12 (`GET /api/cours`, `/api/cours/{id}/chapitres`, `/api/quiz/tentatives/mes`, `/api/users`) |
 | M1 à M10 | MINEUR | voir la colonne « Statut » du tableau MINEUR | |
 
 ### BLOQUANT
