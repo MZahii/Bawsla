@@ -12,7 +12,7 @@ Tous les appels LLM passent par app.core (LLMClient) ; tout texte est nettoyé p
 
 import asyncio
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
 from app.core.config import Settings, get_settings
@@ -41,7 +41,17 @@ from app.modules.cours.schemas import (
 )
 
 MODULE = "cours"
-router = APIRouter(prefix="/api/ai/cours", tags=["cours"])
+ROLES_GENERATION = ("ENSEIGNANT", "ADMIN")
+
+
+def exiger_formateur(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """Toutes les routes du module sont appelées par cours-service pour le formateur du cours (ou l'admin) : jamais par un apprenant."""
+    if user.role not in ROLES_GENERATION:
+        raise HTTPException(status_code=403, detail="Réservé aux formateurs et aux administrateurs")
+    return user
+
+
+router = APIRouter(prefix="/api/ai/cours", tags=["cours"], dependencies=[Depends(exiger_formateur)])
 router.include_router(explication_router)
 router.include_router(resume_local_router)
 router.include_router(vision_router)

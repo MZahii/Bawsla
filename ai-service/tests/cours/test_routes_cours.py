@@ -131,6 +131,13 @@ def test_sans_entetes_de_la_gateway(client, avec_llm):
     assert r.status_code == 401
 
 
+@pytest.mark.parametrize("route", ["/fiche", "/fidelite", "/resume", "/audio", "/explication", "/explication/audio",
+                                   "/resume-local", "/vision"])
+def test_un_apprenant_n_appelle_pas_les_routes_du_cours(client, route):
+    r = client.post("/api/ai/cours" + route, json={}, headers={"X-User-Id": "12", "X-User-Role": "ETUDIANT"})
+    assert r.status_code == 403
+
+
 # ---------------------------------------------------------------- /fidelite
 
 
