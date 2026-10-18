@@ -10,6 +10,7 @@ h1 { margin: 0; font: 600 44px/54px var(--font-heading); letter-spacing: -0.01em
 h1 span { display: block; color: var(--color-bordeaux-600); }
 .lead { max-width: 56ch; margin: var(--space-4) 0 var(--space-5); font-size: 19px; line-height: 30px; color: var(--color-text-muted); }
 .search { display: flex; align-items: center; gap: var(--space-2); max-width: 600px; padding: 6px 6px 6px var(--space-4); border: 1px solid var(--color-text-muted); border-radius: 8px; background: var(--color-surface); }
+.search { transition: border-color var(--duree-ui) ease; }
 .search:focus-within { border-color: var(--color-primary); outline: 2px solid var(--color-primary); }
 .search mat-icon { color: var(--color-text-muted); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--color-text); font: 400 17px var(--font-body); }
@@ -34,8 +35,9 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
 .sec { padding: var(--space-8) 0; }
 .alt { background: var(--color-bg); }
 .cats { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-.cat { display: flex; flex-direction: column; gap: 6px; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: inherit; text-decoration: none; background: var(--color-surface); }
-.cat:hover { border-color: var(--color-primary); }
+.cat { display: flex; flex-direction: column; gap: 6px; padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: inherit; text-decoration: none; background: var(--color-surface); transition: border-color var(--duree-ui) ease, transform var(--duree-appui) var(--ease-out); }
+.cat:active { transform: scale(0.98); }
+.cnt mat-icon { transition: transform var(--duree-ui) var(--ease-out); }
 .cat > mat-icon { width: 44px; height: 44px; padding: 10px; box-sizing: border-box; border-radius: 6px; background: var(--color-navy-100); color: var(--color-navy-700); }
 .cat strong { margin-top: var(--space-2); font: 600 18px var(--font-heading); }
 .cnt { display: inline-flex; align-items: center; gap: 4px; margin-top: auto; padding-top: var(--space-2); font-weight: 600; color: var(--color-bordeaux-600); }
@@ -90,8 +92,7 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
 .tete { max-width: 720px; margin-bottom: var(--space-6); }
 .tete p.muted { margin: 0; font-size: 17px; line-height: 28px; }
 .capacites { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-.capacites li { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); transition: border-color 0.2s, transform 0.2s; }
-.capacites li:hover { border-color: var(--color-gold-500); transform: translateY(-2px); }
+.capacites li { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); transition: border-color var(--duree-ui) ease, transform var(--duree-ui) var(--ease-out); }
 .capacites .ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 6px; background: var(--color-navy-100); color: var(--color-navy-700); }
 .capacites .mod { font: 700 12px var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-gold-700); }
 .capacites h3 { margin: 0; font: 600 18px/26px var(--font-heading); }
@@ -99,11 +100,21 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
 .mock figcaption { margin-bottom: var(--space-3); }
 
 // Animations : entrée de l'accroche, puis apparition des sections au défilement (classe « vu » posée par home.ts)
-.entree, .collage { animation: monte 0.6s ease-out both; animation-delay: calc(var(--d, 0) * 90ms); }
-@keyframes monte { from { opacity: 0; transform: translateY(18px); } }
-[data-reveal] { opacity: 0; transform: translateY(20px); transition: 0.6s ease-out calc(var(--d, 0) * 80ms); transition-property: opacity, transform; }
+// Courbe franche (--ease-out) : l'élément part vite puis se pose ; décalage de 60 ms entre voisins.
+.entree { animation: monte var(--duree-entree) var(--ease-out) both; animation-delay: calc(var(--d, 0) * 60ms); }
+.collage { animation: monte-collage 700ms var(--ease-out) 120ms both; }
+@keyframes monte { from { opacity: 0; transform: translateY(12px); } }
+@keyframes monte-collage { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+.note { animation: monte var(--duree-entree) var(--ease-out) 520ms both; }
+[data-reveal] { opacity: 0; transform: translateY(16px); transition: var(--duree-entree) var(--ease-out) calc(var(--d, 0) * 60ms); transition-property: opacity, transform; }
 [data-reveal].vu { opacity: 1; transform: none; }
+// Survols réservés aux souris (sur écran tactile, ils resteraient collés après le toucher).
+@media (hover: hover) and (pointer: fine) {
+  .cat:hover { border-color: var(--color-primary); }
+  .cat:hover .cnt mat-icon { transform: translateX(3px); }
+  .capacites li:hover { border-color: var(--color-gold-500); transform: translateY(-2px); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .entree, .collage { animation: none; }
+  .entree, .collage, .note { animation: none; }
   [data-reveal] { opacity: 1; transform: none; transition: none; }
 }

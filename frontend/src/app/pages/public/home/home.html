@@ -82,7 +82,7 @@
 </section>
 
 <!-- ============================== Domaines -->
-@if (domaines().length) {
+@if (domaines().length > 1) {
   <section class="sec">
     <div class="in">
       <bw-section-head title="Parcourir par domaine" subtitle="Les domaines qui ont déjà des cours publiés." link="/catalogue" linkLabel="Tout le catalogue" />
@@ -100,7 +100,7 @@
 }
 
 <!-- ============================== Fonctionnement -->
-<section class="sec" [class.alt]="domaines().length">
+<section class="sec" [class.alt]="domaines().length > 1">
   <div class="in">
     <bw-section-head title="Comment ça marche" subtitle="Quatre étapes, de l’inscription au certificat." />
     <ol class="steps">
