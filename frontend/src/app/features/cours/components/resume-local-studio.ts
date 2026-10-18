@@ -315,7 +315,7 @@ export class ResumeLocalStudio implements OnInit, OnDestroy {
   }
 
   protected secondes(ms: number): string {
-    return (ms / 1000).toFixed(ms < 10_000 ? 1 : 0);
+    return (ms / 1000).toFixed(ms < 10_000 ? 1 : 0).replace('.', ',');
   }
 
   /** Interroge le serveur toutes les 2 s jusqu'à la fin du traitement (au plus 10 min : le premier chargement du modèle est long). */

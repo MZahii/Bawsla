@@ -50,7 +50,10 @@ export class StudentHome implements OnInit {
   private readonly formateurs = inject(FormateurService);
 
   protected readonly prenom = computed(() => this.auth.currentUser()?.prenom || 'toi');
-  protected readonly date = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  // « Dimanche 18 octobre » : seule la première lettre prend une majuscule.
+  protected readonly date = new Date()
+    .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(/^./, (c) => c.toUpperCase());
   protected readonly onboarding = lireOnboarding();
   protected readonly sousTitreReco = this.onboarding?.objectif
     ? `Choisi par l’IA d’après ton objectif (« ${this.onboarding.objectif} ») et tes derniers quiz`

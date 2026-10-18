@@ -48,7 +48,10 @@
             </li>
           }
         </ol>
-        <span class="quiz locked"><mat-icon>lock</mat-icon><span><strong>Examen final</strong><small>Bientôt disponible</small></span></span>
+        <a class="quiz" [routerLink]="['/app/evaluations/examen', c.id]">
+          <mat-icon aria-hidden="true">workspace_premium</mat-icon>
+          <span><strong>Examen final</strong><small>{{ nbTermines() === chapitres().length ? 'Tu es prêt : passe l’examen' : 'Termine les chapitres, puis passe l’examen' }}</small></span>
+        </a>
       </aside>
 
       <section class="main">

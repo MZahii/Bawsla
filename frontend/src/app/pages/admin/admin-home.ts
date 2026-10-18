@@ -155,7 +155,7 @@ const ROLES: Role[] = ['ETUDIANT', 'ENSEIGNANT', 'ADMIN'];
           <ul class="svc">
             <li><span class="small grow">Risque d’échec (Random Forest) : F1 sur le test</span><strong class="num small">{{ pct(m.risque.test.f1) }}</strong></li>
             <li><span class="small grow">Recommandations (hybride) : réussite à 5</span><strong class="num small">{{ pct(m.recommandation.evaluation.hybride.reussiteA5) }}</strong></li>
-            <li><span class="small grow">Profils (k-means, k = {{ m.profils.k }}) : silhouette</span><strong class="num small">{{ m.profils.silhouette.toFixed(2) }}</strong></li>
+            <li><span class="small grow">Profils (k-means, k = {{ m.profils.k }}) : silhouette</span><strong class="num small">{{ m.profils.silhouette.toFixed(2).replace('.', ',') }}</strong></li>
           </ul>
         } @else {
           <bw-empty-state title="Aucun modèle entraîné" [message]="erreurIa()" />

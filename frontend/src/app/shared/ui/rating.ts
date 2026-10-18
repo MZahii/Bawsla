@@ -6,8 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'bw-rating',
   imports: [MatIconModule],
   template: `
-    <span class="v">{{ value().toFixed(1) }}</span>
-    <span class="stars" [attr.aria-label]="'Note : ' + value().toFixed(1) + ' sur 5'" role="img">
+    <span class="v">{{ value().toFixed(1).replace('.', ',') }}</span>
+    <span class="stars" [attr.aria-label]="'Note : ' + value().toFixed(1).replace('.', ',') + ' sur 5'" role="img">
       @for (s of etoiles(); track $index) {
         <mat-icon aria-hidden="true" [class.on]="s !== 'star_outline'">{{ s }}</mat-icon>
       }

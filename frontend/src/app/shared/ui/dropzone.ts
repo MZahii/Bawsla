@@ -71,7 +71,7 @@ export class Dropzone {
     this.choisis.update((l) => l.filter((x) => x.name !== f.name));
   }
   protected taille(o: number): string {
-    return o > 1e6 ? `${(o / 1e6).toFixed(1)} Mo` : `${Math.round(o / 1e3)} Ko`;
+    return o > 1e6 ? `${(o / 1e6).toFixed(1).replace('.', ',')} Mo` : `${Math.round(o / 1e3)} Ko`;
   }
   private ajouter(list: File[]): void {
     if (!list.length) return;

@@ -70,7 +70,7 @@ export class MonCompte implements OnInit {
   });
   protected readonly etudiant = computed(() => this.user()?.role === 'ETUDIANT');
   protected readonly formateur = computed(() => this.user()?.role === 'ENSEIGNANT');
-  /** « octobre 2026 » (l'application n'a pas de LOCALE_ID français, d'où Intl). */
+  /** « octobre 2026 ». */
   protected readonly membreDepuis = computed(() => {
     const u = this.user();
     return u ? new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date(u.dateCreation)) : '';

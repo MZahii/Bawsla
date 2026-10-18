@@ -1,6 +1,6 @@
 .hello { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
 .hello h1 { margin: 0; font: 600 30px/38px var(--font-heading); }
-.date { margin: 0; text-transform: capitalize; }
+.date { margin: 0; }
 .streak { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); font-weight: 600; }
 .streak mat-icon { color: var(--color-bordeaux-600); }
 .top { display: grid; gap: var(--space-5); }

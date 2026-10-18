@@ -8,8 +8,7 @@
 .plan button { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; min-height: 44px; padding: var(--space-3) var(--space-4); border: 0; background: var(--color-surface); color: var(--color-text); text-align: left; font: 500 15px var(--font-body); cursor: pointer; &:hover { background: var(--color-bg); } &.on { background: var(--color-bordeaux-100); } mat-icon { flex: none; color: var(--color-text-muted); } }
 .t { display: flex; flex-direction: column; small { color: var(--color-text-muted); font-size: 13px; } }
 .quiz { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); text-decoration: none; span { display: flex; flex-direction: column; } small { color: var(--color-text-muted); } mat-icon { color: var(--color-bordeaux-600); } }
-.quiz.locked { color: var(--color-text-muted); cursor: default; }
-.quiz.locked mat-icon { color: var(--color-text-muted); }
+a.quiz:hover strong { text-decoration: underline; }
 
 .main { display: grid; gap: var(--space-5); align-content: start; min-width: 0; }
 .video { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: var(--radius-sm); background: var(--color-navy-900); iframe { width: 100%; height: 100%; border: 0; border-radius: var(--radius-sm); } }
