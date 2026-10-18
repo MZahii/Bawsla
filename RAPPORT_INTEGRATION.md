@@ -2,6 +2,8 @@
 
 Analyse et tests réalisés le 2026-10-18 sur `integration/finale-suite` (créée depuis `origin/integration/finale`, commit `c94a225`), **sans aucune correction de code**. Docker n'a pas été utilisé (il ne fonctionne pas sur ce poste) : tout ce qui demande la stack complète est listé en §7.
 
+> **Mise à jour :** le tableau « Statut des points » en tête du §6 indique quels problèmes sont corrigés sur `integration/finale` depuis cette analyse.
+
 Légende des efforts : **S** < 1 h · **M** ½ journée · **L** 1 à 2 jours.
 
 ---
@@ -158,6 +160,27 @@ Pannes d'un autre service : chaque service traduit les erreurs Feign en exceptio
 
 ## 6. Problèmes trouvés
 
+### Statut des points (mis à jour sur `integration/finale`)
+
+L'analyse ci-dessous décrit l'état de `c94a225`. Le statut indique où en est chaque point dans les commits suivants de `integration/finale`.
+
+| # | Niveau | Statut | Où |
+|---|---|---|---|
+| B1 | BLOQUANT | **Corrigé** | `b5cb9e6` (accueils des 3 rôles, accueil public, admin, agenda) ; `9d93786` (paiement, ventes, avis) ; commit `fix(front)` du questionnaire d'accueil (onboarding, « Mon compte », menu Explorer, pied de page public, ancienne page `profile` supprimée). Seule la vitrine `/admin/composants` garde des exemples fictifs, c'est voulu |
+| B2 | BLOQUANT | **Corrigé** | `26c07fc` (volume et `COURS_STOCKAGE_DOSSIER` pour cours-service) |
+| I1 | IMPORTANT | **Corrigé** | `cddb86c` (GET publics du catalogue à la gateway, visiteur accepté par cours-service, pas de déconnexion sans jeton) |
+| I2 | IMPORTANT | **Corrigé** | `fix(cours)` et `fix(quiz)` : `FormateurVerifier` (Feign `GET /api/users/{id}`) refuse en 403 la publication d'un cours, d'un quiz ou d'un examen par un formateur non validé (ADMIN exempté) |
+| I3 | IMPORTANT | **Corrigé** | `fix(quiz)` : création et modification d'un quiz réservées au formateur du cours (ou à l'admin), test `unFormateurNeCreePasDeQuizSurLeCoursDUnAutre` |
+| I4 | IMPORTANT | **Corrigé** | `fix(front)` : onboarding et « Mon compte » sur `parcours.constantes.ts` (miroir de `ListesParcours`) |
+| I5 | IMPORTANT | **Partiellement corrigé** | `9d93786` : plus de faux chiffres dans achats et ventes. Reste la décision d'équipe sur le paiement simulé et le verrouillage du contenu payant |
+| I6 | IMPORTANT | **Corrigé** | `b5cb9e6`, `9d93786` (aucun écran hors vitrine n'importe plus `core/demo`) |
+| I7 | IMPORTANT | **Corrigé** | `fix(gateway)` : actuator limité à `health,info` |
+| I8 | IMPORTANT | Ouvert | |
+| I9 | IMPORTANT | **Corrigé (Cours)** | `fix(ai)` : toutes les routes `/api/ai/cours/*` exigent `ENSEIGNANT` ou `ADMIN`. Partie forum : ouverte, à traiter par Malek |
+| I10 | IMPORTANT | Ouvert | |
+| I11 | IMPORTANT | Ouvert | |
+| M1 à M10 | MINEUR | voir la colonne « Statut » du tableau MINEUR | |
+
 ### BLOQUANT
 
 **B1 — Les accueils des trois rôles et 9 autres écrans affichent des données fictives**
@@ -267,18 +290,18 @@ Pannes d'un autre service : chaque service traduit les erreurs Feign en exceptio
 
 ### MINEUR
 
-| # | Module | Fichier(s) | Description | Correctif proposé | Effort |
-|---|---|---|---|---|---|
-| M1 | socle | `frontend/tsconfig.app.json:6,8` | `"rootDir"` en double (avertissement du build, confirmé) | supprimer la ligne 8 | S |
-| M2 | socle | `frontend/package-lock.json` | 4 vulnérabilités (2 high, 2 critical) dans l'outillage de dev (`piscina`, `@modelcontextprotocol/sdk`, via `@angular/build` et `@angular/cli`) ; 0 en production | monter `@angular/cli` et `@angular/build` au dernier patch 21.2.x, puis `npm audit` | S |
-| M3 | tous | `angular.json`, `backend/api-gateway`, `backend/eureka-server` | aucun test front (pas de cible `test`, 0 `*.spec.ts`) ; aucun test pour la gateway (filtre JWT) | ajouter un test du filtre JWT (suppression de `X-User-*`, chemins publics) ; ajouter la cible Vitest d'Angular 21 si l'équipe veut des tests front | M |
-| M4 | socle | `CONTRATS_API.md:133,163` | contrat 5 Cours : seul `resume` (stub sans appelant) est décrit, pas les 8 vraies routes (`fiche`, `fidelite`, `explication`, `explication/traduire`, `explication/fidelite`, `explication/audio`, `resume-local`, `vision`, `audio`). La l. 163 dit que `generer` est appelée par quiz-service, or c'est le front (`quiz-ia.service.ts:16`). Consommateurs inexacts aux contrats 2 et 3 (§4.1) | mettre la documentation à jour (PR) | S |
-| M5 | User | `user-service/.../client/CoursClient.java:16,20`, `QuizClient.java:19-26` | commentaires périmés (*« (proposé) … 404 tant que la route n'existe pas »*), alors que les contrats 6 et 7 sont implémentés | mettre les commentaires à jour | S |
-| M6 | Forum, Quiz, Cours | `features/forum/components/outils.ts:10` (`messageErreur`) et `shared/models/api-response.model.ts:21` (`errorMessage`) ; trois caches de la liste des cours (`cours.service.ts`, `quiz/services/cours-titres.service.ts`, `forum.service.ts:213-217`) | logique dupliquée entre modules. **Partie forum : À traiter par Malek** | utiliser `errorMessage` de `shared` ; à terme, un seul service partagé de titres de cours dans `shared` (PR socle) | S |
-| M7 | socle | `core/config/api.config.ts:5` | `http://localhost:8080/api` en dur : la démo ne marche que si le navigateur tourne sur la machine qui héberge la stack | à garder pour la démo locale ; sinon, un proxy `/api` dans `nginx.conf` et une URL relative | S |
-| M8 | socle | `.env.example` | variables facultatives non documentées (liste en §4.4) | les ajouter en commentaire avec leur valeur par défaut | S |
-| M9 | socle | poste de dev | Java 17 dans le PATH (JDK 21 requis, présent dans `~/.jdks`) ; le `.venv` d'ai-service est incomplet (pas de scikit-learn, pandas, numpy ni joblib) ; un venv sur un chemin long échoue (limite Windows de 260 caractères) | documenter dans le README (`JAVA_HOME`, `pip install -r requirements-dev.txt`, chemin court) | S |
-| M10 | git | `origin/integration/user-cours-quiz`, remote | branche non fusionnée sans contenu réel (§2.2) ; le remote a déménagé vers `MZahii/Bawsla.git` | supprimer ou archiver la branche ; `git remote set-url origin https://github.com/MZahii/Bawsla.git` | S |
+| # | Module | Fichier(s) | Description | Correctif proposé | Effort | Statut |
+|---|---|---|---|---|---|---|
+| M1 | socle | `frontend/tsconfig.app.json:6,8` | `"rootDir"` en double (avertissement du build, confirmé) | supprimer la ligne 8 | S | **Corrigé** (`b5cb9e6`) |
+| M2 | socle | `frontend/package-lock.json` | 4 vulnérabilités (2 high, 2 critical) dans l'outillage de dev (`piscina`, `@modelcontextprotocol/sdk`, via `@angular/build` et `@angular/cli`) ; 0 en production | monter `@angular/cli` et `@angular/build` au dernier patch 21.2.x, puis `npm audit` | S | Ouvert |
+| M3 | tous | `angular.json`, `backend/api-gateway`, `backend/eureka-server` | aucun test front (pas de cible `test`, 0 `*.spec.ts`) ; aucun test pour la gateway (filtre JWT) | ajouter un test du filtre JWT (suppression de `X-User-*`, chemins publics) ; ajouter la cible Vitest d'Angular 21 si l'équipe veut des tests front | M | Ouvert |
+| M4 | socle | `CONTRATS_API.md:133,163` | contrat 5 Cours : seul `resume` (stub sans appelant) est décrit, pas les 8 vraies routes (`fiche`, `fidelite`, `explication`, `explication/traduire`, `explication/fidelite`, `explication/audio`, `resume-local`, `vision`, `audio`). La l. 163 dit que `generer` est appelée par quiz-service, or c'est le front (`quiz-ia.service.ts:16`). Consommateurs inexacts aux contrats 2 et 3 (§4.1) | mettre la documentation à jour (PR) | S | Ouvert |
+| M5 | User | `user-service/.../client/CoursClient.java:16,20`, `QuizClient.java:19-26` | commentaires périmés (*« (proposé) … 404 tant que la route n'existe pas »*), alors que les contrats 6 et 7 sont implémentés | mettre les commentaires à jour | S | Ouvert |
+| M6 | Forum, Quiz, Cours | `features/forum/components/outils.ts:10` (`messageErreur`) et `shared/models/api-response.model.ts:21` (`errorMessage`) ; trois caches de la liste des cours (`cours.service.ts`, `quiz/services/cours-titres.service.ts`, `forum.service.ts:213-217`) | logique dupliquée entre modules. **Partie forum : À traiter par Malek** | utiliser `errorMessage` de `shared` ; à terme, un seul service partagé de titres de cours dans `shared` (PR socle) | S | Ouvert |
+| M7 | socle | `core/config/api.config.ts:5` | `http://localhost:8080/api` en dur : la démo ne marche que si le navigateur tourne sur la machine qui héberge la stack | à garder pour la démo locale ; sinon, un proxy `/api` dans `nginx.conf` et une URL relative | S | Ouvert (gardé pour la démo locale) |
+| M8 | socle | `.env.example` | variables facultatives non documentées (liste en §4.4) | les ajouter en commentaire avec leur valeur par défaut | S | Ouvert |
+| M9 | socle | poste de dev | Java 17 dans le PATH (JDK 21 requis, présent dans `~/.jdks`) ; le `.venv` d'ai-service est incomplet (pas de scikit-learn, pandas, numpy ni joblib) ; un venv sur un chemin long échoue (limite Windows de 260 caractères) | documenter dans le README (`JAVA_HOME`, `pip install -r requirements-dev.txt`, chemin court) | S | **Partiellement corrigé** (`26c07fc` : README à jour) |
+| M10 | git | `origin/integration/user-cours-quiz`, remote | branche non fusionnée sans contenu réel (§2.2) ; le remote a déménagé vers `MZahii/Bawsla.git` | supprimer ou archiver la branche ; `git remote set-url origin https://github.com/MZahii/Bawsla.git` | S | Ouvert |
 
 Rien d'autre n'a été trouvé :
 - aucun `TODO`, `FIXME` ou `XXX` dans `backend/*/src/main`, `ai-service/app` ni `frontend/src/app` ;
