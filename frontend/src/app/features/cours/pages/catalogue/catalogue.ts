@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -42,7 +42,6 @@ export class Catalogue {
   private readonly formateurs = inject(FormateurService);
   private readonly images = inject(CoursImageService);
   private readonly snack = inject(MatSnackBar);
-  private readonly params = toSignal(this.route.queryParamMap);
   protected readonly espace = (this.route.snapshot.data['espace'] as string) ?? 'public';
   protected readonly base = this.espace === 'etudiant' ? '/app/explorer' : '/catalogue';
 
@@ -72,12 +71,15 @@ export class Catalogue {
   });
 
   constructor() {
-    const p = this.route.snapshot.queryParamMap;
-    // Un ancien libellé (Données, Back-end…) dans l'URL filtre sur « Informatique » au lieu d'afficher une liste vide.
-    if (p.get('domaine')) this.domaines.set([matiereDepuisUrl(p.get('domaine'))]);
-    if (p.get('niveau')) this.niveauxChoisis.set([p.get('niveau')!]);
-    if (p.get('q')) this.q.set(p.get('q')!);
-    if (p.get('prix') === 'gratuit' || p.get('prix') === 'payant') this.prix.set(p.get('prix') as FiltrePrix);
+    // Le composant est réutilisé quand seuls les paramètres changent (menu Explorer) : on réapplique les filtres à chaque fois.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((p) => {
+      // Un ancien libellé (Données, Back-end…) dans l'URL filtre sur « Informatique » au lieu d'afficher une liste vide.
+      this.domaines.set(p.get('domaine') ? [matiereDepuisUrl(p.get('domaine'))] : []);
+      this.niveauxChoisis.set(p.get('niveau') ? [p.get('niveau')!] : []);
+      this.q.set(p.get('q') ?? '');
+      this.prix.set(p.get('prix') === 'gratuit' || p.get('prix') === 'payant' ? (p.get('prix') as FiltrePrix) : '');
+      this.page.set(0);
+    });
     this.charger();
   }
 
@@ -110,7 +112,6 @@ export class Catalogue {
   }
 
   protected readonly resultats = computed(() => {
-    this.params();
     const q = this.q().trim().toLowerCase();
     let l = this.cours();
     if (q) l = l.filter((c) => (c.titre + ' ' + (c.description ?? '')).toLowerCase().includes(q));

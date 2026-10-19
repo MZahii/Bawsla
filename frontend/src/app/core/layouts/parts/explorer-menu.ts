@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
 import { CATEGORIES, MATIERE_AUTRE, NIVEAUX } from '../../../features/cours/models/cours.constantes';
@@ -14,11 +14,12 @@ import { CATEGORIES, MATIERE_AUTRE, NIVEAUX } from '../../../features/cours/mode
   selector: 'app-explorer-menu',
   imports: [RouterLink, MatButtonModule, MatIconModule, MatMenuModule],
   template: `
-    <button type="button" class="trigger" [matMenuTriggerFor]="mega">
+    <button type="button" class="trigger" [matMenuTriggerFor]="mega" #declencheur="matMenuTrigger">
       Explorer <mat-icon aria-hidden="true">expand_more</mat-icon>
     </button>
     <mat-menu #mega="matMenu" class="bw-mega" xPosition="after">
-      <div class="mega" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <!-- Un clic dans le vide garde le menu ouvert ; un clic sur un lien le ferme (sinon il reste affiché sur le catalogue). -->
+      <div class="mega" (click)="$event.stopPropagation(); fermerSiLien($event, declencheur)" (keydown)="$event.stopPropagation()">
         <section>
           <h3>Domaines</h3>
           @for (c of categories; track c.nom) {
@@ -50,4 +51,8 @@ export class ExplorerMenu {
   readonly base = input('/catalogue');
   protected readonly categories = CATEGORIES.filter((c) => c.nom !== MATIERE_AUTRE);
   protected readonly niveaux = NIVEAUX;
+
+  protected fermerSiLien(e: Event, declencheur: MatMenuTrigger): void {
+    if ((e.target as HTMLElement).closest('a')) declencheur.closeMenu();
+  }
 }
