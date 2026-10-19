@@ -41,7 +41,7 @@ interface Vitrine {
   selector: 'app-register',
   imports: [ReactiveFormsModule, RouterLink, Logo, BwButton, Skeleton, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
   templateUrl: './register.html',
-  styleUrl: './register.scss',
+  styleUrls: ['../auth-page.scss', './register.scss'],
 })
 export class Register {
   private readonly auth = inject(AuthService);

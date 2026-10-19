@@ -29,6 +29,16 @@ export class Login {
   protected readonly error = signal<string | null>(null);
   protected readonly hidePassword = signal(true);
 
+  /** Page demandée avant la connexion (posée par authGuard) : on y revient ensuite. */
+  protected readonly retour = this.route.snapshot.queryParamMap.get('returnUrl');
+
+  /** Ce que retrouve l'utilisateur en se reconnectant (panneau photo, décoratif). */
+  protected readonly points = [
+    { icone: 'play_circle', texte: 'Ton cours reprend à la dernière section lue' },
+    { icone: 'target', texte: 'Tes notions à revoir t’attendent' },
+    { icone: 'verified', texte: 'Tes certificats restent vérifiables' },
+  ];
+
   protected readonly form = inject(FormBuilder).nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     motDePasse: ['', Validators.required],
@@ -43,8 +53,7 @@ export class Login {
     this.error.set(null);
     this.auth.login(this.form.getRawValue()).subscribe({
       next: () => {
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/';
-        this.router.navigateByUrl(returnUrl);
+        this.router.navigateByUrl(this.retour ?? '/');
       },
       error: (err) => {
         this.error.set(errorMessage(err, 'Connexion impossible'));

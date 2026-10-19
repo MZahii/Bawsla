@@ -1,147 +1,4 @@
-// Inscription : photo + promesse à gauche (grand écran), formulaire sur surface unie à droite.
-:host {
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 100vh;
-  background: var(--color-bg); // même fond que le logo sombre (SVG à fond nuit)
-
-  @media (min-width: 960px) {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  }
-}
-
-// ---------- Panneau visuel (décoratif) ----------
-.visual {
-  display: none;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--color-navy-900);
-
-  @media (min-width: 960px) { display: block; }
-}
-
-.photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transform: scale(1.03);
-  transition: opacity 400ms ease, transform 900ms var(--ease-out);
-
-  &.on { opacity: 1; transform: none; }
-}
-
-.visual-text {
-  position: absolute;
-  left: var(--space-5);
-  right: var(--space-5);
-  bottom: var(--space-5);
-  padding: var(--space-5) var(--space-6) var(--space-6);
-  background: var(--color-navy-900);
-  border-radius: var(--radius-lg);
-  border-top: 4px solid var(--color-gold-500);
-  color: var(--color-white);
-}
-
-.visual-ar {
-  margin: 0;
-  font: 700 22px/1.4 var(--font-arabic);
-  color: var(--color-gold-500);
-}
-
-.visual-title {
-  max-width: 22ch;
-  margin: var(--space-1) 0 0;
-  font: 600 28px/36px var(--font-heading);
-  text-wrap: balance;
-}
-
-.visual-list {
-  display: grid;
-  gap: var(--space-3);
-  margin: var(--space-5) 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 15px;
-  line-height: 22px;
-  color: var(--color-white-80);
-
-  li { display: flex; align-items: center; gap: var(--space-3); }
-}
-
-.dot {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: var(--color-white-8);
-
-  mat-icon { font-size: 20px; width: 20px; height: 20px; color: var(--color-gold-500); }
-}
-
-// ---------- Colonne formulaire ----------
-.pane {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: var(--space-4);
-
-  @media (min-width: 600px) { padding: var(--space-5) var(--space-6); }
-}
-
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.home-link {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  border-radius: var(--radius-sm);
-}
-
-.top-login {
-  margin: 0;
-  font-size: 14px;
-  color: var(--color-text-muted);
-
-  a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    margin-left: var(--space-1);
-    font-weight: 600;
-  }
-}
-
-.main {
-  width: 100%;
-  max-width: 460px;
-  margin: auto;
-  padding: var(--space-6) 0;
-
-  h1 {
-    margin: 0;
-    font: 600 28px/36px var(--font-heading);
-    letter-spacing: -0.01em;
-  }
-}
-
-.intro {
-  margin: var(--space-1) 0 var(--space-5);
-  color: var(--color-text-muted);
-}
+// Inscription : règles propres à la page. La mise en page commune est dans ../auth-page.scss.
 
 // ---------- Cours visé (?cours=) ----------
 .target {
@@ -200,13 +57,7 @@
   .price.free { color: var(--color-success); }
 }
 
-// ---------- Formulaire ----------
-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
+// ---------- Choix du rôle ----------
 .roles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -275,14 +126,13 @@ form {
   .on & { color: var(--color-bordeaux-600); }
 }
 
+// ---------- Champs ----------
 .row {
   display: flex;
   gap: var(--space-3);
 
   mat-form-field { flex: 1; min-width: 0; }
 }
-
-mat-icon[matPrefix] { margin: 0 var(--space-1) 0 var(--space-3); color: var(--color-text-muted); }
 
 // Indicateur de robustesse : 4 barres, couleur selon le niveau.
 .strength {
@@ -303,6 +153,7 @@ mat-icon[matPrefix] { margin: 0 var(--space-1) 0 var(--space-3); color: var(--co
   &[data-force='1'] .strength-label { color: var(--color-error); }
 }
 
+// ---------- Profil formateur ----------
 .teach {
   display: flex;
   flex-direction: column;
@@ -341,36 +192,10 @@ mat-icon[matPrefix] { margin: 0 var(--space-1) 0 var(--space-3); color: var(--co
   mat-icon { flex: none; font-size: 18px; width: 18px; height: 18px; }
 }
 
-.error {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-bordeaux-100);
-  color: var(--color-error);
-  font-size: 14px;
-
-  mat-icon { flex: none; font-size: 20px; width: 20px; height: 20px; }
-}
-
-button[type='submit'] { margin-top: var(--space-2); }
-
-.reassure {
-  margin: var(--space-4) 0 0;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  text-align: center;
-  text-wrap: balance;
-
-  mat-icon { font-size: 16px; width: 16px; height: 16px; margin-right: var(--space-1); vertical-align: -3px; }
-}
-
 @media (max-width: 359px) {
   .roles { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .photo, .role, .role-icon, .teach { transition: none; }
+  .role, .role-icon, .teach { transition: none; }
 }
