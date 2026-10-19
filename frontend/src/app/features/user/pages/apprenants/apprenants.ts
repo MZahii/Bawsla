@@ -102,9 +102,11 @@ export class Apprenants implements OnInit {
     return `${l.prenom} ${l.nom}`.trim();
   }
 
-  /** 95 min -> « 1,6 h » (format français ; l'application n'a pas de LOCALE_ID français). */
+  /** 40 min -> « 40 min » ; 95 min -> « 1,6 h » (format français ; l'application n'a pas de LOCALE_ID français). */
   protected heures(minutes: number | undefined): string {
-    return minutes === undefined ? '—' : `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(minutes / 60)} h`;
+    if (minutes === undefined) return '—';
+    if (minutes < 60) return `${minutes} min`;
+    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(minutes / 60)} h`;
   }
 
   protected pct(x: number | undefined): string {
