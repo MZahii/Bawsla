@@ -54,20 +54,24 @@ export class Home implements AfterViewInit {
   protected readonly populaires = ['Java', 'SQL', 'Angular', 'Mathématiques', 'Docker'];
   protected readonly capacites = CAPACITES_IA;
   protected readonly faq = FAQ;
-  protected readonly collage = ['assets/demo/cours/donnees.jpg', 'assets/demo/cours/frontend.jpg', 'assets/demo/cours/backend.jpg'];
-  /** Images du ruban incurvé de l'accueil : la série est répétée deux fois pour faire le tour complet du cylindre. */
-  protected readonly ruban = (() => {
-    const serie = [
-      { src: 'assets/demo/cours/donnees.jpg', libelle: 'Données' },
-      { src: 'assets/demo/cours/frontend.jpg', libelle: 'Interfaces web' },
-      { src: 'assets/demo/cours/c.jpg', libelle: 'Algorithmique' },
-      { src: 'assets/demo/cours/api.jpg', libelle: 'API' },
-      { src: 'assets/demo/cours/backend.jpg', libelle: 'Back-end' },
-      { src: 'assets/demo/cours/devops.jpg', libelle: 'DevOps' },
-      { src: 'assets/demo/cours/outils.jpg', libelle: 'Outils' },
-    ];
-    return [...serie, ...serie];
-  })();
+  protected readonly collage = ['assets/demo/cours/etude-1.jpg', 'assets/demo/cours/web-1.jpg', 'assets/demo/cours/etude-2.jpg'];
+  /** Images du ruban incurvé de l'accueil : quatorze matières différentes font le tour complet du cylindre. */
+  protected readonly ruban = [
+    { src: 'assets/demo/cours/code-1.jpg', libelle: 'Programmation' },
+    { src: 'assets/demo/cours/maths-1.jpg', libelle: 'Mathématiques' },
+    { src: 'assets/demo/cours/arts-1.jpg', libelle: 'Arts' },
+    { src: 'assets/demo/cours/donnees-1.jpg', libelle: 'Données' },
+    { src: 'assets/demo/cours/langues-1.jpg', libelle: 'Langues' },
+    { src: 'assets/demo/cours/physique-1.jpg', libelle: 'Physique-Chimie' },
+    { src: 'assets/demo/cours/eco-1.jpg', libelle: 'Économie' },
+    { src: 'assets/demo/cours/ia-1.jpg', libelle: 'Intelligence artificielle' },
+    { src: 'assets/demo/cours/svt-1.jpg', libelle: 'Sciences de la vie' },
+    { src: 'assets/demo/cours/histoire-1.jpg', libelle: 'Histoire' },
+    { src: 'assets/demo/cours/web-2.jpg', libelle: 'Développement web' },
+    { src: 'assets/demo/cours/psycho-1.jpg', libelle: 'Psychologie' },
+    { src: 'assets/demo/cours/geo-1.jpg', libelle: 'Géographie' },
+    { src: 'assets/demo/cours/philo-1.jpg', libelle: 'Philosophie' },
+  ];
   protected readonly etapes = [
     { icone: 'travel_explore', titre: 'Choisis un cours', texte: 'Par domaine et par niveau. Ta boussole te propose par où commencer selon tes centres d’intérêt.' },
     { icone: 'menu_book', titre: 'Apprends à ton rythme', texte: 'PDF du cours, résumé validé par le formateur, fiche de révision et version audio.' },
