@@ -124,25 +124,6 @@ form {
   gap: var(--space-1);
 }
 
-.role-toggle {
-  align-self: stretch;
-  margin-bottom: var(--space-4);
-
-  mat-button-toggle {
-    flex: 1;
-  }
-}
-
-.row {
-  display: flex;
-  gap: var(--space-3);
-
-  mat-form-field {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
 .error {
   margin: 0 0 var(--space-2);
   color: var(--color-error);
@@ -157,58 +138,4 @@ button[type='submit'] {
   margin: var(--space-4) 0 0;
   text-align: center;
   font-size: 14px;
-}
-
-// Inscription : choix « apprendre » / « enseigner »
-.roles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.role {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: var(--space-3);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: 400 13px/18px var(--font-body);
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-  overflow-wrap: anywhere;
-
-  strong { font: 600 15px/20px var(--font-body); }
-  span { color: var(--color-text-muted); }
-  mat-icon { color: var(--color-text-muted); }
-
-  &.on { border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
-  &.on mat-icon { color: var(--color-bordeaux-600); }
-}
-
-.teach {
-  margin: var(--space-2) 0 0;
-  padding: var(--space-3) 0 0;
-  border: 0;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-
-  legend { padding: 0; margin-bottom: var(--space-3); font-weight: 600; }
-}
-
-.hint {
-  display: flex;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-2);
-  font-size: 13px;
-  color: var(--color-text-muted);
-
-  mat-icon { flex: none; font-size: 18px; width: 18px; height: 18px; }
 }
