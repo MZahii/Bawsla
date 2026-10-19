@@ -46,11 +46,12 @@ public class IaApprenantService {
     static final String AUCUNE_RECOMMANDATION = "Pas d'autre cours à te proposer pour l'instant.";
     /**
      * En dessous, le K-Means classe « Décrocheur » un compte simplement neuf (il compte les jours actifs sur 30) :
-     * on attend un peu d'historique avant de montrer un profil à l'apprenant.
+     * on attend un peu d'historique avant de montrer un profil à l'apprenant. Un jour suffit : l'inscription compte
+     * comme premier jour actif, donc seul un compte sans aucune activité attend (3 jours rendaient la démo impossible).
      */
-    static final int JOURS_ACTIFS_MIN_PROFIL = 3;
+    static final int JOURS_ACTIFS_MIN_PROFIL = 1;
     static final String PROFIL_TROP_TOT =
-            "Ton profil sera calculé après " + JOURS_ACTIFS_MIN_PROFIL + " jours d'activité : continue, on apprend à te connaître.";
+            "Ton profil sera calculé dès ton premier jour d'activité : continue, on apprend à te connaître.";
     /** Données qui peuvent manquer, en mots simples (clés de IndicateursResponse.sources). */
     private static final Map<String, String> LIBELLES = new LinkedHashMap<>();
 

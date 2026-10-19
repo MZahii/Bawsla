@@ -88,9 +88,9 @@ class IaApprenantServiceTest {
     }
 
     @Test
-    void compteNeuf_pasDeProfilDecrocheur_etRecommandationsSansDoublon() {
-        Indicateurs unJour = new Indicateurs(0.75, 0.7, 4, 2, 5, 0.6, 400, 2, 1, 1, 0);
-        when(indicateursService.lesMiens(APPRENANT)).thenReturn(indicateurs(unJour, true));
+    void compteSansActivite_pasDeProfilDecrocheur_etRecommandationsSansDoublon() {
+        Indicateurs aucunJour = new Indicateurs(0.75, 0.7, 4, 2, 5, 0.6, 400, 2, 1, 0, 0);
+        when(indicateursService.lesMiens(APPRENANT)).thenReturn(indicateurs(aucunJour, true));
         when(coursClient.catalogue()).thenReturn(ApiResponse.ok(CATALOGUE));
         RecommandationsIaDto.CoursRecommande react = new RecommandationsIaDto.CoursRecommande(12L, "React", 0.5, "Nouveau");
         when(aiClient.recommandations(eq(JETON), any())).thenReturn(ApiResponse.ok(new RecommandationsIaDto(
