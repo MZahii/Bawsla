@@ -32,6 +32,16 @@ export const routes: Routes = [
   },
   { path: 'login', canActivate: [guestGuard], loadComponent: () => import('./pages/auth/login/login').then((m) => m.Login) },
   { path: 'register', canActivate: [guestGuard], loadComponent: () => import('./pages/auth/register/register').then((m) => m.Register) },
+  {
+    path: 'mot-de-passe-oublie',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./pages/auth/mot-de-passe-oublie/mot-de-passe-oublie').then((m) => m.MotDePasseOublie),
+  },
+  {
+    path: 'reinitialiser',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./pages/auth/reinitialiser/reinitialiser').then((m) => m.Reinitialiser),
+  },
   // Questionnaire d'accueil de l'apprenant, juste après l'inscription (facultatif).
   { path: 'demarrer', canActivate: [roleGuard('ETUDIANT')], loadComponent: () => import('./pages/onboarding/onboarding').then((m) => m.Onboarding) },
 

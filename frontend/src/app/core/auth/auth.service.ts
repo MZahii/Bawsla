@@ -43,6 +43,20 @@ export class AuthService {
       .pipe(map((res) => this.store(res.data)));
   }
 
+  /** Demande un lien de réinitialisation. Réponse identique que le compte existe ou non. */
+  motDePasseOublie(email: string): Observable<string | undefined> {
+    return this.http
+      .post<ApiResponse<void>>(`${API_BASE_URL}/auth/mot-de-passe-oublie`, { email })
+      .pipe(map((res) => res.message));
+  }
+
+  /** Choisit un nouveau mot de passe avec le jeton reçu par email. */
+  reinitialiserMotDePasse(token: string, motDePasse: string): Observable<void> {
+    return this.http
+      .post<ApiResponse<void>>(`${API_BASE_URL}/auth/reinitialiser-mot-de-passe`, { token, motDePasse })
+      .pipe(map(() => undefined));
+  }
+
   /** Recharge le profil depuis GET /api/users/me. */
   refreshMe(): Observable<User> {
     return this.http.get<ApiResponse<User>>(`${API_BASE_URL}/users/me`).pipe(

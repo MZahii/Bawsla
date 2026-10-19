@@ -35,6 +35,16 @@ bawsla:
   admin:
     email: ${ADMIN_EMAIL:admin@bawsla.tn}
     password: ${ADMIN_PASSWORD:Admin123!}
+  # Adresse du front, utilisée dans le lien « mot de passe oublié » envoyé par email
+  front-url: ${FRONT_URL:http://localhost:4200}
+  # SMTP (MailService). Sans MAIL_HOST, aucun email ne part : le lien est écrit dans les logs (dev).
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    starttls: ${MAIL_STARTTLS:true}
+    from: ${MAIL_FROM:Bawsla <no-reply@bawsla.tn>}
 
 eureka:
   client:

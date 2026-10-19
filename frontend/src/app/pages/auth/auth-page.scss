@@ -168,6 +168,17 @@ mat-icon[matPrefix] { margin: 0 var(--space-1) 0 var(--space-3); color: var(--co
 
 button[type='submit'] { margin-top: var(--space-2); }
 
+// Lien « Mot de passe oublié ? » sous le champ mot de passe (connexion)
+.forgot {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: calc(-1 * var(--space-2));
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .reassure {
   margin: var(--space-4) 0 0;
   font-size: 13px;

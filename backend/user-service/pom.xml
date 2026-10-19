@@ -48,6 +48,11 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- Email de réinitialisation du mot de passe (SMTP configuré dans le .env, sinon lien écrit dans les logs) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
 
         <!-- BCrypt uniquement : pas de filtre Spring Security, le JWT est validé par l'api-gateway -->
         <dependency>

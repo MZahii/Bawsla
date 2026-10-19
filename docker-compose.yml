@@ -89,10 +89,23 @@ services:
     build: { context: ./backend, args: { SERVICE: user-service } }
     image: bawsla/user-service
     container_name: bawsla-user
-    environment: *docker-env
+    environment:
+      <<: *docker-env
+      # Emails (mot de passe oublié) : le SMTP du .env s'il est renseigné, sinon Mailpit (http://localhost:8025).
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
     healthcheck:
       <<: *spring-healthcheck
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health | grep -q UP"]
+
+  # Boîte mail de développement : capture les emails envoyés par user-service (aucun n'atteint un vrai destinataire).
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: bawsla-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
 
   cours-service:
     <<: *spring-service

@@ -57,6 +57,11 @@
         </button>
         <mat-error>Le mot de passe est obligatoire.</mat-error>
       </mat-form-field>
+      <a
+        class="forgot"
+        routerLink="/mot-de-passe-oublie"
+        [queryParams]="form.controls.email.valid ? { email: form.controls.email.value } : {}"
+      >Mot de passe oublié ?</a>
 
       @if (error()) {
         <p class="error" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>

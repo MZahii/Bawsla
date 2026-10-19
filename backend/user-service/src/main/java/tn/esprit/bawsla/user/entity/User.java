@@ -73,6 +73,13 @@ public class User {
     /** Connexion refusée jusqu'à cette date après trop d'échecs (protection contre le brute force). */
     private LocalDateTime verrouilleJusqua;
 
+    /** Empreinte SHA-256 du lien « mot de passe oublié » en cours (le lien lui-même n'est jamais stocké). */
+    @Column(length = 64, unique = true)
+    private String reinitialisationHash;
+
+    /** Fin de validité de ce lien. */
+    private LocalDateTime reinitialisationExpire;
+
     @PrePersist
     void onCreate() {
         dateCreation = LocalDateTime.now();
@@ -140,5 +147,27 @@ public class User {
     public void deverrouiller() {
         tentativesEchouees = 0;
         verrouilleJusqua = null;
+    }
+
+    public String getReinitialisationHash() { return reinitialisationHash; }
+
+    public LocalDateTime getReinitialisationExpire() { return reinitialisationExpire; }
+
+    /** Un seul lien valide à la fois : un nouveau lien remplace le précédent. */
+    public void preparerReinitialisation(String hash, LocalDateTime expire) {
+        reinitialisationHash = hash;
+        reinitialisationExpire = expire;
+    }
+
+    public boolean reinitialisationValide(LocalDateTime maintenant) {
+        return reinitialisationHash != null && reinitialisationExpire != null && reinitialisationExpire.isAfter(maintenant);
+    }
+
+    /** Nouveau mot de passe (déjà haché) : le lien est consommé et le verrou anti brute force levé. */
+    public void reinitialiserMotDePasse(String hash) {
+        motDePasse = hash;
+        reinitialisationHash = null;
+        reinitialisationExpire = null;
+        deverrouiller();
     }
 }
