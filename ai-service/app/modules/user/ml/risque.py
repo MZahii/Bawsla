@@ -47,6 +47,11 @@ VARIABLES = [
 REDONDANTES = [{"noteMoyenne", "tauxReussite"}, {"nbNotionsRatees", "nbErreurs"}, {"nbCoursSuivis", "nbCoursTermines"}]
 
 # Explication d'un risque : (sens du risque, message). +1 = plus c'est grand, plus c'est risqué ; -1 = l'inverse.
+def _duree(minutes: float) -> str:
+    """2 → « 2 min », 150 → « 2 h » : sous une heure, « 0 h » ne voudrait rien dire."""
+    return f"{minutes:.0f} min" if minutes < 60 else f"{minutes / 60:.0f} h"
+
+
 FACTEURS = {
     "noteMoyenne": (-1, lambda v: f"Note moyenne basse aux quiz ({v:.0%})"),
     "tauxReussite": (-1, lambda v: f"Peu de bonnes réponses aux quiz ({v:.0%})"),
@@ -54,7 +59,7 @@ FACTEURS = {
     "nbNotionsRatees": (+1, lambda v: f"Beaucoup de notions ratées ({v:.0f})"),
     "nbErreurs": (+1, lambda v: f"Beaucoup d'erreurs aux quiz ({v:.0f})"),
     "progressionMoyenne": (-1, lambda v: f"Faible progression dans ses cours ({v:.0%})"),
-    "tempsPasseMinutes": (-1, lambda v: f"Peu de temps passé sur les cours ({v / 60:.0f} h)"),
+    "tempsPasseMinutes": (-1, lambda v: f"Peu de temps passé sur les cours ({_duree(v)})"),
     "nbCoursSuivis": (-1, lambda v: f"Peu de cours suivis ({v:.0f})"),
     "nbCoursTermines": (-1, lambda v: f"Aucun ou peu de cours terminés ({v:.0f})"),
     "joursActifs30j": (-1, lambda v: f"Peu de jours d'activité ce mois-ci ({v:.0f} sur 30)"),

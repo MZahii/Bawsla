@@ -94,6 +94,23 @@ class AuthServiceTest {
     }
 
     @Test
+    void register_compteCommePremiereConnexionEtPremierJourActif() {
+        when(userRepository.existsByEmailIgnoreCase("lina@example.com")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(7L);
+            return u;
+        });
+
+        service.register(new RegisterRequest("Trabelsi", "Lina", "lina@example.com", MDP, null));
+
+        org.mockito.ArgumentCaptor<User> enregistre = org.mockito.ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(enregistre.capture());
+        assertThat(enregistre.getValue().getDerniereConnexion()).isNotNull();
+        verify(activiteService).enregistrer(7L);
+    }
+
+    @Test
     void register_neStockeJamaisLeMotDePasseEnClair() {
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);

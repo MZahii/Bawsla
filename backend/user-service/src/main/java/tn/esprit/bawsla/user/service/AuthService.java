@@ -59,7 +59,10 @@ public class AuthService {
         user.setEmail(email);
         user.setMotDePasse(passwordEncoder.encode(request.motDePasse()));
         user.setRole(role);
+        // Inscrit = connecté aussitôt (le jeton est renvoyé) : c'est sa première connexion et son premier jour actif.
+        user.enregistrerConnexion(LocalDateTime.now(clock));
         userRepository.save(user);
+        activiteService.enregistrer(user.getId());
         // Un formateur s'inscrit non validé : sa demande part à l'admin s'il a décrit son expertise
         // (sinon il pourra la faire plus tard depuis « Mon compte »).
         if (role == Role.ENSEIGNANT && request.expertise() != null && !request.expertise().isBlank()) {

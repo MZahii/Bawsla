@@ -50,8 +50,9 @@ def _dossier_par_defaut() -> Path:
 DOSSIER = _dossier_par_defaut()
 FICHIERS = {"profils": "profils.joblib", "risque": "risque.joblib", "recommandation": "recommandation.joblib"}
 METRIQUES = "metriques.json"
-SOURCE_SIMULEE = f"Données simulées ({NB_APPRENANTS} apprenants fictifs, graine fixe) : quiz-service et cours-service " \
-                 "ne fournissent pas encore les résultats ni les inscriptions."
+SOURCE_SIMULEE = f"Données simulées ({NB_APPRENANTS} apprenants fictifs, graine fixe) : les modèles apprennent sur ce " \
+                 "jeu, faute d'un historique réel suffisant ; leurs prédictions utilisent les vraies données des " \
+                 "modules Quiz et Cours."
 
 
 def versions() -> dict[str, str]:
