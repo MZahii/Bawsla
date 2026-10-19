@@ -17,6 +17,11 @@ def modele(apprenants):
     return risque.entrainer(apprenants)
 
 
+def test_temps_passe_en_minutes_sous_une_heure():
+    assert risque._duree(2) == "2 min"
+    assert risque._duree(150) == "2 h"
+
+
 def test_decoupage_entrainement_test(modele, apprenants):
     m = modele.metriques
     assert m["nbEntrainement"] + m["nbTest"] == len(apprenants)

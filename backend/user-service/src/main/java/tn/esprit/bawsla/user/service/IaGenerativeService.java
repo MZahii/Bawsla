@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
@@ -274,16 +276,21 @@ public class IaGenerativeService {
             // reçoit quand même le texte, il sera simplement régénéré au prochain clic.
             log.warn("Texte IA ({}) non gardé : {}", type, e.getMostSpecificCause().getMessage());
         }
-        return new ContenuIaResponse(type.name(), genere, fournisseur, contenu.getDateGeneration(), false);
+        return new ContenuIaResponse(type.name(), genere, fournisseur, avecFuseau(contenu.getDateGeneration()), false);
     }
 
     private ContenuIaResponse reponse(ContenuIa c, boolean depuisCache) {
         try {
             return new ContenuIaResponse(c.getType().name(), mapper.readTree(c.getContenu()), c.getFournisseur(),
-                    c.getDateGeneration(), depuisCache);
+                    avecFuseau(c.getDateGeneration()), depuisCache);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Contenu IA illisible", e);
         }
+    }
+
+    /** Date enregistrée à l'heure du serveur (UTC en Docker) → avec son décalage, pour l'afficher à l'heure locale. */
+    private static OffsetDateTime avecFuseau(LocalDateTime date) {
+        return date == null ? null : date.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     }
 
     String empreinte(Object requete) {
