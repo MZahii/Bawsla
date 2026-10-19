@@ -15,15 +15,22 @@
         @for (p of populaires; track p) { <a routerLink="/catalogue" [queryParams]="{ q: p }">{{ p }}</a> }
       </p>
     </div>
-    <div class="collage" aria-hidden="true">
-      <img class="a" [src]="collage[0]" alt="" />
-      <img class="b" [src]="collage[1]" alt="" />
-      <img class="c" [src]="collage[2]" alt="" />
-      <div class="note">
-        <span class="boussole"><mat-icon>explore</mat-icon></span>
-        <span><strong>Ton cap : revoir les jointures</strong><small>Exemple de conseil après un quiz</small></span>
-      </div>
-    </div>
+  </div>
+</section>
+
+<!-- ============================== Ruban incurvé (décoratif) : un cylindre d'images vu de l'intérieur, qui tourne lentement -->
+<section class="ruban" aria-hidden="true">
+  <div class="cylindre" [style.--n]="ruban.length">
+    @for (r of ruban; track $index; let i = $index) {
+      <figure [style.--i]="i">
+        <img [src]="r.src" alt="" />
+        <figcaption>{{ r.libelle }}</figcaption>
+      </figure>
+    }
+  </div>
+  <div class="note">
+    <span class="boussole"><mat-icon>explore</mat-icon></span>
+    <span><strong>Ton cap : revoir les jointures</strong><small>Exemple de conseil après un quiz</small></span>
   </div>
 </section>
 

@@ -4,22 +4,49 @@
 h2 { margin: 0 0 var(--space-3); font: 600 30px/38px var(--font-heading); }
 
 // Accroche
-.hero { padding: var(--space-7) 0; border-bottom: 1px solid var(--color-border); }
-.hero-in { display: grid; gap: var(--space-7); align-items: center; @media (min-width: 1000px) { grid-template-columns: 1.1fr 1fr; } }
-h1 { margin: 0; font: 600 44px/54px var(--font-heading); letter-spacing: -0.01em; @media (max-width: 600px) { font-size: 32px; line-height: 40px; } }
-h1 span { display: block; color: var(--color-bordeaux-600); }
-.lead { max-width: 56ch; margin: var(--space-4) 0 var(--space-5); font-size: 19px; line-height: 30px; color: var(--color-text-muted); }
-.search { display: flex; align-items: center; gap: var(--space-2); max-width: 600px; padding: 6px 6px 6px var(--space-4); border: 1px solid var(--color-text-muted); border-radius: 8px; background: var(--color-surface); }
+.hero { padding: var(--space-8) 0 var(--space-5); }
+.pitch { max-width: 860px; margin-inline: auto; text-align: center; }
+h1 { margin: 0; font: 600 52px/62px var(--font-heading); letter-spacing: -0.02em; @media (max-width: 600px) { font-size: 32px; line-height: 40px; } }
+// « L'IA t'indique le cap. » : sur sa propre ligne, soulignée d'un trait or qui se trace après l'entrée du titre.
+h1 span { position: relative; display: table; margin: 4px auto 0; color: var(--color-bordeaux-600); }
+h1 span::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 4px; border-radius: 2px; background: var(--color-gold-500); transform-origin: left; animation: trait 700ms var(--ease-out) 650ms both; }
+@keyframes trait { from { transform: scaleX(0); } }
+.lead { max-width: 60ch; margin: var(--space-5) auto; font-size: 19px; line-height: 30px; color: var(--color-text-muted); }
+.search { display: flex; align-items: center; gap: var(--space-2); max-width: 600px; margin-inline: auto; padding: 6px 6px 6px var(--space-4); border: 1px solid var(--color-text-muted); border-radius: 8px; background: var(--color-surface); text-align: left; }
 .search { transition: border-color var(--duree-ui) ease; }
 .search:focus-within { border-color: var(--color-primary); outline: 2px solid var(--color-primary); }
 .search mat-icon { color: var(--color-text-muted); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--color-text); font: 400 17px var(--font-body); }
-.popular { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin: var(--space-4) 0 0; font-size: 15px; }
+.popular { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2) var(--space-3); margin: var(--space-4) 0 0; font-size: 15px; }
 .popular a { color: var(--color-text); font-weight: 600; }
-.collage { position: relative; display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: 1fr 1fr; gap: var(--space-3); height: 420px; @media (max-width: 999px) { height: 300px; } }
-.collage img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm); display: block; }
-.a { grid-row: span 2; }
-.note { position: absolute; left: -16px; bottom: 28px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-left: 3px solid var(--color-gold-500); border-radius: var(--radius-sm); background: var(--color-surface); @media (max-width: 600px) { left: 8px; } }
+
+// Ruban incurvé : N images posées sur un cylindre (rayon calculé pour qu'elles se touchent presque), vu depuis l'axe.
+// Le cylindre est avancé de son rayon : l'image du centre reste à sa taille, celles des bords grandissent en venant vers nous.
+.ruban {
+  --w: 300px; --h: 200px; --gap: 28px;
+  position: relative; height: calc(var(--h) * 1.4 + 96px); overflow: hidden; perspective: 1800px;
+  border-bottom: 1px solid var(--color-border);
+  animation: monte-ruban 900ms var(--ease-out) 200ms both;
+  @media (max-width: 700px) { --w: 180px; --h: 120px; --gap: 16px; perspective: 1000px; }
+}
+.cylindre {
+  --r: calc(var(--n) * (var(--w) + var(--gap)) / 6.2832);
+  position: absolute; left: 50%; top: calc(var(--h) * 0.7); transform-style: preserve-3d;
+  transform: translateZ(var(--r));
+  animation: tourne 120s linear infinite; // mouvement continu : linéaire
+}
+.cylindre figure {
+  position: absolute; left: calc(var(--w) / -2); top: calc(var(--h) / -2); width: var(--w); height: var(--h); margin: 0;
+  overflow: hidden; border-radius: var(--radius-sm); background: var(--color-navy-700);
+  transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(calc(-1 * var(--r)));
+  backface-visibility: hidden; // la moitié du cylindre derrière nous ne se dessine pas
+}
+.cylindre img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cylindre figcaption { position: absolute; left: 10px; top: 10px; padding: 2px 8px; border-radius: 4px; background: var(--color-surface); color: var(--color-text); font: 600 12px var(--font-body); }
+@keyframes tourne { from { transform: translateZ(var(--r)) rotateY(0deg); } to { transform: translateZ(var(--r)) rotateY(-360deg); } }
+@keyframes monte-ruban { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
+
+.note { position: absolute; z-index: 1; left: 0; right: 0; bottom: var(--space-4); width: max-content; max-width: calc(100% - 32px); margin-inline: auto; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-left: 3px solid var(--color-gold-500); border-radius: var(--radius-sm); background: var(--color-surface); }
 .note mat-icon { color: var(--color-gold-700); }
 .note span { display: flex; flex-direction: column; font-size: 14px; }
 .note small { color: var(--color-text-muted); }
@@ -102,10 +129,11 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
 // Animations : entrée de l'accroche, puis apparition des sections au défilement (classe « vu » posée par home.ts)
 // Courbe franche (--ease-out) : l'élément part vite puis se pose ; décalage de 60 ms entre voisins.
 .entree { animation: monte var(--duree-entree) var(--ease-out) both; animation-delay: calc(var(--d, 0) * 60ms); }
-.collage { animation: monte-collage 700ms var(--ease-out) 120ms both; }
 @keyframes monte { from { opacity: 0; transform: translateY(12px); } }
-@keyframes monte-collage { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
-.note { animation: monte var(--duree-entree) var(--ease-out) 520ms both; }
+.note { animation: monte var(--duree-entree) var(--ease-out) 700ms both; }
+// L'aiguille de la boussole cherche le nord puis se stabilise (une seule fois, à l'arrivée).
+.boussole mat-icon { animation: cap 1400ms var(--ease-out) 900ms both; }
+@keyframes cap { 0% { transform: rotate(-120deg); } 55% { transform: rotate(16deg); } 78% { transform: rotate(-6deg); } 100% { transform: rotate(0); } }
 [data-reveal] { opacity: 0; transform: translateY(16px); transition: var(--duree-entree) var(--ease-out) calc(var(--d, 0) * 60ms); transition-property: opacity, transform; }
 [data-reveal].vu { opacity: 1; transform: none; }
 // Survols réservés aux souris (sur écran tactile, ils resteraient collés après le toucher).
@@ -113,8 +141,9 @@ h1 span { display: block; color: var(--color-bordeaux-600); }
   .cat:hover { border-color: var(--color-primary); }
   .cat:hover .cnt mat-icon { transform: translateX(3px); }
   .capacites li:hover { border-color: var(--color-gold-500); transform: translateY(-2px); }
+  .ruban:hover .cylindre { animation-play-state: paused; } // on peut regarder une image sans qu'elle file
 }
 @media (prefers-reduced-motion: reduce) {
-  .entree, .collage, .note { animation: none; }
+  .entree, .ruban, .cylindre, .note, .boussole mat-icon, h1 span::after { animation: none; }
   [data-reveal] { opacity: 1; transform: none; transition: none; }
 }

@@ -55,6 +55,19 @@ export class Home implements AfterViewInit {
   protected readonly capacites = CAPACITES_IA;
   protected readonly faq = FAQ;
   protected readonly collage = ['assets/demo/cours/donnees.jpg', 'assets/demo/cours/frontend.jpg', 'assets/demo/cours/backend.jpg'];
+  /** Images du ruban incurvé de l'accueil : la série est répétée deux fois pour faire le tour complet du cylindre. */
+  protected readonly ruban = (() => {
+    const serie = [
+      { src: 'assets/demo/cours/donnees.jpg', libelle: 'Données' },
+      { src: 'assets/demo/cours/frontend.jpg', libelle: 'Interfaces web' },
+      { src: 'assets/demo/cours/c.jpg', libelle: 'Algorithmique' },
+      { src: 'assets/demo/cours/api.jpg', libelle: 'API' },
+      { src: 'assets/demo/cours/backend.jpg', libelle: 'Back-end' },
+      { src: 'assets/demo/cours/devops.jpg', libelle: 'DevOps' },
+      { src: 'assets/demo/cours/outils.jpg', libelle: 'Outils' },
+    ];
+    return [...serie, ...serie];
+  })();
   protected readonly etapes = [
     { icone: 'travel_explore', titre: 'Choisis un cours', texte: 'Par domaine et par niveau. Ta boussole te propose par où commencer selon tes centres d’intérêt.' },
     { icone: 'menu_book', titre: 'Apprends à ton rythme', texte: 'PDF du cours, résumé validé par le formateur, fiche de révision et version audio.' },
