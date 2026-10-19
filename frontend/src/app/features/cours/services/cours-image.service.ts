@@ -16,7 +16,7 @@ export class CoursImageService {
   private readonly cache = new Map<string, Observable<string>>();
 
   /** URL affichable : l'image du cours, ou l'image par défaut s'il n'en a pas ou si le chargement échoue. */
-  url(cours: { id?: number; titre?: string; imageUrl?: string | null } | null | undefined): Observable<string> {
+  url(cours: { id?: number; titre?: string; categorie?: string | null; imageUrl?: string | null } | null | undefined): Observable<string> {
     const route = cours?.imageUrl;
     const defaut = imageParDefaut(cours);
     if (!route) return of(defaut);

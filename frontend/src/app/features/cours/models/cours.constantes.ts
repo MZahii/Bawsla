@@ -63,24 +63,52 @@ export const LIBELLE_STATUT: Record<StatutCours, string> = {
 /** Rang d'un niveau pour <bw-badge variant="niveau">. */
 export const RANG_NIVEAU: Record<Niveau, 1 | 2 | 3> = { DEBUTANT: 1, INTERMEDIAIRE: 2, AVANCE: 3 };
 
+/** Banque de couvertures de remplacement (assets/demo/cours/<thème>-<n>.jpg, photos Unsplash 1280×720) : nombre d'images par thème. */
+const BANQUE: Record<string, number> = {
+  code: 6, web: 5, donnees: 4, serveur: 4, reseau: 1, securite: 2, ia: 3, materiel: 1,
+  maths: 3, physique: 3, svt: 4, histoire: 3, geo: 5, langues: 4, eco: 4, psycho: 3, philo: 3, arts: 4, etude: 5,
+};
+const image = (theme: string, n: number) => `assets/demo/cours/${theme}-${n}.jpg`;
+const lot = (...themes: string[]) => themes.flatMap((t) => Array.from({ length: BANQUE[t] }, (_, i) => image(t, i + 1)));
+
 /** Image affichée tant qu'un cours n'a pas de couverture. */
-export const IMAGE_DEFAUT = 'assets/demo/cours/outils.jpg';
+export const IMAGE_DEFAUT = image('etude', 1);
 
-/** Couvertures de remplacement : un petit lot d'images par sujet (mot-clé du titre), puis l'id choisit dans le lot. */
-const IMAGES_SUJET: [RegExp, string[]][] = [
-  [/sql|donn[ée]e|base|data|stat/i, ['donnees', 'backend']],
-  [/angular|react|front|html|css|web|interface/i, ['frontend', 'api']],
-  [/api|rest|http|micro/i, ['api', 'backend']],
-  [/spring|java|back|serveur|node/i, ['backend', 'api']],
-  [/docker|devops|cloud|linux|git\b|d[ée]ploi/i, ['devops', 'outils']],
-  [/\bc\b|algo|programm/i, ['c', 'outils', 'donnees']],
+/** Thèmes d'images de chaque matière (hors Informatique, qui se précise par le titre). */
+const IMAGES_MATIERE: Record<string, string[]> = {
+  'Mathématiques': lot('maths'),
+  'Physique-Chimie': lot('physique'),
+  'Sciences de la vie et de la Terre': lot('svt'),
+  'Histoire': lot('histoire'),
+  'Géographie': lot('geo'),
+  'Langues': lot('langues'),
+  'Économie et gestion': lot('eco'),
+  'Psychologie': lot('psycho'),
+  'Philosophie': lot('philo'),
+  'Arts': lot('arts'),
+};
+
+/** Mots-clés du titre : le premier qui correspond choisit le lot (vaut pour toutes les matières, utile pour « Autre » et l'informatique). */
+const IMAGES_TITRE: [RegExp, string[]][] = [
+  [/\bia\b|intelligence artificielle|machine learning|apprentissage automatique|r[ée]seaux? de neurones|\bllm\b|deep learning/i, lot('ia')],
+  [/cyber|s[ée]curit[ée] informatique|crypto|hack|r[ée]seaux? informatique|\btcp\b/i, lot('securite', 'reseau')],
+  [/\bsql\b|bases? de donn|donn[ée]es|\bdata\b|statisti|excel|\bbi\b/i, lot('donnees')],
+  [/angular|react|vue\.?js|front-?end|html|\bcss\b|\bweb\b|\bux\b|\bui\b|javascript|typescript/i, lot('web')],
+  [/\bapi\b|\brest\b|http|microservice|spring|\bjava\b|back-?end|serveur|node\.?js|docker|devops|cloud|linux|\bgit\b|d[ée]ploi/i, lot('serveur', 'reseau')],
+  [/arduino|[ée]lectroni|architecture des ordinateurs|syst[èe]mes? embarqu|mat[ée]riel informatique/i, lot('materiel', 'securite')],
+  [/langage c\b|\bc\+\+|\bc#|algorithm|programm|python|\bcode\b|d[ée]veloppe/i, lot('code')],
+  [/math|alg[èe]bre|g[ée]om[ée]tr|probabilit|calcul/i, lot('maths')],
+  [/anglais|fran[çc]ais|arabe|espagnol|allemand|langues?\b|grammaire/i, lot('langues')],
 ];
-const IMAGES_ROTATION = ['outils', 'c', 'donnees', 'frontend', 'backend', 'api', 'devops'];
 
-/** Image d'un cours sans couverture : variée d'un cours à l'autre, mais toujours la même pour un cours donné. */
-export function imageParDefaut(cours?: { id?: number; titre?: string } | null): string {
-  const lot = (cours?.titre && IMAGES_SUJET.find(([motif]) => motif.test(cours.titre!))?.[1]) || IMAGES_ROTATION;
-  return `assets/demo/cours/${lot[(cours?.id ?? 0) % lot.length]}.jpg`;
+/** Image d'un cours sans couverture : choisie selon le titre puis la matière, variée d'un cours à l'autre, toujours la même pour un cours donné. */
+export function imageParDefaut(cours?: { id?: number; titre?: string; categorie?: string | null } | null): string {
+  const titre = cours?.titre ?? '';
+  const choix =
+    IMAGES_TITRE.find(([motif]) => motif.test(titre))?.[1] ??
+    IMAGES_MATIERE[cours?.categorie ?? ''] ??
+    (cours?.categorie === 'Informatique' ? lot('code', 'web', 'donnees', 'serveur', 'ia') : lot('etude', 'code', 'maths', 'langues', 'arts'));
+  return choix[(cours?.id ?? 0) % choix.length];
 }
 
 export const FORMATEUR_DEFAUT = 'Formateur';
